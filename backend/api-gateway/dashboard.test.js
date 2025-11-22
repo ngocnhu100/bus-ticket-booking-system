@@ -1,50 +1,14 @@
 const request = require('supertest');
-const app = require('../app');
+const app = require('./index');
 
 describe('Dashboard API', () => {
   let passengerToken;
   let adminToken;
 
   beforeAll(async () => {
-    // Register and login as passenger
-    await request(app)
-      .post('/auth/register')
-      .send({
-        email: 'passenger2@example.com',
-        phone: '+84901234568',
-        password: 'SecurePass123!',
-        fullName: 'Passenger User 2',
-        role: 'passenger'
-      });
-
-    const passengerLogin = await request(app)
-      .post('/auth/login')
-      .send({
-        identifier: 'passenger2@example.com',
-        password: 'SecurePass123!'
-      });
-
-    passengerToken = passengerLogin.body.data.accessToken;
-
-    // Register and login as admin
-    await request(app)
-      .post('/auth/register')
-      .send({
-        email: 'admin2@example.com',
-        phone: '+84909876544',
-        password: 'SecurePass123!',
-        fullName: 'Admin User 2',
-        role: 'admin'
-      });
-
-    const adminLogin = await request(app)
-      .post('/auth/login')
-      .send({
-        identifier: 'admin2@example.com',
-        password: 'SecurePass123!'
-      });
-
-    adminToken = adminLogin.body.data.accessToken;
+    // Use tokens from global test setup
+    passengerToken = global.testTokens.passenger;
+    adminToken = global.testTokens.admin;
   });
 
   it('should return dashboard summary for passenger', async () => {
@@ -107,6 +71,7 @@ describe('Dashboard API', () => {
       .set('Authorization', `Bearer ${passengerToken}`)
       .expect(404);
 
-    // Note: 404 returns HTML, not JSON
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.code).toBe('NOT_FOUND');
   });
 });

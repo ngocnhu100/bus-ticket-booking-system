@@ -21,7 +21,7 @@ class DashboardController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error(error);
+      console.error('⚠️', error);
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Internal server error' },
@@ -60,7 +60,7 @@ class DashboardController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error(error);
+      console.error('⚠️', error);
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Internal server error' },
@@ -93,7 +93,7 @@ class DashboardController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error(error);
+      console.error('⚠️', error);
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Internal server error' },
@@ -117,7 +117,7 @@ class DashboardController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error(error);
+      console.error('⚠️', error);
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Internal server error' },

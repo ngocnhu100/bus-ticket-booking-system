@@ -14,10 +14,10 @@ const dashboardRouter = require('./src/routes/dashboardRoutes');
 const pool = require('./src/config/database');
 pool.query('SELECT NOW()', (err) => {
   if (err) {
-    console.error('Database connection failed:', err.message);
+    console.error('⚠️ Database connection failed:', err.message);
     process.exit(1);
   } else {
-    console.log('Database connected successfully');
+    console.log('💾 Database connected successfully');
   }
 });
 
@@ -32,13 +32,13 @@ const redisClient = redis.createClient({
 
 redisClient.connect()
   .then(() => {
-    console.log('Redis connected successfully');
+    console.log('🔌 Redis connected successfully');
     return redisClient.quit();
   })
   .catch((err) => {
-    console.error('Redis connection failed:', err.message);
-    console.error('Make sure Redis is running on', process.env.REDIS_HOST + ':' + process.env.REDIS_PORT);
-    console.error('If using Docker: docker run -d -p 6379:6379 redis:alpine');
+    console.error('⚠️ Redis connection failed:', err.message);
+    console.error('⚠️ Make sure Redis is running on', process.env.REDIS_HOST + ':' + process.env.REDIS_PORT);
+    console.error('⚠️ If using Docker: docker run -d -p 6379:6379 redis:alpine');
     process.exit(1);
   });
 

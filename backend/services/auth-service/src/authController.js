@@ -1,10 +1,10 @@
 const bcrypt = require('bcrypt');
 const { OAuth2Client } = require('google-auth-library');
 const crypto = require('crypto');
-const userRepository = require('../repositories/userRepository');
-const authService = require('../services/authService');
-const emailService = require('../services/emailService');
-const { registerSchema, loginSchema, googleAuthSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema } = require('../validators/authValidators');
+const axios = require('axios');
+const userRepository = require('./userRepository');
+const authService = require('./authService');
+const { registerSchema, loginSchema, googleAuthSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema } = require('./authValidators');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -53,11 +53,15 @@ class AuthController {
 
       await userRepository.setEmailVerificationToken(user.user_id, verificationToken, expiresAt);
 
-      // Send verification email
+      // Send verification email via notification service
       try {
-        await emailService.sendVerificationEmail(email, verificationToken);
+        await axios.post(`${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003'}/send-email`, {
+          to: email,
+          type: 'verification',
+          token: verificationToken
+        });
       } catch (emailError) {
-        console.error('⚠️ Failed to send verification email:', emailError);
+        console.error('⚠️ Failed to send verification email:', emailError.message);
         // Don't fail registration if email fails, but log it
       }
 
@@ -389,8 +393,17 @@ class AuthController {
 
       await userRepository.setEmailVerificationToken(user.user_id, verificationToken, expiresAt);
 
-      // Send verification email
-      await emailService.sendVerificationEmail(email, verificationToken);
+      // Send verification email via notification service
+      try {
+        await axios.post(`${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003'}/send-email`, {
+          to: email,
+          type: 'verification',
+          token: verificationToken
+        });
+      } catch (emailError) {
+        console.error('⚠️ Failed to send verification email:', emailError);
+        // Don't fail registration if email fails
+      }
 
       res.json({
         success: true,
@@ -436,9 +449,13 @@ class AuthController {
 
       await userRepository.setPasswordResetToken(user.user_id, resetToken, expiresAt);
 
-      // Send password reset email
+      // Send password reset email via notification service
       try {
-        await emailService.sendPasswordResetEmail(email, resetToken);
+        await axios.post(`${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003'}/send-email`, {
+          to: email,
+          type: 'password-reset',
+          resetToken: resetToken
+        });
       } catch (emailError) {
         console.error('⚠️ Failed to send password reset email:', emailError);
         // Don't fail the request if email fails

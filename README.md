@@ -4,10 +4,21 @@
 
 This is Assignment 1 for the course, building the foundational authentication, authorization, and dashboard components for a bus ticket booking system. The project demonstrates secure auth flows, role-based access, and data APIs for a dashboard.
 
+## Architecture
+
+The system is built using a **microservices architecture** with the following services:
+
+- **API Gateway** (Port 3000): Entry point for all client requests, routes to appropriate services
+- **Auth Service** (Port 3001): Handles user authentication, authorization, and user management
+- **Notification Service** (Port 3003): Manages email notifications (verification, password reset)
+- **PostgreSQL** (Port 5432): Primary database for user data and business entities
+- **Redis** (Port 6379): Cache for JWT refresh tokens and session management
+
 ## Features
 
 - **Authentication**: Email/password signup/login, Google OAuth integration
 - **Authorization**: Role-based access (passenger, admin)
+- **Email Verification**: SendGrid integration for email verification and password reset
 - **Dashboard**: Data endpoints for summary, activity, and stats
 - **API**: RESTful endpoints following the provided specification
 
@@ -15,7 +26,9 @@ This is Assignment 1 for the course, building the foundational authentication, a
 
 - **Backend**: Node.js, Express.js, PostgreSQL, Redis
 - **Auth**: JWT (Access + Refresh tokens)
+- **Email**: SendGrid for notifications
 - **Testing**: Jest, Supertest
+- **Containerization**: Docker & Docker Compose for local development
 
 ## Local Development
 
@@ -24,8 +37,37 @@ This is Assignment 1 for the course, building the foundational authentication, a
 - Node.js 18+
 - PostgreSQL 13+
 - Redis
+- Docker & Docker Compose (optional, for containerized development)
 
 ### Setup
+
+#### Option 1: Docker Compose (Recommended)
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/ngocnhu100/bus-ticket-booking-system.git
+   cd bus-ticket-booking-system/backend
+   ```
+
+2. Set up environment variables:
+
+   - Copy `.env` and update values (DB credentials, JWT secrets, Google Client ID, SendGrid API key)
+
+3. Start all services with Docker Compose:
+
+   ```bash
+   docker-compose up --build
+   ```
+
+4. The services will be available at:
+   - API Gateway: http://localhost:3000
+   - Auth Service: http://localhost:3001
+   - Notification Service: http://localhost:3003
+   - PostgreSQL: localhost:5432
+   - Redis: localhost:6379
+
+#### Option 2: Manual Setup
 
 1. Clone the repository:
 
@@ -34,21 +76,30 @@ This is Assignment 1 for the course, building the foundational authentication, a
    cd bus-ticket-booking-system
    ```
 
-2. Install dependencies:
+2. Install dependencies for all services:
 
    ```bash
-   cd backend
+   # API Gateway
+   cd backend/api-gateway
+   npm install
+
+   # Auth Service
+   cd ../services/auth-service
+   npm install
+
+   # Notification Service
+   cd ../notification-service
    npm install
    ```
 
 3. Set up environment variables:
 
-   - Copy `.env` and update values (DB credentials, JWT secrets, Google Client ID)
+   - Copy `.env` files to each service directory and update values
 
 4. Set up database:
 
-   - Create PostgreSQL database: `bus_ticket_dev`
-   - Run migration: `psql -U postgres -d bus_ticket_dev -f sql/001_create_users_table.sql`
+   - Create PostgreSQL database: `busticket`
+   - Run migrations from `backend/sql/` directory
 
 5. Start services:
 
@@ -63,14 +114,20 @@ This is Assignment 1 for the course, building the foundational authentication, a
      ./scripts/start-redis.sh
      ```
 
-   - **Backend**: `npm run dev` (runs on port 3000)
+   - **Auth Service**: `cd backend/services/auth-service && npm run dev`
+   - **Notification Service**: `cd backend/services/notification-service && npm run dev`
+   - **API Gateway**: `cd backend/api-gateway && npm run dev`
 
-6. Test health check:
+6. Test health checks:
    ```bash
-   curl http://localhost:3000/health
+   curl http://localhost:3000/health  # API Gateway
+   curl http://localhost:3001/health  # Auth Service
+   curl http://localhost:3003/health  # Notification Service
    ```
 
 ### API Endpoints
+
+All API requests go through the API Gateway at `http://localhost:3000`. The gateway routes requests to the appropriate microservice.
 
 #### Authentication
 
@@ -79,6 +136,10 @@ This is Assignment 1 for the course, building the foundational authentication, a
 - `POST /auth/oauth/google` - Google OAuth login
 - `POST /auth/refresh` - Refresh access token
 - `POST /auth/logout` - Logout
+- `GET /auth/verify-email` - Verify email with token
+- `POST /auth/resend-verification` - Resend verification email
+- `POST /auth/forgot-password` - Request password reset
+- `POST /auth/reset-password` - Reset password with token
 
 #### Dashboard
 
@@ -86,6 +147,12 @@ This is Assignment 1 for the course, building the foundational authentication, a
 - `GET /dashboard/activity` - Recent activities
 - `GET /dashboard/stats` - Statistics (role-based)
 - `GET /dashboard/admin-data` - Admin-only data
+
+#### Service Health Checks
+
+- `GET /health` - API Gateway health
+- `GET /auth/health` - Auth Service health
+- `GET /notification/health` - Notification Service health
 
 ### Authentication & Authorization Design
 
@@ -146,19 +213,49 @@ The backend is deployed on Railway. Live URL: [To be added after deployment]
 
 ### Environment Variables
 
+#### API Gateway (.env)
+
 ```
-NODE_ENV=production
+NODE_ENV=development
+PORT=3000
+AUTH_SERVICE_URL=http://localhost:3001
+NOTIFICATION_SERVICE_URL=http://localhost:3003
+```
+
+#### Auth Service (.env)
+
+```
+NODE_ENV=development
 PORT=3001
-DB_HOST=...
-DB_PORT=5432
-DB_NAME=...
-DB_USER=...
-DB_PASSWORD=...
-REDIS_HOST=...
-REDIS_PORT=6379
-JWT_SECRET=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+DATABASE_URL=postgresql://postgres:password@localhost:5432/busticket
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-jwt-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+NOTIFICATION_SERVICE_URL=http://localhost:3003
+```
+
+#### Notification Service (.env)
+
+```
+NODE_ENV=development
+PORT=3003
+SENDGRID_API_KEY=your-sendgrid-api-key
+EMAIL_FROM=noreply@busticket.com
+FRONTEND_URL=http://localhost:5173
+```
+
+#### Docker Environment Variables
+
+For Docker Compose deployment, set these in your shell or create a `.env` file in the backend directory:
+
+```
+JWT_SECRET=your-jwt-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+SENDGRID_API_KEY=your-sendgrid-api-key
+EMAIL_FROM=noreply@busticket.com
+FRONTEND_URL=http://localhost:5173
 ```
 
 ## Next Steps

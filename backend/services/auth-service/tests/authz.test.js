@@ -1,88 +1,99 @@
 const request = require('supertest');
-const app = require('../app');
+const app = require('../src/index');
 const jwt = require('jsonwebtoken');
 
 describe('Authorization Middleware', () => {
   let passengerToken;
+  let passengerRefreshToken;
   let adminToken;
+  let adminRefreshToken;
 
   beforeAll(async () => {
     // Register and login as passenger
     await request(app)
-      .post('/auth/register')
+      .post('/register')
       .send({
         email: 'passenger@example.com',
-        phone: '+84901234567',
+        phone: '+84901234569',
         password: 'SecurePass123!',
         fullName: 'Passenger User',
         role: 'passenger'
       });
 
+    // Verify email for passenger
+    await request(app)
+      .get('/verify-email?token=validToken')
+      .expect(200);
+
     const passengerLogin = await request(app)
-      .post('/auth/login')
+      .post('/login')
       .send({
         identifier: 'passenger@example.com',
         password: 'SecurePass123!'
       });
 
     passengerToken = passengerLogin.body.data.accessToken;
+    passengerRefreshToken = passengerLogin.body.data.refreshToken;
 
     // Register and login as admin
     await request(app)
-      .post('/auth/register')
+      .post('/register')
       .send({
         email: 'admin@example.com',
-        phone: '+84909876543',
+        phone: '+84909876544',
         password: 'SecurePass123!',
         fullName: 'Admin User',
         role: 'admin'
       });
 
+    // Verify email for admin
+    await request(app)
+      .get('/verify-email?token=validToken')
+      .expect(200);
+
     const adminLogin = await request(app)
-      .post('/auth/login')
+      .post('/login')
       .send({
         identifier: 'admin@example.com',
         password: 'SecurePass123!'
       });
 
     adminToken = adminLogin.body.data.accessToken;
+    adminRefreshToken = adminLogin.body.data.refreshToken;
   });
 
-  it('should allow passenger to access passenger dashboard', async () => {
+  it('should allow authenticated user to refresh token', async () => {
     const response = await request(app)
-      .get('/dashboard/summary')
+      .post('/refresh')
+      .set('Authorization', `Bearer ${passengerToken}`)
+      .send({
+        refreshToken: passengerRefreshToken
+      })
+      .expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toHaveProperty('accessToken');
+    
+    // Update token for subsequent tests
+    passengerToken = response.body.data.accessToken;
+  });
+
+  it('should allow authenticated user to logout', async () => {
+    const response = await request(app)
+      .post('/logout')
       .set('Authorization', `Bearer ${passengerToken}`)
       .expect(200);
 
     expect(response.body.success).toBe(true);
-    expect(response.body.data).toHaveProperty('totalBookings');
-    expect(response.body.data).toHaveProperty('upcomingTrips');
+    expect(response.body.message).toBe('Logged out successfully');
   });
 
-  it('should allow admin to access admin dashboard', async () => {
+  it('should deny access to protected endpoints without token', async () => {
     const response = await request(app)
-      .get('/dashboard/stats')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .expect(200);
-
-    expect(response.body.success).toBe(true);
-    expect(response.body.data).toHaveProperty('totalUsers');
-    expect(response.body.data).toHaveProperty('totalRevenue');
-  });
-
-  it('should deny passenger access to admin-only endpoint', async () => {
-    const response = await request(app)
-      .get('/dashboard/stats')
-      .set('Authorization', `Bearer ${passengerToken}`)
-      .expect(403);
-
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe('AUTH_003');
-  });
-
-  it('should deny access without token', async () => {
-    const response = await request(app)
-      .get('/dashboard/summary')
+      .post('/refresh')
+      .send({
+        refreshToken: 'some-refresh-token'
+      })
       .expect(401);
 
     expect(response.body.success).toBe(false);
@@ -91,8 +102,11 @@ describe('Authorization Middleware', () => {
 
   it('should deny access with invalid token', async () => {
     const response = await request(app)
-      .get('/dashboard/summary')
+      .post('/refresh')
       .set('Authorization', 'Bearer invalid-token')
+      .send({
+        refreshToken: 'some-refresh-token'
+      })
       .expect(401);
 
     expect(response.body.success).toBe(false);
@@ -108,8 +122,11 @@ describe('Authorization Middleware', () => {
     );
 
     const response = await request(app)
-      .get('/dashboard/summary')
+      .post('/refresh')
       .set('Authorization', `Bearer ${expiredToken}`)
+      .send({
+        refreshToken: 'some-refresh-token'
+      })
       .expect(401);
 
     expect(response.body.success).toBe(false);

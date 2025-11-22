@@ -1,10 +1,22 @@
 const sgMail = require('@sendgrid/mail');
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// Only set API key if it's a valid SendGrid key
+if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY.startsWith('SG.')) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+} else {
+  console.warn('⚠️  SendGrid API key not set or invalid. Email sending will be disabled.');
+}
 
 class EmailService {
   async sendVerificationEmail(email, token) {
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_API_KEY.startsWith('SG.')) {
+      console.log(`📧 [DEV MODE] Verification email would be sent to ${email} with token ${token}`);
+      console.log(`📧 [DEV MODE] Verification URL: ${verificationUrl}`);
+      return { success: true, mode: 'development' };
+    }
 
     const msg = {
       to: email,
@@ -41,6 +53,13 @@ class EmailService {
 
   async sendPasswordResetEmail(email, token) {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY || !process.env.SENDGRID_API_KEY.startsWith('SG.')) {
+      console.log(`📧 [DEV MODE] Password reset email would be sent to ${email} with token ${token}`);
+      console.log(`📧 [DEV MODE] Reset URL: ${resetUrl}`);
+      return { success: true, mode: 'development' };
+    }
 
     const msg = {
       to: email,

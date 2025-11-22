@@ -58,29 +58,39 @@ jest.mock('jsonwebtoken', () => ({
 // Mock google-auth-library
 jest.mock('google-auth-library', () => ({
   OAuth2Client: jest.fn(() => ({
-    verifyIdToken: jest.fn(() => Promise.resolve({
-      getPayload: () => ({
-        sub: 'googleId',
-        email: 'google@example.com',
-        name: 'Google User',
-      }),
-    })),
+    verifyIdToken: jest.fn((options) => {
+      if (options.idToken === 'invalid-token') {
+        return Promise.reject(new Error('Invalid token'));
+      }
+      return Promise.resolve({
+        getPayload: () => ({
+          sub: 'googleId',
+          email: 'google@example.com',
+          name: 'Google User',
+        }),
+      });
+    }),
   })),
 }));
 
 // Mock userRepository
 const mockRegisteredUsers = new Set(['existing@example.com']);
+const mockRegisteredPhones = new Set(['+84901234567']);
+const mockVerifiedEmails = new Set();
 
-jest.mock('../src/repositories/userRepository', () => ({
+jest.mock('../src/userRepository', () => ({
   create: jest.fn((userData) => {
     mockRegisteredUsers.add(userData.email);
+    if (userData.phone) {
+      mockRegisteredPhones.add(userData.phone);
+    }
     return Promise.resolve({
-      user_id: 1,
+      user_id: Date.now(), // Use timestamp to make IDs unique
       email: userData.email,
       phone: userData.phone,
       full_name: userData.fullName,
       role: userData.role,
-      email_verified: true, // All test users are verified by default
+      email_verified: false, // Users start unverified
       created_at: new Date()
     });
   }),
@@ -92,12 +102,24 @@ jest.mock('../src/repositories/userRepository', () => ({
         password_hash: 'hashedPassword',
         role: email.includes('admin') ? 'admin' : 'passenger',
         full_name: 'Test User',
-        email_verified: email !== 'unverified@example.com' // Only this user is unverified
+        email_verified: mockVerifiedEmails.has(email) // Check if email has been verified
       });
     }
     return Promise.resolve(null);
   }),
-  findByPhone: jest.fn(() => Promise.resolve(null)),
+  findByPhone: jest.fn((phone) => {
+    if (mockRegisteredPhones.has(phone)) {
+      return Promise.resolve({
+        user_id: 1,
+        email: 'existing@example.com',
+        phone,
+        password_hash: 'hashedPassword',
+        role: 'passenger',
+        full_name: 'Test User'
+      });
+    }
+    return Promise.resolve(null);
+  }),
   findById: jest.fn(() => Promise.resolve({
     user_id: 1,
     email: 'test@example.com',
@@ -116,27 +138,42 @@ jest.mock('../src/repositories/userRepository', () => ({
     }
     return Promise.resolve(null);
   }),
-  verifyEmail: jest.fn(() => Promise.resolve({
-    user_id: 1,
-    email: 'test@example.com',
-    email_verified: true
-  })),
-  clearEmailVerificationToken: jest.fn(() => Promise.resolve({})),
+  verifyEmail: jest.fn((userId) => {
+    // Mark the user as verified - in a real app we'd look up by userId
+    // For testing, we'll assume the last verification was for the test user
+    mockVerifiedEmails.add('verified@example.com');
+    mockVerifiedEmails.add('test@example.com');
+    mockVerifiedEmails.add('passenger@example.com');
+    mockVerifiedEmails.add('admin@example.com');
+    return Promise.resolve({
+      user_id: userId,
+      email: 'verified@example.com',
+      email_verified: true
+    });
+  }),
+  setPasswordResetToken: jest.fn(() => Promise.resolve({})),
+  findByPasswordResetToken: jest.fn((token) => {
+    if (token === 'validResetToken') {
+      return Promise.resolve({
+        user_id: 1,
+        email: 'test@example.com'
+      });
+    }
+    return Promise.resolve(null);
+  }),
+  updatePassword: jest.fn(() => Promise.resolve({})),
 }));
 
 // Mock authService
 const mockBlacklistedTokens = new Set();
 
-jest.mock('../src/services/authService', () => ({
+jest.mock('../src/authService', () => ({
   generateAccessToken: jest.fn((payload) => `token_${payload.role}_${Date.now()}`),
   generateRefreshToken: jest.fn(() => 'mockRefreshToken'),
   verifyAccessToken: jest.fn((token) => {
-    if (token && token.includes('token_')) {
+    if (token && token.startsWith('token_') && !mockBlacklistedTokens.has(token)) {
       const role = token.includes('admin') ? 'admin' : 'passenger';
       return { userId: 1, email: 'test@example.com', role, exp: Math.floor(Date.now() / 1000) + 3600 };
-    }
-    if (token && token.includes('eyJ')) {
-      return { userId: 1, email: 'test@example.com', role: 'passenger', exp: Math.floor(Date.now() / 1000) + 3600 };
     }
     return null;
   }),
@@ -151,19 +188,58 @@ jest.mock('../src/services/authService', () => ({
   isTokenBlacklisted: jest.fn((token) => Promise.resolve(mockBlacklistedTokens.has(token))),
 }));
 
-// Mock emailService
-jest.mock('../src/services/emailService', () => ({
-  sendVerificationEmail: jest.fn(() => Promise.resolve()),
-  sendPasswordResetEmail: jest.fn(() => Promise.resolve()),
+// Mock axios for inter-service communication
+jest.mock('axios', () => ({
+  post: jest.fn(() => Promise.resolve({ data: { success: true } })),
+  get: jest.fn(() => Promise.resolve({ data: { success: true } })),
+  put: jest.fn(() => Promise.resolve({ data: { success: true } })),
+  delete: jest.fn(() => Promise.resolve({ data: { success: true } })),
 }));
 
 // Set test environment variables
 process.env.NODE_ENV = 'test';
+process.env.PORT = '3002';
 process.env.JWT_SECRET = 'test-secret';
-process.env.DB_HOST = 'localhost';
-process.env.DB_PORT = '5432';
-process.env.DB_NAME = 'test_db';
-process.env.DB_USER = 'test_user';
-process.env.DB_PASSWORD = 'test_password';
-process.env.REDIS_HOST = 'localhost';
-process.env.REDIS_PORT = '6379';
+process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+process.env.REDIS_URL = 'redis://localhost:6379';
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+process.env.NOTIFICATION_SERVICE_URL = 'http://localhost:3003';
+
+// Debug: Log that setup is running
+console.log('🧪 Test setup loaded');
+
+// Set up nock for HTTP mocking
+const nock = require('nock');
+
+beforeAll(() => {
+  // Mock notification service calls
+  nock('http://localhost:3003')
+    .persist()
+    .post('/send-email')
+    .reply(200, { success: true, message: 'Email sent successfully' });
+});
+
+beforeEach(() => {
+  // Clear mock data before each test
+  mockRegisteredUsers.clear();
+  mockRegisteredPhones.clear();
+  mockVerifiedEmails.clear();
+  mockRegisteredUsers.add('existing@example.com');
+  mockRegisteredPhones.add('+84901234567');
+  // Add users for authz tests
+  mockRegisteredUsers.add('passenger@example.com');
+  mockRegisteredUsers.add('admin@example.com');
+  mockVerifiedEmails.add('passenger@example.com');
+  mockVerifiedEmails.add('admin@example.com');
+  // Add verified user for concurrent login test
+  mockRegisteredUsers.add('test@example.com');
+  mockVerifiedEmails.add('test@example.com');
+  // Add verified user for login test
+  mockRegisteredUsers.add('verified@example.com');
+  mockVerifiedEmails.add('verified@example.com');
+});
+
+afterAll(() => {
+  nock.cleanAll();
+});
