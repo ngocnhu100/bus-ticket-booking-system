@@ -9,7 +9,32 @@ class AuthService {
       password: process.env.REDIS_PASSWORD || undefined,
       database: parseInt(process.env.REDIS_DB) || 0,
     });
-    this.redisClient.connect();
+
+    this.redisClient.connect()
+      .then(() => {
+        console.log('AuthService: Redis client connected');
+      })
+      .catch((err) => {
+        console.error('AuthService: Redis connection failed:', err.message);
+        // Don't exit here, let the app startup check handle it
+      });
+
+    // Handle Redis connection errors
+    this.redisClient.on('error', (err) => {
+      console.error('Redis connection error:', err.message);
+    });
+
+    this.redisClient.on('connect', () => {
+      console.log('Redis connected');
+    });
+
+    this.redisClient.on('ready', () => {
+      console.log('Redis ready to receive commands');
+    });
+
+    this.redisClient.on('end', () => {
+      console.log('🔌 Redis connection ended');
+    });
   }
 
   generateAccessToken(payload) {
@@ -21,32 +46,55 @@ class AuthService {
   }
 
   async storeRefreshToken(userId, refreshToken) {
-    const expiresIn = 7 * 24 * 60 * 60; // 7 days
-    await this.redisClient.set(`refresh:${userId}`, refreshToken, { EX: expiresIn });
+    try {
+      const expiresIn = 7 * 24 * 60 * 60; // 7 days
+      await this.redisClient.set(`refresh:${userId}`, refreshToken, { EX: expiresIn });
+    } catch (error) {
+      console.error('Failed to store refresh token in Redis:', error.message);
+      throw new Error('Session storage unavailable');
+    }
   }
 
   async getRefreshToken(userId) {
-    return await this.redisClient.get(`refresh:${userId}`);
+    try {
+      return await this.redisClient.get(`refresh:${userId}`);
+    } catch (error) {
+      console.error('Failed to get refresh token from Redis:', error.message);
+      return null;
+    }
   }
 
   async deleteRefreshToken(userId) {
-    await this.redisClient.del(`refresh:${userId}`);
+    try {
+      await this.redisClient.del(`refresh:${userId}`);
+    } catch (error) {
+      console.error('Failed to delete refresh token from Redis:', error.message);
+    }
   }
 
   async blacklistAccessToken(token) {
-    // Extract expiration time from token to set TTL
-    const decoded = this.verifyAccessToken(token);
-    if (decoded && decoded.exp) {
-      const ttl = decoded.exp - Math.floor(Date.now() / 1000);
-      if (ttl > 0) {
-        await this.redisClient.set(`blacklist:${token}`, '1', { EX: ttl });
+    try {
+      // Extract expiration time from token to set TTL
+      const decoded = this.verifyAccessToken(token);
+      if (decoded && decoded.exp) {
+        const ttl = decoded.exp - Math.floor(Date.now() / 1000);
+        if (ttl > 0) {
+          await this.redisClient.set(`blacklist:${token}`, '1', { EX: ttl });
+        }
       }
+    } catch (error) {
+      console.error('Failed to blacklist token in Redis:', error.message);
     }
   }
 
   async isTokenBlacklisted(token) {
-    const result = await this.redisClient.get(`blacklist:${token}`);
-    return result !== null;
+    try {
+      const result = await this.redisClient.get(`blacklist:${token}`);
+      return result !== null;
+    } catch (error) {
+      console.error('Failed to check token blacklist in Redis:', error.message);
+      return false; // Default to not blacklisted if Redis fails
+    }
   }
 
   verifyRefreshToken(token) {

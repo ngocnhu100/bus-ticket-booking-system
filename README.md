@@ -52,12 +52,22 @@ This is Assignment 1 for the course, building the foundational authentication, a
 
 5. Start services:
 
-   - PostgreSQL and Redis
-   - Backend: `npm run dev` (runs on port 3002)
+   - **PostgreSQL**: Start your PostgreSQL server
+   - **Redis**: Run the startup script from backend directory:
+
+     ```bash
+     # Windows
+     .\scripts\start-redis.bat
+
+     # Linux/Mac
+     ./scripts/start-redis.sh
+     ```
+
+   - **Backend**: `npm run dev` (runs on port 3000)
 
 6. Test health check:
    ```bash
-   curl http://localhost:3002/health
+   curl http://localhost:3000/health
    ```
 
 ### API Endpoints
