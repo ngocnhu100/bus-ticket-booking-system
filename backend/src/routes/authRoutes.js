@@ -10,6 +10,8 @@ router.post('/oauth/google', authController.googleAuth);
 router.post('/refresh', authenticate, authController.refresh);
 router.get('/verify-email', authController.verifyEmail);
 router.post('/resend-verification', authController.resendVerificationEmail);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
 
 // Protected routes
 router.post('/logout', authenticate, authController.logout);

@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const userRepository = require('../repositories/userRepository');
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
-const { registerSchema, loginSchema, googleAuthSchema, refreshSchema } = require('../validators/authValidators');
+const { registerSchema, loginSchema, googleAuthSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema } = require('../validators/authValidators');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -395,6 +395,112 @@ class AuthController {
       res.json({
         success: true,
         message: 'Verification email sent successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  async forgotPassword(req, res) {
+    try {
+      const { error, value } = forgotPasswordSchema.validate(req.body);
+      if (error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Validation error', details: error.details },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { email } = value;
+
+      const user = await userRepository.findByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists or not for security
+        return res.json({
+          success: true,
+          message: 'If the email exists, a password reset link has been sent.',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Generate password reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await userRepository.setPasswordResetToken(user.user_id, resetToken, expiresAt);
+
+      // Send password reset email
+      try {
+        await emailService.sendPasswordResetEmail(email, resetToken);
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+        // Don't fail the request if email fails
+      }
+
+      res.json({
+        success: true,
+        message: 'If the email exists, a password reset link has been sent.',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  async resetPassword(req, res) {
+    try {
+      const { error, value } = resetPasswordSchema.validate(req.body);
+      if (error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Validation error', details: error.details },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { token, newPassword } = value;
+
+      // Find user by reset token
+      const user = await userRepository.findByPasswordResetToken(token);
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'AUTH_006', message: 'Invalid or expired reset token' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Validate new password
+      const passwordValidation = registerSchema.extract('password').validate(newPassword);
+      if (passwordValidation.error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Password validation failed', details: passwordValidation.error.details },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Hash new password
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+
+      // Update password and clear reset token
+      await userRepository.updatePassword(user.user_id, passwordHash);
+
+      res.json({
+        success: true,
+        message: 'Password reset successfully. You can now log in with your new password.',
         timestamp: new Date().toISOString()
       });
     } catch (error) {

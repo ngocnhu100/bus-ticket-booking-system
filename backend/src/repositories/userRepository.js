@@ -85,6 +85,49 @@ class UserRepository {
     const result = await pool.query(query, [userId]);
     return result.rows[0];
   }
+
+  async setPasswordResetToken(userId, token, expiresAt) {
+    const query = `
+      UPDATE users
+      SET password_reset_token = $1, password_reset_expires = $2
+      WHERE user_id = $3
+      RETURNING *
+    `;
+    const result = await pool.query(query, [token, expiresAt, userId]);
+    return result.rows[0];
+  }
+
+  async findByPasswordResetToken(token) {
+    const query = `
+      SELECT * FROM users
+      WHERE password_reset_token = $1
+      AND password_reset_expires > NOW()
+    `;
+    const result = await pool.query(query, [token]);
+    return result.rows[0];
+  }
+
+  async updatePassword(userId, hashedPassword) {
+    const query = `
+      UPDATE users
+      SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL
+      WHERE user_id = $2
+      RETURNING *
+    `;
+    const result = await pool.query(query, [hashedPassword, userId]);
+    return result.rows[0];
+  }
+
+  async clearPasswordResetToken(userId) {
+    const query = `
+      UPDATE users
+      SET password_reset_token = NULL, password_reset_expires = NULL
+      WHERE user_id = $1
+      RETURNING *
+    `;
+    const result = await pool.query(query, [userId]);
+    return result.rows[0];
+  }
 }
 
 module.exports = new UserRepository();
