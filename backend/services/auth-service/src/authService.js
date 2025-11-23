@@ -4,10 +4,7 @@ const redis = require('redis');
 class AuthService {
   constructor() {
     this.redisClient = redis.createClient({
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT),
-      password: process.env.REDIS_PASSWORD || undefined,
-      database: parseInt(process.env.REDIS_DB) || 0,
+      url: process.env.REDIS_URL || 'redis://localhost:6379',
     });
 
     this.redisClient.connect()

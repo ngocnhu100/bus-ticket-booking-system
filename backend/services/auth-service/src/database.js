@@ -3,6 +3,7 @@ const { Pool } = require('pg');
 let pool;
 
 if (process.env.DATABASE_URL) {
+  console.log('🔌 Using DATABASE_URL:', process.env.DATABASE_URL);
   // Use DATABASE_URL if provided (for production/Docker)
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -13,6 +14,7 @@ if (process.env.DATABASE_URL) {
     idleTimeoutMillis: 30000, // 30 seconds
   });
 } else {
+  console.log('🔌 Using individual env vars');
   // Use individual environment variables (for development)
   pool = new Pool({
     host: process.env.DB_HOST,

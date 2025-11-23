@@ -69,6 +69,7 @@ app.get('/health', (req, res) => {
 app.use('/auth', async (req, res) => {
   try {
     const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+    console.log(`🔄 Proxying ${req.method} ${req.originalUrl} to ${authServiceUrl}${req.path}`);
     const response = await axios({
       method: req.method,
       url: `${authServiceUrl}${req.path}`,
@@ -77,12 +78,17 @@ app.use('/auth', async (req, res) => {
         ...req.headers,
         host: undefined, // Remove host header to avoid conflicts
       },
+      timeout: 10000, // 10 seconds timeout
     });
+    console.log(`✅ Auth service responded with status ${response.status}`);
     res.status(response.status).json(response.data);
   } catch (error) {
+    console.error(`❌ Auth service error:`, error.message);
     if (error.response) {
+      console.log(`❌ Auth service responded with error status ${error.response.status}`);
       res.status(error.response.status).json(error.response.data);
     } else {
+      console.log(`❌ Auth service unavailable or timeout`);
       res.status(500).json({
         success: false,
         error: { code: 'GATEWAY_001', message: 'Auth service unavailable' },
@@ -96,6 +102,7 @@ app.use('/auth', async (req, res) => {
 app.use('/notification', async (req, res) => {
   try {
     const notificationServiceUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+    console.log(`🔄 Proxying ${req.method} ${req.originalUrl} to ${notificationServiceUrl}${req.path}`);
     const response = await axios({
       method: req.method,
       url: `${notificationServiceUrl}${req.path}`,
@@ -104,12 +111,17 @@ app.use('/notification', async (req, res) => {
         ...req.headers,
         host: undefined,
       },
+      timeout: 10000, // 10 seconds timeout
     });
+    console.log(`✅ Notification service responded with status ${response.status}`);
     res.status(response.status).json(response.data);
   } catch (error) {
+    console.error(`❌ Notification service error:`, error.message);
     if (error.response) {
+      console.log(`❌ Notification service responded with error status ${error.response.status}`);
       res.status(error.response.status).json(error.response.data);
     } else {
+      console.log(`❌ Notification service unavailable or timeout`);
       res.status(500).json({
         success: false,
         error: { code: 'GATEWAY_002', message: 'Notification service unavailable' },
@@ -228,7 +240,7 @@ app.use('/dashboard/*', authenticate, (req, res) => {
 });
 
 // Error handling
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
   console.error('⚠️', err.stack);
   res.status(500).json({
     success: false,
