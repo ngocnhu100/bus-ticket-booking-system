@@ -99,6 +99,7 @@ services:
       - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
     ports:
       - "3000:3000"
     networks:

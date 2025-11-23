@@ -76,6 +76,7 @@ app.use('/auth', async (req, res) => {
       url: `${authServiceUrl}${req.path}${queryString}`,
       data: req.body,
       headers: {
+        'authorization': req.headers.authorization,
         'content-type': 'application/json',
       },
       timeout: 30000, // Increased timeout to 30 seconds
