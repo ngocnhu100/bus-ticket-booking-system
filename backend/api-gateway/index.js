@@ -69,10 +69,11 @@ app.get('/health', (req, res) => {
 app.use('/auth', async (req, res) => {
   try {
     const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
-    console.log(`🔄 Proxying ${req.method} ${req.originalUrl} to ${authServiceUrl}${req.path}`);
+    const queryString = Object.keys(req.query).length ? '?' + new URLSearchParams(req.query).toString() : '';
+    console.log(`🔄 Proxying ${req.method} ${req.originalUrl} to ${authServiceUrl}${req.path}${queryString}`);
     const response = await axios({
       method: req.method,
-      url: `${authServiceUrl}${req.path}`,
+      url: `${authServiceUrl}${req.path}${queryString}`,
       data: req.body,
       headers: {
         'content-type': 'application/json',
