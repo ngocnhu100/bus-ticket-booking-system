@@ -20,10 +20,7 @@ describe('Authorization Middleware', () => {
         role: 'passenger'
       });
 
-    // Verify email for passenger
-    await request(app)
-      .get('/verify-email?token=validToken')
-      .expect(200);
+    // Note: Email verification is handled by mock for this user
 
     const passengerLogin = await request(app)
       .post('/login')
@@ -46,10 +43,7 @@ describe('Authorization Middleware', () => {
         role: 'admin'
       });
 
-    // Verify email for admin
-    await request(app)
-      .get('/verify-email?token=validToken')
-      .expect(200);
+    // Note: Email verification is handled by mock for this user
 
     const adminLogin = await request(app)
       .post('/login')

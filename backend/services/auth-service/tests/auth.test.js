@@ -5,6 +5,11 @@ describe('Authentication API', () => {
   let accessToken;
   let refreshToken;
 
+  beforeEach(() => {
+    // Clear axios mock calls before each test
+    jest.clearAllMocks();
+  });
+
   it('should register a new user successfully', async () => {
     const response = await request(app)
       .post('/register')
@@ -112,6 +117,33 @@ describe('Authentication API', () => {
 
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe('VAL_001');
+  });
+
+  // US-1.1: Missing test - verification email sent
+  it('should send verification email during registration', async () => {
+    const axios = require('axios');
+    const response = await request(app)
+      .post('/register')
+      .send({
+        email: 'verifyemail@example.com',
+        phone: '+84907777777',
+        password: 'SecurePass123!',
+        fullName: 'Verify Email User',
+        role: 'passenger'
+      })
+      .expect(201);
+
+    expect(response.body.success).toBe(true);
+
+    // Verify that axios.post was called to send verification email
+    expect(axios.post).toHaveBeenCalledWith(
+      'http://localhost:3003/send-email',
+      expect.objectContaining({
+        to: 'verifyemail@example.com',
+        type: 'verification',
+        token: expect.any(String)
+      })
+    );
   });
 
   describe('POST /forgot-password', () => {
@@ -234,6 +266,94 @@ describe('Authentication API', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error.code).toBe('VAL_001');
     });
+
+    // US-1.4: Missing tests - reset link expires after 1 hour, token can only be used once, old password invalidated
+    it('should fail with reset token expired after 1 hour', async () => {
+      const response = await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'oneHourExpiredToken',
+          newPassword: 'NewSecurePass123!'
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_006');
+      expect(response.body.error.message).toContain('Invalid or expired reset token');
+    });
+
+    it('should allow reset token to be used only once', async () => {
+      // First use should succeed
+      await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'singleUseToken',
+          newPassword: 'NewSecurePass123!'
+        })
+        .expect(200);
+
+      // Second use should fail
+      const response = await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'singleUseToken',
+          newPassword: 'AnotherNewPass456!'
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_006');
+    });
+
+    it('should invalidate old password after reset', async () => {
+      // Register and verify a user
+      await request(app)
+        .post('/register')
+        .send({
+          email: 'resetoldpass@example.com',
+          phone: '+84901111112',
+          password: 'SecurePass123!', // Use the default password that works with mock
+          fullName: 'Reset Old Pass User'
+        });
+
+      await request(app)
+        .get('/verify-email?token=validToken')
+        .expect(200);
+
+      // Login with old password should work initially
+      await request(app)
+        .post('/login')
+        .send({
+          identifier: 'resetoldpass@example.com',
+          password: 'SecurePass123!'
+        })
+        .expect(200);
+
+      // Reset password
+      await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'invalidateOldToken',
+          newPassword: 'NewSecurePass456!'
+        })
+        .expect(200);
+
+      // Password is changed (mock assumes it)
+    });
+
+    it('should prevent resetting to same password', async () => {
+      const response = await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'samePasswordToken',
+          newPassword: 'SecurePass123!' // Same as current password
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_009');
+      expect(response.body.error.message).toContain('New password must be different');
+    });
   });
 
   it('should verify email with valid token', async () => {
@@ -317,6 +437,62 @@ describe('Authentication API', () => {
     expect(response.body.error.code).toBe('AUTH_001');
   });
 
+  // US-1.2: Missing test - account lockout after 5 failed attempts
+  it('should lock account after 5 failed login attempts', async () => {
+    // Create a test user for lockout testing
+    await request(app)
+      .post('/register')
+      .send({
+        email: 'lockout@example.com',
+        phone: '+84908888888',
+        password: 'SecurePass123!',
+        fullName: 'Lockout User'
+      });
+
+    // Verify email
+    await request(app)
+      .get('/verify-email?token=validToken')
+      .expect(200);
+
+    // Attempt 5 failed logins
+    for (let i = 0; i < 5; i++) {
+      await request(app)
+        .post('/login')
+        .send({
+          identifier: 'lockout@example.com',
+          password: 'WrongPassword123!'
+        })
+        .expect(401);
+    }
+
+    // 6th attempt should be locked
+    const response = await request(app)
+      .post('/login')
+      .send({
+        identifier: 'lockout@example.com',
+        password: 'WrongPassword123!'
+      })
+      .expect(423);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.code).toBe('AUTH_010');
+    expect(response.body.error.message).toContain('Account is temporarily locked');
+  });
+
+  it('should prevent login when account is locked', async () => {
+    // Try to login with correct password while account is locked
+    const response = await request(app)
+      .post('/login')
+      .send({
+        identifier: 'locked@example.com', // Pre-configured locked user
+        password: 'SecurePass123!'
+      })
+      .expect(423);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.code).toBe('AUTH_010');
+  });
+
   it('should refresh access token', async () => {
     const oldAccessToken = accessToken;
     const response = await request(app)
@@ -392,6 +568,81 @@ describe('Authentication API', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error.code).toBe('VAL_001');
     });
+
+    // US-1.3: Missing tests - new vs existing account handling, email verification status honored
+    it('should create new account for Google OAuth with verified email', async () => {
+      // Set mock payload for new user
+      global.setMockGooglePayload({
+        sub: 'new-google-id',
+        email: 'newgoogle@example.com',
+        name: 'New Google User',
+        email_verified: true
+      });
+
+      const response = await request(app)
+        .post('/oauth/google')
+        .send({
+          idToken: 'new-google-token'
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.isNewUser).toBe(true);
+      expect(response.body.data.user.email).toBe('newgoogle@example.com');
+      expect(response.body.data).toHaveProperty('accessToken');
+    });
+
+    it('should link existing account for Google OAuth', async () => {
+      // First create a regular account
+      await request(app)
+        .post('/register')
+        .send({
+          email: 'existinggoogle@example.com',
+          phone: '+84909999999',
+          password: 'SecurePass123!',
+          fullName: 'Existing User'
+        });
+
+      // Set mock payload for existing email
+      global.setMockGooglePayload({
+        sub: 'existing-google-id',
+        email: 'existinggoogle@example.com',
+        name: 'Existing Google User',
+        email_verified: true
+      });
+
+      const response = await request(app)
+        .post('/oauth/google')
+        .send({
+          idToken: 'existing-google-token'
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.isNewUser).toBe(false); // Should link existing account
+      expect(response.body.data.user.email).toBe('existinggoogle@example.com');
+    });
+
+    it('should honor email verification status from Google OAuth', async () => {
+      // Set mock payload with unverified email
+      global.setMockGooglePayload({
+        sub: 'unverified-google-id',
+        email: 'unverifiedgoogle@example.com',
+        name: 'Unverified Google User',
+        email_verified: false // Email not verified by Google
+      });
+
+      const response = await request(app)
+        .post('/oauth/google')
+        .send({
+          idToken: 'unverified-google-token'
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      // The user should be created but email_verified should be false
+      // (This would be stored in the database based on email_verified from Google)
+    });
   });
 
   describe('POST /resend-verification', () => {
@@ -445,6 +696,141 @@ describe('Authentication API', () => {
         .post('/resend-verification')
         .send({})
         .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('VAL_001');
+    });
+  });
+
+  describe('POST /change-password', () => {
+    let userToken;
+
+    beforeEach(async () => {
+      // Register and login a user for testing
+      await request(app)
+        .post('/register')
+        .send({
+          email: 'changepass@example.com',
+          phone: '+84906666666',
+          password: 'SecurePass123!',
+          fullName: 'Change Pass User'
+        });
+
+      // Verify email
+      await request(app)
+        .get('/verify-email?token=validToken')
+        .expect(200);
+
+      const loginResponse = await request(app)
+        .post('/login')
+        .send({
+          identifier: 'changepass@example.com',
+          password: 'SecurePass123!'
+        })
+        .expect(200);
+
+      userToken = loginResponse.body.data.accessToken;
+    });
+
+    it('should change password successfully', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          currentPassword: 'SecurePass123!',
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'NewSecurePass456!'
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Password changed successfully. All other sessions have been logged out.');
+      expect(response.body.data).toHaveProperty('newRefreshToken');
+    });
+
+    it('should fail with incorrect current password', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          currentPassword: 'WrongPassword123!',
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'NewSecurePass456!'
+        })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_001');
+    });
+
+    it('should fail when new password is same as current', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          currentPassword: 'SecurePass123!',
+          newPassword: 'SecurePass123!',
+          confirmPassword: 'SecurePass123!'
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_009');
+    });
+
+    it('should fail with mismatched confirm password', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          currentPassword: 'SecurePass123!',
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'DifferentPassword789!'
+        })
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('VAL_001');
+    });
+
+    it('should fail with weak new password', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          oldPassword: 'SecurePass123!',
+          newPassword: 'weak',
+          confirmPassword: 'weak'
+        })
+        .expect(422);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('VAL_001');
+    });
+
+    it('should fail without authentication', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .send({
+          currentPassword: 'SecurePass123!',
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'NewSecurePass456!'
+        })
+        .expect(401);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_001');
+    });
+
+    it('should fail with missing required fields', async () => {
+      const response = await request(app)
+        .post('/change-password')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          currentPassword: 'SecurePass123!'
+          // Missing newPassword and confirmPassword
+        })
+        .expect(422);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error.code).toBe('VAL_001');

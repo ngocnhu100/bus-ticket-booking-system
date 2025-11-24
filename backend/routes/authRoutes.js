@@ -50,8 +50,11 @@ router.get('/verify-email', (req, res) => proxyRequest(req, res, 'GET', '/verify
 router.post('/resend-verification', (req, res) => proxyRequest(req, res, 'POST', '/resend-verification'));
 router.post('/forgot-password', (req, res) => proxyRequest(req, res, 'POST', '/forgot-password'));
 router.post('/reset-password', (req, res) => proxyRequest(req, res, 'POST', '/reset-password'));
+router.post('/request-otp', (req, res) => proxyRequest(req, res, 'POST', '/request-otp'));
+router.post('/verify-otp', (req, res) => proxyRequest(req, res, 'POST', '/verify-otp'));
 
 // Protected routes
 router.post('/logout', (req, res) => proxyRequest(req, res, 'POST', '/logout'));
+router.post('/change-password', (req, res) => proxyRequest(req, res, 'POST', '/change-password'));
 
 module.exports = router;

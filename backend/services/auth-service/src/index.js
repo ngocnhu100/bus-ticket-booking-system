@@ -39,6 +39,9 @@ app.get('/verify-email', authController.verifyEmail);
 app.post('/resend-verification', authController.resendVerificationEmail);
 app.post('/forgot-password', authController.forgotPassword);
 app.post('/reset-password', authController.resetPassword);
+app.post('/request-otp', authController.requestOTP);
+app.post('/verify-otp', authController.verifyOTP);
+app.post('/change-password', authenticate, authController.changePassword);
 
 // Error handling
 app.use((err, req, res, next) => {

@@ -20,6 +20,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # pgAdmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bus-ticket-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@busticket.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bus-ticket-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
   # Redis Cache
   redis:
     image: redis:7-alpine
@@ -111,6 +128,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  pgadmin_data:
 
 networks:
   bus-ticket-network:

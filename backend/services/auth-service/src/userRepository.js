@@ -26,7 +26,7 @@ class UserRepository {
   }
 
   async findById(userId) {
-    const query = 'SELECT user_id, email, phone, full_name, role, google_id, created_at FROM users WHERE user_id = $1';
+    const query = 'SELECT user_id, email, phone, password_hash, full_name, role, google_id, email_verified, created_at FROM users WHERE user_id = $1';
     const result = await pool.query(query, [userId]);
     return result.rows[0];
   }
@@ -126,6 +126,17 @@ class UserRepository {
       RETURNING *
     `;
     const result = await pool.query(query, [userId]);
+    return result.rows[0];
+  }
+
+  async updateFailedLoginAttempts(userId, attempts, lockUntil) {
+    const query = `
+      UPDATE users
+      SET failed_login_attempts = $1, account_locked_until = $2
+      WHERE user_id = $3
+      RETURNING *
+    `;
+    const result = await pool.query(query, [attempts, lockUntil, userId]);
     return result.rows[0];
   }
 }
