@@ -1,4 +1,4 @@
-import { StatCard } from "../components/StatCard";
+import { StatCard } from "../../components/admin/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BookOpen, Users, DollarSign } from "lucide-react";
