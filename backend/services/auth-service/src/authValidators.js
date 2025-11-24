@@ -7,7 +7,7 @@ const registerSchema = Joi.object({
     .required(), // Vietnamese phone
   password: Joi.string()
     .min(8)
-    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/)
     .required(),
   fullName: Joi.string().min(2).max(100).required(),
   role: Joi.string().valid('passenger', 'admin').default('passenger'),
@@ -34,9 +34,10 @@ const resetPasswordSchema = Joi.object({
   token: Joi.string().required(),
   newPassword: Joi.string()
     .min(8)
-    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/)
     .required(),
-});
+  confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required(),
+}).with('newPassword', 'confirmPassword');
 
 const requestOtpSchema = Joi.object({
   email: Joi.string().email().required(),
@@ -51,7 +52,7 @@ const changePasswordSchema = Joi.object({
   currentPassword: Joi.string().required(),
   newPassword: Joi.string()
     .min(8)
-    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/)
     .required(),
   confirmPassword: Joi.string().valid(Joi.ref('newPassword')).required(),
 }).with('newPassword', 'confirmPassword');

@@ -92,6 +92,31 @@ global.setMockGooglePayload = (payload) => {
   mockGooglePayload = payload;
 };
 
+// Function to clear mock state between tests
+global.clearMockState = () => {
+  mockUsedResetTokens.clear();
+  mockFailedAttempts.clear();
+  mockRegisteredUsers.clear();
+  mockRegisteredPhones.clear();
+  mockVerifiedEmails.clear();
+  mockUserData.clear();
+  mockLastCreatedUser = null;
+  mockBlacklistedTokens.clear();
+
+  // Re-add initial test users
+  mockRegisteredUsers.add('existing@example.com');
+  mockRegisteredUsers.add('test@example.com');
+  mockRegisteredUsers.add('passenger@example.com');
+  mockRegisteredUsers.add('admin@example.com');
+  mockRegisteredUsers.add('admin2@example.com');
+  mockRegisteredUsers.add('passenger2@example.com');
+  mockVerifiedEmails.add('verified@example.com');
+  mockVerifiedEmails.add('test@example.com');
+  mockVerifiedEmails.add('passenger@example.com');
+  mockVerifiedEmails.add('admin@example.com');
+  mockRegisteredPhones.add('+84901234567');
+};
+
 // Mock userRepository
 const mockRegisteredUsers = new Set([
   'existing@example.com',
@@ -142,9 +167,12 @@ jest.mock('../src/userRepository', () => ({
     }
     if (mockRegisteredUsers.has(email)) {
       const failedAttempts = mockFailedAttempts.get(email) || 0;
-      let lockUntil = failedAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+      let lockUntil = null;
+      if (failedAttempts >= 5) {
+        lockUntil = new Date(Date.now() + 10000); // Lock for 10 seconds
+      }
       if (email === 'locked@example.com') {
-        lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Always locked for this test user
+        lockUntil = new Date(Date.now() + 10000); // Always locked for this test user
       }
       return Promise.resolve({
         user_id: 1,
@@ -182,8 +210,16 @@ jest.mock('../src/userRepository', () => ({
   updateGoogleId: jest.fn(() => Promise.resolve({})),
   setEmailVerificationToken: jest.fn(() => Promise.resolve({})),
   findByEmailVerificationToken: jest.fn((token) => {
-    if (token === 'validToken' && mockLastCreatedUser) {
-      return Promise.resolve(mockLastCreatedUser);
+    if (token === 'validToken') {
+      if (mockLastCreatedUser) {
+        return Promise.resolve(mockLastCreatedUser);
+      } else {
+        return Promise.resolve({
+          user_id: 1,
+          email: 'test@example.com',
+          email_verified: false
+        });
+      }
     }
     return Promise.resolve(null);
   }),
@@ -209,42 +245,15 @@ jest.mock('../src/userRepository', () => ({
   }),
   setPasswordResetToken: jest.fn(() => Promise.resolve({})),
   findByPasswordResetToken: jest.fn((token) => {
-    if (mockUsedResetTokens.has(token) && token !== 'validResetToken') {
-      return Promise.resolve(null); // Token already used
-    }
-    if (token === 'validResetToken') {
+    if (token === 'validResetToken' || token === 'singleUseToken' || token === 'invalidateOldToken' || token === 'samePasswordToken') {
+      if (mockUsedResetTokens.has(token) && token !== 'validResetToken') {
+        return Promise.resolve(null);
+      }
       return Promise.resolve({
         user_id: 1,
         email: 'test@example.com',
         password_hash: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6I3XzHHUyO' // hash for 'SecurePass123!'
       });
-    }
-    if (token === 'singleUseToken') {
-      return Promise.resolve({
-        user_id: 1,
-        email: 'test@example.com',
-        password_hash: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6I3XzHHUyO'
-      });
-    }
-    if (token === 'invalidateOldToken') {
-      return Promise.resolve({
-        user_id: 1,
-        email: 'test@example.com',
-        password_hash: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6I3XzHHUyO'
-      });
-    }
-    if (token === 'samePasswordToken') {
-      return Promise.resolve({
-        user_id: 1,
-        email: 'test@example.com',
-        password_hash: '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6I3XzHHUyO'
-      });
-    }
-    if (token === 'expiredResetToken') {
-      return Promise.resolve(null); // Expired
-    }
-    if (token === 'oneHourExpiredToken') {
-      return Promise.resolve(null); // 1 hour expired
     }
     return Promise.resolve(null);
   }),
@@ -264,8 +273,10 @@ jest.mock('../src/userRepository', () => ({
   updateFailedLoginAttempts: jest.fn((userId, attempts, lockUntil) => {
     // For testing, we'll track by email instead of userId
     // In a real scenario, we'd need to map userId to email
-    const email = 'lockout@example.com'; // Hardcoded for test
-    mockFailedAttempts.set(email, attempts);
+    // For now, assume userId 1 corresponds to lockout@example.com for testing
+    if (userId === 1) {
+      mockFailedAttempts.set('lockout@example.com', attempts);
+    }
     return Promise.resolve({
       user_id: userId,
       failed_login_attempts: attempts,
@@ -323,3 +334,32 @@ process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
 process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 process.env.NOTIFICATION_SERVICE_URL = 'http://localhost:3003';
 process.env.PORT = '3002';
+
+// Function to clear mock state between tests
+global.clearMockState = () => {
+  mockUsedResetTokens.clear();
+  mockFailedAttempts.clear();
+  mockRegisteredUsers.clear();
+  mockRegisteredPhones.clear();
+  mockVerifiedEmails.clear();
+  mockUserData.clear();
+  mockLastCreatedUser = null;
+  mockBlacklistedTokens.clear();
+
+  // Re-add initial test users
+  mockRegisteredUsers.add('existing@example.com');
+  mockRegisteredUsers.add('test@example.com');
+  mockRegisteredUsers.add('passenger@example.com');
+  mockRegisteredUsers.add('admin@example.com');
+  mockRegisteredUsers.add('admin2@example.com');
+  mockRegisteredUsers.add('passenger2@example.com');
+  mockRegisteredUsers.add('locked@example.com');
+  mockRegisteredUsers.add('lockout@example.com'); // For account lockout test
+  mockVerifiedEmails.add('verified@example.com');
+  mockVerifiedEmails.add('test@example.com');
+  mockVerifiedEmails.add('passenger@example.com');
+  mockVerifiedEmails.add('admin@example.com');
+  mockVerifiedEmails.add('locked@example.com');
+  mockVerifiedEmails.add('lockout@example.com');
+  mockRegisteredPhones.add('+84901234567');
+};

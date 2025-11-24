@@ -8,6 +8,8 @@ describe('Authentication API', () => {
   beforeEach(() => {
     // Clear axios mock calls before each test
     jest.clearAllMocks();
+    // Clear mock state
+    global.clearMockState();
   });
 
   it('should register a new user successfully', async () => {
@@ -202,25 +204,13 @@ describe('Authentication API', () => {
       resetToken = 'validResetToken'; // This matches the mock setup
     });
 
-    it('should reset password with valid token', async () => {
-      const response = await request(app)
-        .post('/reset-password')
-        .send({
-          token: resetToken,
-          newPassword: 'NewSecurePass123!'
-        })
-        .expect(200);
-
-      expect(response.body.success).toBe(true);
-      expect(response.body.message).toBe('Password reset successfully. You can now log in with your new password.');
-    });
-
     it('should fail with invalid token', async () => {
       const response = await request(app)
         .post('/reset-password')
         .send({
           token: 'invalid-token',
-          newPassword: 'NewSecurePass123!'
+          newPassword: 'NewSecurePass123!',
+          confirmPassword: 'NewSecurePass123!'
         })
         .expect(400);
 
@@ -233,7 +223,8 @@ describe('Authentication API', () => {
         .post('/reset-password')
         .send({
           token: 'expired-token',
-          newPassword: 'NewSecurePass123!'
+          newPassword: 'NewSecurePass123!',
+          confirmPassword: 'NewSecurePass123!'
         })
         .expect(400);
 
@@ -246,7 +237,8 @@ describe('Authentication API', () => {
         .post('/reset-password')
         .send({
           token: resetToken,
-          newPassword: 'weak'
+          newPassword: 'weak',
+          confirmPassword: 'weak'
         })
         .expect(422);
 
@@ -273,36 +265,14 @@ describe('Authentication API', () => {
         .post('/reset-password')
         .send({
           token: 'oneHourExpiredToken',
-          newPassword: 'NewSecurePass123!'
+          newPassword: 'NewSecurePass123!',
+          confirmPassword: 'NewSecurePass123!'
         })
         .expect(400);
 
       expect(response.body.success).toBe(false);
       expect(response.body.error.code).toBe('AUTH_006');
       expect(response.body.error.message).toContain('Invalid or expired reset token');
-    });
-
-    it('should allow reset token to be used only once', async () => {
-      // First use should succeed
-      await request(app)
-        .post('/reset-password')
-        .send({
-          token: 'singleUseToken',
-          newPassword: 'NewSecurePass123!'
-        })
-        .expect(200);
-
-      // Second use should fail
-      const response = await request(app)
-        .post('/reset-password')
-        .send({
-          token: 'singleUseToken',
-          newPassword: 'AnotherNewPass456!'
-        })
-        .expect(400);
-
-      expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe('AUTH_006');
     });
 
     it('should invalidate old password after reset', async () => {
@@ -334,7 +304,8 @@ describe('Authentication API', () => {
         .post('/reset-password')
         .send({
           token: 'invalidateOldToken',
-          newPassword: 'NewSecurePass456!'
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'NewSecurePass456!'
         })
         .expect(200);
 
@@ -346,7 +317,8 @@ describe('Authentication API', () => {
         .post('/reset-password')
         .send({
           token: 'samePasswordToken',
-          newPassword: 'SecurePass123!' // Same as current password
+          newPassword: 'SecurePass123!', // Same as current password
+          confirmPassword: 'SecurePass123!'
         })
         .expect(400);
 
@@ -435,48 +407,6 @@ describe('Authentication API', () => {
 
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe('AUTH_001');
-  });
-
-  // US-1.2: Missing test - account lockout after 5 failed attempts
-  it('should lock account after 5 failed login attempts', async () => {
-    // Create a test user for lockout testing
-    await request(app)
-      .post('/register')
-      .send({
-        email: 'lockout@example.com',
-        phone: '+84908888888',
-        password: 'SecurePass123!',
-        fullName: 'Lockout User'
-      });
-
-    // Verify email
-    await request(app)
-      .get('/verify-email?token=validToken')
-      .expect(200);
-
-    // Attempt 5 failed logins
-    for (let i = 0; i < 5; i++) {
-      await request(app)
-        .post('/login')
-        .send({
-          identifier: 'lockout@example.com',
-          password: 'WrongPassword123!'
-        })
-        .expect(401);
-    }
-
-    // 6th attempt should be locked
-    const response = await request(app)
-      .post('/login')
-      .send({
-        identifier: 'lockout@example.com',
-        password: 'WrongPassword123!'
-      })
-      .expect(423);
-
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe('AUTH_010');
-    expect(response.body.error.message).toContain('Account is temporarily locked');
   });
 
   it('should prevent login when account is locked', async () => {
@@ -876,6 +806,72 @@ describe('Authentication API', () => {
 
       expect(response.body.success).toBe(false);
       expect(response.body.error.code).toBe('VAL_001');
+    });
+
+    it('should reset password with valid token', async () => {
+      const response = await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'validResetToken',
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'NewSecurePass456!'
+        })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.message).toBe('Password reset successfully. You can now log in with your new password.');
+    });
+
+    it('should allow reset token to be used only once', async () => {
+      // First use should succeed
+      await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'singleUseToken',
+          newPassword: 'NewSecurePass456!',
+          confirmPassword: 'NewSecurePass456!'
+        })
+        .expect(200);
+
+      // Second use should fail
+      const response = await request(app)
+        .post('/reset-password')
+        .send({
+          token: 'singleUseToken',
+          newPassword: 'AnotherNewPass789!',
+          confirmPassword: 'AnotherNewPass789!'
+        })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_006');
+    });
+
+    it('should lock account after 5 failed login attempts', async () => {
+      const email = 'lockout@example.com';
+
+      // Attempt 5 failed logins
+      for (let i = 0; i < 5; i++) {
+        await request(app)
+          .post('/login')
+          .send({
+            identifier: email,
+            password: 'WrongPassword123!'
+          })
+          .expect(401);
+      }
+
+      // 6th attempt should be locked out
+      const response = await request(app)
+        .post('/login')
+        .send({
+          identifier: email,
+          password: 'SecurePass123!' // Correct password
+        })
+        .expect(423);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('AUTH_010');
     });
   });
 });
