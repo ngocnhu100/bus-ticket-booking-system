@@ -1,0 +1,117 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bus-ticket-postgres
+    environment:
+      POSTGRES_DB: bus_ticket_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    networks:
+      - bus-ticket-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bus-ticket-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bus-ticket-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-auth-service
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bus_ticket_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-default-refresh-secret}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-default-google-client-id}
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./services/auth-service:/app
+      - /app/node_modules
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-notification-service
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-default-sendgrid-api-key}
+      - EMAIL_FROM=${EMAIL_FROM:-default@email.com}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "3003:3003"
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: bus-ticket-api-gateway
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
+    ports:
+      - "3000:3000"
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bus-ticket-network:
+    driver: bridge
