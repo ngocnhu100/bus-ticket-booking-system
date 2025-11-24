@@ -7,7 +7,7 @@ COPY package*.json ./
 COPY .env ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY index.js ./

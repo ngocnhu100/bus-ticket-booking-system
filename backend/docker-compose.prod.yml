@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-auth-service-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+    ports:
+      - "3001:3001"
+    networks:
+      - bus-ticket-network-prod
+    volumes:
+      - ./services/auth-service:/app
+      - /app/node_modules
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-notification-service-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM}
+      - FRONTEND_URL=${FRONTEND_URL}
+    ports:
+      - "3003:3003"
+    networks:
+      - bus-ticket-network-prod
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: bus-ticket-api-gateway-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "3000:3000"
+    networks:
+      - bus-ticket-network-prod
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+
+networks:
+  bus-ticket-network-prod:
+    driver: bridge

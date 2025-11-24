@@ -5,6 +5,7 @@ class AuthService {
   constructor() {
     this.redisClient = redis.createClient({
       url: process.env.REDIS_URL || 'redis://localhost:6379',
+      socket: process.env.REDIS_URL ? { tls: true } : {},
     });
 
     this.redisClient.connect()
