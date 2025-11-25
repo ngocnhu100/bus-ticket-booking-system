@@ -1,16 +1,32 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import Button from '../components/Button'
-import Card from '../components/Card'
-import GoogleIcon from '../components/GoogleIcon'
-import Input from '../components/Input'
-import { postJSON } from '../lib/api'
-import { hasErrors, validateCredentials } from '../lib/validation'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import GoogleIcon from '@/components/GoogleIcon'
+import { getGoogleIdToken } from '@/lib/google'
+import { hasErrors, validateRegister } from '@/lib/validation'
+import { loginWithGoogle, registerAccount, storeTokens } from '@/api/auth'
+
+const initialState = {
+  email: '',
+  phone: '+84',
+  password: '',
+  fullName: '',
+  role: 'passenger',
+}
 
 export default function Register() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
-  const [errors, setErrors] = useState({ email: '', password: '' })
+  const [form, setForm] = useState(initialState)
+  const [errors, setErrors] = useState({ email: '', phone: '', password: '', fullName: '', role: '' })
   const [status, setStatus] = useState({ type: 'idle', message: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -25,7 +41,7 @@ export default function Register() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const validation = validateCredentials(form)
+    const validation = validateRegister(form)
 
     if (hasErrors(validation)) {
       setErrors(validation)
@@ -36,9 +52,9 @@ export default function Register() {
     setStatus({ type: 'idle', message: '' })
 
     try {
-      await postJSON('/auth/register', form)
-      setStatus({ type: 'success', message: 'Account created! Redirecting you to login...' })
-      setTimeout(() => navigate('/login', { replace: true, state: { fromRegister: true } }), 1000)
+      await registerAccount(form)
+      setStatus({ type: 'success', message: 'Account created! Redirecting you to login…' })
+      setTimeout(() => navigate('/login', { replace: true }), 800)
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Unable to create your account.' })
     } finally {
@@ -51,94 +67,154 @@ export default function Register() {
     setIsGoogleLoading(true)
 
     try {
-      await postJSON('/auth/oauth/google')
-      setStatus({ type: 'success', message: 'Google sign-up successful! Redirecting...' })
-      setTimeout(() => navigate('/login', { replace: true }), 900)
+      const idToken = await getGoogleIdToken()
+      const authData = await loginWithGoogle({ idToken })
+      storeTokens(authData ?? {})
+      setStatus({ type: 'success', message: 'Google sign-in successful. Redirecting now…' })
+      setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Google sign-up failed.' })
+      setStatus({ type: 'error', message: error.message || 'Google sign-in failed.' })
     } finally {
       setIsGoogleLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Getting started</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Create your account</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Sign up to manage your bookings seamlessly.
+    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-white via-slate-50 to-emerald-50 px-4 py-12">
+      <Card className="w-full max-w-3xl border-none shadow-2xl shadow-emerald-100">
+        <CardHeader className="space-y-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+            Bus Ticket Booking System
           </p>
-        </div>
-
-        <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-          <Input
-            label="Email address"
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={handleChange}
-            error={errors.email}
-          />
-
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Create a strong password"
-            minLength={8}
-            value={form.password}
-            onChange={handleChange}
-            error={errors.password}
-          />
-
-          {status.message && (
-            <div
-              className={`rounded-2xl px-4 py-3 text-sm ${
-                status.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'
-              }`}
-            >
-              {status.message}
+          <CardTitle className="text-3xl font-semibold">Register</CardTitle>
+          
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-6 md:grid-cols-2" onSubmit={handleSubmit} noValidate>
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full name</Label>
+              <Input
+                id="fullName"
+                name="fullName"
+                placeholder="Nguyen Van A"
+                autoComplete="name"
+                value={form.fullName}
+                onChange={handleChange}
+              />
+              {errors.fullName && (
+                <p className="text-sm font-medium text-destructive">{errors.fullName}</p>
+              )}
             </div>
-          )}
 
-          <Button type="submit" fullWidth isLoading={isSubmitting}>
-            Create account
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                value={form.email}
+                onChange={handleChange}
+              />
+              {errors.email && (
+                <p className="text-sm font-medium text-destructive">{errors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Vietnamese phone</Label>
+              <Input
+                id="phone"
+                name="phone"
+                placeholder="+84901234567"
+                autoComplete="tel"
+                value={form.phone}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground">Use +84 followed by 8–9 digits.</p>
+              {errors.phone && (
+                <p className="text-sm font-medium text-destructive">{errors.phone}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Create a strong password"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={handleChange}
+              />
+              <p className="text-xs text-muted-foreground">
+                Must include uppercase, lowercase, number, special character, min 8 characters.
+              </p>
+              {errors.password && (
+                <p className="text-sm font-medium text-destructive">{errors.password}</p>
+              )}
+            </div>
+
+            <input type="hidden" name="role" value={form.role} />
+            {errors.role && (
+              <p className="text-sm font-medium text-destructive md:col-span-2">{errors.role}</p>
+            )}
+
+            {status.message && (
+              <div
+                className={`md:col-span-2 rounded-lg border px-4 py-3 text-sm ${
+                  status.type === 'error'
+                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                {status.message}
+              </div>
+            )}
+
+            <div className="md:col-span-2 flex flex-col gap-4">
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting…' : 'Create account'}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                By continuing you agree to our Terms of Service and acknowledge our Privacy Policy.
+              </p>
+            </div>
+          </form>
+
+          <div className="my-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignup}
+            disabled={isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              'Contacting Google…'
+            ) : (
+              <span className="flex w-full items-center justify-center gap-2">
+                <GoogleIcon className="h-5 w-5" />
+                Continue with Google
+              </span>
+            )}
           </Button>
-        </form>
 
-        <p className="mt-4 text-xs text-slate-500">
-          By continuing you agree to our Terms of Service and acknowledge our Privacy Policy.
-        </p>
-
-        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
-          or
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <Button
-          type="button"
-          variant="secondary"
-          fullWidth
-          leadingIcon={<GoogleIcon className="h-5 w-5" />}
-          onClick={handleGoogleSignup}
-          isLoading={isGoogleLoading}
-        >
-          Continue with Google
-        </Button>
-
-        <p className="mt-8 text-center text-sm text-slate-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-brand-600 hover:text-brand-700">
-            Sign in
-          </Link>
-        </p>
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-primary">
+              Sign in
+            </Link>
+          </p>
+        </CardContent>
       </Card>
-    </div>
+    </section>
   )
 }
