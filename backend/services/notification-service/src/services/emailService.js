@@ -12,6 +12,8 @@ if (process.env.SENDGRID_API_KEY) {
   }
 }
 
+const DEFAULT_EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@quad-n.me';
+
 class EmailService {
   async sendVerificationEmail(email, token) {
     const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
@@ -25,7 +27,7 @@ class EmailService {
 
     const msg = {
       to: email,
-      from: process.env.EMAIL_FROM || 'noreply@busticket.com',
+      from: DEFAULT_EMAIL_FROM,
       subject: 'Verify Your Email - Bus Ticket Booking',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -69,7 +71,7 @@ class EmailService {
 
     const msg = {
       to: email,
-      from: process.env.EMAIL_FROM || 'noreply@busticket.com',
+      from: DEFAULT_EMAIL_FROM,
       subject: 'Reset Your Password - Bus Ticket Booking',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -110,7 +112,7 @@ class EmailService {
 
     const msg = {
       to: email,
-      from: process.env.EMAIL_FROM || 'noreply@busticket.com',
+      from: DEFAULT_EMAIL_FROM,
       subject: 'Your OTP - Bus Ticket Booking',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -148,7 +150,7 @@ class EmailService {
 
     const msg = {
       to: email,
-      from: process.env.EMAIL_FROM || 'noreply@busticket.com',
+      from: DEFAULT_EMAIL_FROM,
       subject: 'Password Changed - Bus Ticket Booking',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

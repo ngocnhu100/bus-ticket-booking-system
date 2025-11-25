@@ -261,7 +261,7 @@ NOTIFICATION_SERVICE_URL=http://localhost:3003
 NODE_ENV=development
 PORT=3003
 SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@busticket.com
+EMAIL_FROM=noreply@quad-n.me
 FRONTEND_URL=http://localhost:5173
 ```
 
@@ -274,6 +274,6 @@ JWT_SECRET=your-jwt-secret
 JWT_REFRESH_SECRET=your-refresh-secret
 GOOGLE_CLIENT_ID=your-google-client-id
 SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@busticket.com
+EMAIL_FROM=noreply@quad-n.me
 FRONTEND_URL=http://localhost:5173
 ```

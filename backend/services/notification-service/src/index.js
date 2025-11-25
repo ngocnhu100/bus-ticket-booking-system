@@ -109,7 +109,7 @@ app.post('/send-email', async (req, res) => {
 
           const msg = {
             to,
-            from: process.env.EMAIL_FROM || 'noreply@busticket.com',
+            from: process.env.EMAIL_FROM || 'noreply@quad-n.me',
             subject,
             html
           };
