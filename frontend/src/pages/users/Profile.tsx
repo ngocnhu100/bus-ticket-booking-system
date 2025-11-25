@@ -1,11 +1,21 @@
+// Profile.tsx
+import { useAuth } from '@/context/AuthContext' // Thêm dòng này
 import { DashboardLayout } from '../../components/users/DashboardLayout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import '@/styles/admin.css'
 
 const Profile = () => {
+  const { user } = useAuth() // Lấy thông tin user
+
+  // Nếu chưa load xong thì dùng fallback
+  const userData = {
+    fullName: user?.fullName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+  }
+
   return (
     <DashboardLayout>
       <div className="max-w-2xl">
@@ -20,7 +30,7 @@ const Profile = () => {
           <div className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
-              <Input id="name" defaultValue="John Doe" />
+              <Input id="name" defaultValue={userData.fullName} />
             </div>
 
             <div className="space-y-2">
@@ -28,18 +38,15 @@ const Profile = () => {
               <Input
                 id="email"
                 type="email"
-                defaultValue="john.doe@email.com"
+                defaultValue={userData.email}
+                readOnly
               />
+              {/* Email thường không cho sửa trực tiếp */}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" defaultValue="+84 123 456 789" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input id="address" defaultValue="123 Main Street, Hanoi" />
+              <Input id="phone" type="tel" defaultValue={userData.phone} />
             </div>
 
             <div className="flex gap-3 pt-4">

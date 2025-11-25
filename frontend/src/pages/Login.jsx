@@ -15,6 +15,7 @@ import { requestGoogleIdToken } from '@/lib/googleAuth'
 import { login, loginWithGoogle, storeTokens } from '@/api/auth'
 import { hasErrors, validateLogin } from '@/lib/validation'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useAuth } from '@/context/AuthContext'
 
 const initialState = { identifier: '', password: '' }
 
@@ -33,7 +34,7 @@ export default function Login() {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
   }
-
+  const { login: authLogin } = useAuth()
   const handleSubmit = async (event) => {
     event.preventDefault()
     const validation = validateLogin(form)
@@ -47,11 +48,11 @@ export default function Login() {
     setStatus({ type: 'idle', message: '' })
 
     try {
-      const authData = await login(form)
-      storeTokens(authData ?? {})
+      const authData = await login(form) // Gọi API từ auth.js
+      authLogin(authData) // Dùng context để lưu và redirect dựa trên role
       setStatus({
         type: 'success',
-        message: 'Login successful. Redirecting you now...',
+        message: 'Login successful. Redirecting...',
       })
       setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
@@ -72,10 +73,11 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setStatus({ type: 'idle', message: '' })
     setIsGoogleLoading(true)
-
+    authLogin(authData)
     try {
       const idToken = await requestGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
+
       storeTokens(authData ?? {})
       setStatus({
         type: 'success',

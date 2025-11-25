@@ -3,7 +3,7 @@ import { NavLink } from './NavLink'
 import { Button } from '@/components/ui/button'
 import { Calendar, History, User, CreditCard, Bell, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useNavigate } from 'react-router-dom'
+import { useAuth } from '@/context/AuthContext'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -18,13 +18,9 @@ const navigation = [
 ]
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
-  const navigate = useNavigate()
-
-  const handleLogout = () => {
-    localStorage.removeItem('auth-token') // hoặc clear()
-    navigate('/login', { replace: true })
-  }
-
+  const { logout, user } = useAuth()
+  const displayName = user?.fullName || 'Guest'
+  const displayEmail = user?.email || 'guest@example.com'
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
@@ -45,17 +41,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <ThemeToggle />
 
             <div className="text-right">
-              <p className="text-sm font-medium">John Doe</p>
-              <p className="text-xs text-muted-foreground">
-                john.doe@email.com
-              </p>
+              <p className="text-sm font-medium">{displayName}</p>
+              <p className="text-xs text-muted-foreground">{displayEmail}</p>
             </div>
 
             <Button
               variant="ghost"
               size="sm"
               className="gap-2"
-              onClick={handleLogout}
+              onClick={logout}
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Logout</span>

@@ -17,6 +17,9 @@ import History from './pages/users/History'
 import Profile from './pages/users/Profile'
 import Payments from './pages/users/Payments'
 import Notifications from './pages/users/Notifications'
+import { AuthProvider } from '@/context/AuthContext'
+import { PassengerRoute, AdminRoute } from '@/components/ProtectedRoute'
+import AdminDashboard from '@/pages/admin/Dashboard'
 
 const queryClient = new QueryClient()
 
@@ -39,36 +42,53 @@ function ThemeProviderWithSuppress({
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProviderWithSuppress>
-      {' '}
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route
-              path="/auth/google/callback"
-              element={<AuthGoogleCallback />}
-            />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard/history" element={<History />} />
-            <Route path="/dashboard/profile" element={<Profile />} />
-            <Route path="/dashboard/payments" element={<Payments />} />
-            <Route
-              path="/dashboard/notifications"
-              element={<Notifications />}
-            />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProviderWithSuppress>
+    <BrowserRouter>
+      <AuthProvider>
+        {' '}
+        {/* Wrap ở đây */}
+        <ThemeProviderWithSuppress>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route
+                path="/auth/google/callback"
+                element={<AuthGoogleCallback />}
+              />
+
+              {/* Passenger routes - protected */}
+              <Route element={<PassengerRoute />}>
+                <Route path="/dashboard" element={<Dashboard />} />{' '}
+                {/* Passenger Dashboard */}
+                <Route path="/dashboard/history" element={<History />} />
+                <Route path="/dashboard/profile" element={<Profile />} />
+                <Route path="/dashboard/payments" element={<Payments />} />
+                <Route
+                  path="/dashboard/notifications"
+                  element={<Notifications />}
+                />
+              </Route>
+
+              {/* Admin routes - protected */}
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminDashboard />} />{' '}
+                {/* Admin Dashboard */}
+                {/* Add thêm admin sub-routes nếu có, e.g. /admin/users, /admin/bookings */}
+              </Route>
+
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </TooltipProvider>
+        </ThemeProviderWithSuppress>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 )
 
