@@ -84,7 +84,13 @@ export async function loginWithGoogle({ idToken }) {
 
 export async function requestPasswordReset({ email }) {
   const payload = { email }
-  const response = await request('/auth/password/forgot', { body: payload })
+  const response = await request('/auth/forgot-password', { body: payload })
+  return response?.data
+}
+
+export async function resetPassword({ token, newPassword, confirmPassword }) {
+  const payload = { token, newPassword, confirmPassword }
+  const response = await request('/auth/reset-password', { body: payload })
   return response?.data
 }
 

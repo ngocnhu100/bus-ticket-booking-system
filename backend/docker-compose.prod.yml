@@ -20,8 +20,6 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
-    ports:
-      - "3001:3001"
     networks:
       - bus-ticket-network-prod
     volumes:
@@ -40,8 +38,6 @@ services:
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - EMAIL_FROM=${EMAIL_FROM}
       - FRONTEND_URL=${FRONTEND_URL}
-    ports:
-      - "3003:3003"
     networks:
       - bus-ticket-network-prod
     volumes:
