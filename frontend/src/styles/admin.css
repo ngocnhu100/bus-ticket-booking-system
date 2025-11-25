@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "animate.css";
+@import 'tailwindcss';
+@import 'animate.css';
 
 @plugin "tailwindcss-animate";
 

@@ -48,7 +48,10 @@ export default function Login() {
     try {
       const authData = await login(form)
       storeTokens(authData ?? {})
-      setStatus({ type: 'success', message: 'Login successful. Redirecting you now...' })
+      setStatus({
+        type: 'success',
+        message: 'Login successful. Redirecting you now...',
+      })
       setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
       setStatus({
@@ -73,10 +76,16 @@ export default function Login() {
       const idToken = await getGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
       storeTokens(authData ?? {})
-      setStatus({ type: 'success', message: 'Google sign-in successful. Redirecting...' })
+      setStatus({
+        type: 'success',
+        message: 'Google sign-in successful. Redirecting...',
+      })
       setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Google sign-in failed.' })
+      setStatus({
+        type: 'error',
+        message: error.message || 'Google sign-in failed.',
+      })
     } finally {
       setIsGoogleLoading(false)
     }
@@ -90,7 +99,6 @@ export default function Login() {
             Bus Ticket Booking System
           </p>
           <CardTitle className="text-3xl font-semibold">Sign in</CardTitle>
-          
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit} noValidate>
@@ -105,7 +113,9 @@ export default function Login() {
                 onChange={handleChange}
               />
               {errors.identifier && (
-                <p className="text-sm font-medium text-destructive">{errors.identifier}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {errors.identifier}
+                </p>
               )}
             </div>
 
@@ -121,7 +131,9 @@ export default function Login() {
                 onChange={handleChange}
               />
               {errors.password && (
-                <p className="text-sm font-medium text-destructive">{errors.password}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {errors.password}
+                </p>
               )}
               <div className="text-right">
                 <button

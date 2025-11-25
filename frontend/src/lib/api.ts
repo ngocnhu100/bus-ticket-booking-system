@@ -5,7 +5,7 @@ type Json = Record<string, unknown>
 export async function postJSON<T extends Json = Json>(
   path: string,
   payload?: Json,
-  init?: RequestInit,
+  init?: RequestInit
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
@@ -18,7 +18,9 @@ export async function postJSON<T extends Json = Json>(
     ...init,
   })
 
-  const data = (await response.json().catch(() => ({}))) as T & { message?: string }
+  const data = (await response.json().catch(() => ({}))) as T & {
+    message?: string
+  }
 
   if (!response.ok) {
     throw new Error(data?.message ?? 'Something went wrong. Please try again.')

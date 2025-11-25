@@ -1,19 +1,19 @@
-import type { ReactNode } from "react";
-import { NavLink } from "./NavLink";
-import { Button } from "@/components/ui/button";
-import { Calendar, History, User, CreditCard, Bell, LogOut } from "lucide-react";
+import type { ReactNode } from 'react'
+import { NavLink } from './NavLink'
+import { Button } from '@/components/ui/button'
+import { Calendar, History, User, CreditCard, Bell, LogOut } from 'lucide-react'
 
 interface DashboardLayoutProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 const navigation = [
-  { name: "Upcoming", icon: Calendar, path: "/" },
-  { name: "History", icon: History, path: "/history" },
-  { name: "Profile", icon: User, path: "/profile" },
-  { name: "Payments", icon: CreditCard, path: "/payments" },
-  { name: "Notifications", icon: Bell, path: "/notifications" },
-];
+  { name: 'Upcoming', icon: Calendar, path: '/' },
+  { name: 'History', icon: History, path: '/history' },
+  { name: 'Profile', icon: User, path: '/profile' },
+  { name: 'Payments', icon: CreditCard, path: '/payments' },
+  { name: 'Notifications', icon: Bell, path: '/notifications' },
+]
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
@@ -23,15 +23,21 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <div className="h-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">T</span>
+              <span className="text-primary-foreground font-bold text-lg">
+                T
+              </span>
             </div>
-            <span className="text-xl font-bold text-foreground">TravelDash</span>
+            <span className="text-xl font-bold text-foreground">
+              TravelDash
+            </span>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm font-medium text-foreground">John Doe</p>
-              <p className="text-xs text-muted-foreground">john.doe@email.com</p>
+              <p className="text-xs text-muted-foreground">
+                john.doe@email.com
+              </p>
             </div>
             <Button variant="ghost" size="sm" className="gap-2">
               <LogOut className="w-4 h-4" />
@@ -63,10 +69,8 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 ml-[var(--sidebar-width)] p-6">
-          {children}
-        </main>
+        <main className="flex-1 ml-[var(--sidebar-width)] p-6">{children}</main>
       </div>
     </div>
-  );
-};
+  )
+}

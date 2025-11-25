@@ -1,34 +1,84 @@
-import { StatCard } from "../../components/admin/StatCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BookOpen, Users, DollarSign } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import '@/styles/admin.css';
+import { StatCard } from '../../components/admin/StatCard'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { BookOpen, Users, DollarSign } from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import '@/styles/admin.css'
 // Sample data
 const bookingsTrendData = [
-  { day: "Mon", bookings: 45 },
-  { day: "Tue", bookings: 52 },
-  { day: "Wed", bookings: 61 },
-  { day: "Thu", bookings: 55 },
-  { day: "Fri", bookings: 70 },
-  { day: "Sat", bookings: 85 },
-  { day: "Sun", bookings: 78 },
-];
+  { day: 'Mon', bookings: 45 },
+  { day: 'Tue', bookings: 52 },
+  { day: 'Wed', bookings: 61 },
+  { day: 'Thu', bookings: 55 },
+  { day: 'Fri', bookings: 70 },
+  { day: 'Sat', bookings: 85 },
+  { day: 'Sun', bookings: 78 },
+]
 
 const topRoutes = [
-  { route: "HCM → Hanoi", bookings: 234, revenue: "8.2M" },
-  { route: "HCM → Dalat", bookings: 189, revenue: "3.4M" },
-  { route: "Hanoi → Haiphong", bookings: 156, revenue: "2.8M" },
-  { route: "Danang → Hue", bookings: 142, revenue: "2.1M" },
-];
+  { route: 'HCM → Hanoi', bookings: 234, revenue: '8.2M' },
+  { route: 'HCM → Dalat', bookings: 189, revenue: '3.4M' },
+  { route: 'Hanoi → Haiphong', bookings: 156, revenue: '2.8M' },
+  { route: 'Danang → Hue', bookings: 142, revenue: '2.1M' },
+]
 
 const recentBookings = [
-  { id: "BK-2045", customer: "Nguyen Van A", route: "HCM → Hanoi", date: "2025-11-21", amount: "$45", status: "Confirmed" },
-  { id: "BK-2044", customer: "Tran Thi B", route: "HCM → Dalat", date: "2025-11-21", amount: "$28", status: "Confirmed" },
-  { id: "BK-2043", customer: "Le Van C", route: "Hanoi → Haiphong", date: "2025-11-21", amount: "$32", status: "Pending" },
-  { id: "BK-2042", customer: "Pham Thi D", route: "Danang → Hue", date: "2025-11-20", amount: "$25", status: "Confirmed" },
-  { id: "BK-2041", customer: "Hoang Van E", route: "HCM → Hanoi", date: "2025-11-20", amount: "$45", status: "Confirmed" },
-];
+  {
+    id: 'BK-2045',
+    customer: 'Nguyen Van A',
+    route: 'HCM → Hanoi',
+    date: '2025-11-21',
+    amount: '$45',
+    status: 'Confirmed',
+  },
+  {
+    id: 'BK-2044',
+    customer: 'Tran Thi B',
+    route: 'HCM → Dalat',
+    date: '2025-11-21',
+    amount: '$28',
+    status: 'Confirmed',
+  },
+  {
+    id: 'BK-2043',
+    customer: 'Le Van C',
+    route: 'Hanoi → Haiphong',
+    date: '2025-11-21',
+    amount: '$32',
+    status: 'Pending',
+  },
+  {
+    id: 'BK-2042',
+    customer: 'Pham Thi D',
+    route: 'Danang → Hue',
+    date: '2025-11-20',
+    amount: '$25',
+    status: 'Confirmed',
+  },
+  {
+    id: 'BK-2041',
+    customer: 'Hoang Van E',
+    route: 'HCM → Hanoi',
+    date: '2025-11-20',
+    amount: '$45',
+    status: 'Confirmed',
+  },
+]
 
 export default function Dashboard() {
   return (
@@ -68,26 +118,26 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={bookingsTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis 
-                dataKey="day" 
+              <XAxis
+                dataKey="day"
                 stroke="var(--muted-foreground)"
                 tick={{ fill: 'var(--muted-foreground)' }}
               />
-              <YAxis 
+              <YAxis
                 stroke="var(--muted-foreground)"
                 tick={{ fill: 'var(--muted-foreground)' }}
               />
-              <Tooltip 
-                contentStyle={{ 
+              <Tooltip
+                contentStyle={{
                   backgroundColor: 'var(--card)',
                   border: '1px solid var(--border)',
-                  borderRadius: '6px'
+                  borderRadius: '6px',
                 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="bookings" 
-                stroke="var(--primary)" 
+              <Line
+                type="monotone"
+                dataKey="bookings"
+                stroke="var(--primary)"
                 strokeWidth={2}
                 dot={{ fill: 'var(--primary)' }}
               />
@@ -115,8 +165,12 @@ export default function Dashboard() {
                 {topRoutes.map((route, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">{route.route}</TableCell>
-                    <TableCell className="text-right">{route.bookings}</TableCell>
-                    <TableCell className="text-right">{route.revenue}</TableCell>
+                    <TableCell className="text-right">
+                      {route.bookings}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {route.revenue}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -145,7 +199,9 @@ export default function Dashboard() {
                     <TableCell className="font-medium">{booking.id}</TableCell>
                     <TableCell>{booking.customer}</TableCell>
                     <TableCell>{booking.route}</TableCell>
-                    <TableCell className="text-right">{booking.amount}</TableCell>
+                    <TableCell className="text-right">
+                      {booking.amount}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -154,5 +210,5 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

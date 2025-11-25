@@ -1,6 +1,7 @@
 export const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export const vietnamPhonePattern = /^\+84\d{8,9}$/
-export const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/
+export const strongPasswordPattern =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/
 
 type LoginPayload = {
   identifier: string
@@ -57,7 +58,8 @@ export function validateRegister(payload: RegisterPayload) {
   }
 
   if (!strongPasswordPattern.test(payload.password)) {
-    errors.password = 'Password must include upper, lower, number, special char, min 8 chars.'
+    errors.password =
+      'Password must include upper, lower, number, special char, min 8 chars.'
   }
 
   if (!between(payload.fullName, 2, 100)) {

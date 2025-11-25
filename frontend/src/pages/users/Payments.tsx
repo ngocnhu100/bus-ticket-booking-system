@@ -1,24 +1,24 @@
-import { DashboardLayout } from "../../components/users/DashboardLayout";
-import { Card } from "@/components/ui/card";
-import { CreditCard, Calendar } from "lucide-react";
-import '@/styles/admin.css';
+import { DashboardLayout } from '../../components/users/DashboardLayout'
+import { Card } from '@/components/ui/card'
+import { CreditCard, Calendar } from 'lucide-react'
+import '@/styles/admin.css'
 
 const payments = [
   {
-    id: "PAY001",
-    bookingId: "BK2025HS001",
-    amount: "500,000 VND",
-    date: "01 Nov 2025",
-    status: "Completed",
+    id: 'PAY001',
+    bookingId: 'BK2025HS001',
+    amount: '500,000 VND',
+    date: '01 Nov 2025',
+    status: 'Completed',
   },
   {
-    id: "PAY002",
-    bookingId: "BK2025HH002",
-    amount: "350,000 VND",
-    date: "15 Oct 2025",
-    status: "Completed",
+    id: 'PAY002',
+    bookingId: 'BK2025HH002',
+    amount: '350,000 VND',
+    date: '15 Oct 2025',
+    status: 'Completed',
   },
-];
+]
 
 const Payments = () => {
   return (
@@ -26,7 +26,9 @@ const Payments = () => {
       <div className="max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Payments</h1>
-          <p className="text-muted-foreground">View your payment history and receipts</p>
+          <p className="text-muted-foreground">
+            View your payment history and receipts
+          </p>
         </div>
 
         <div className="space-y-4">
@@ -64,7 +66,7 @@ const Payments = () => {
         </div>
       </div>
     </DashboardLayout>
-  );
-};
+  )
+}
 
-export default Payments;
+export default Payments

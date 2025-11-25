@@ -1,14 +1,19 @@
-import { Card, CardContent } from "@/components/ui/card";
-import type { LucideIcon } from "lucide-react";
+import { Card, CardContent } from '@/components/ui/card'
+import type { LucideIcon } from 'lucide-react'
 
 interface StatCardProps {
-  title: string;
-  value: string | number;
-  icon: LucideIcon;
-  iconColor?: string;
+  title: string
+  value: string | number
+  icon: LucideIcon
+  iconColor?: string
 }
 
-export function StatCard({ title, value, icon: Icon, iconColor = "text-primary" }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  icon: Icon,
+  iconColor = 'text-primary',
+}: StatCardProps) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -23,5 +28,5 @@ export function StatCard({ title, value, icon: Icon, iconColor = "text-primary" 
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

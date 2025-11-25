@@ -26,7 +26,13 @@ const initialState = {
 export default function Register() {
   const navigate = useNavigate()
   const [form, setForm] = useState(initialState)
-  const [errors, setErrors] = useState({ email: '', phone: '', password: '', fullName: '', role: '' })
+  const [errors, setErrors] = useState({
+    email: '',
+    phone: '',
+    password: '',
+    fullName: '',
+    role: '',
+  })
   const [status, setStatus] = useState({ type: 'idle', message: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -53,10 +59,16 @@ export default function Register() {
 
     try {
       await registerAccount(form)
-      setStatus({ type: 'success', message: 'Account created! Redirecting you to login…' })
+      setStatus({
+        type: 'success',
+        message: 'Account created! Redirecting you to login…',
+      })
       setTimeout(() => navigate('/login', { replace: true }), 800)
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Unable to create your account.' })
+      setStatus({
+        type: 'error',
+        message: error.message || 'Unable to create your account.',
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -70,10 +82,16 @@ export default function Register() {
       const idToken = await getGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
       storeTokens(authData ?? {})
-      setStatus({ type: 'success', message: 'Google sign-in successful. Redirecting now…' })
+      setStatus({
+        type: 'success',
+        message: 'Google sign-in successful. Redirecting now…',
+      })
       setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Google sign-in failed.' })
+      setStatus({
+        type: 'error',
+        message: error.message || 'Google sign-in failed.',
+      })
     } finally {
       setIsGoogleLoading(false)
     }
@@ -87,10 +105,13 @@ export default function Register() {
             Bus Ticket Booking System
           </p>
           <CardTitle className="text-3xl font-semibold">Register</CardTitle>
-          
         </CardHeader>
         <CardContent>
-          <form className="grid gap-6 md:grid-cols-2" onSubmit={handleSubmit} noValidate>
+          <form
+            className="grid gap-6 md:grid-cols-2"
+            onSubmit={handleSubmit}
+            noValidate
+          >
             <div className="space-y-2">
               <Label htmlFor="fullName">Full name</Label>
               <Input
@@ -102,7 +123,9 @@ export default function Register() {
                 onChange={handleChange}
               />
               {errors.fullName && (
-                <p className="text-sm font-medium text-destructive">{errors.fullName}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {errors.fullName}
+                </p>
               )}
             </div>
 
@@ -118,7 +141,9 @@ export default function Register() {
                 onChange={handleChange}
               />
               {errors.email && (
-                <p className="text-sm font-medium text-destructive">{errors.email}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {errors.email}
+                </p>
               )}
             </div>
 
@@ -132,9 +157,13 @@ export default function Register() {
                 value={form.phone}
                 onChange={handleChange}
               />
-              <p className="text-xs text-muted-foreground">Use +84 followed by 8–9 digits.</p>
+              <p className="text-xs text-muted-foreground">
+                Use +84 followed by 8–9 digits.
+              </p>
               {errors.phone && (
-                <p className="text-sm font-medium text-destructive">{errors.phone}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {errors.phone}
+                </p>
               )}
             </div>
 
@@ -150,16 +179,21 @@ export default function Register() {
                 onChange={handleChange}
               />
               <p className="text-xs text-muted-foreground">
-                Must include uppercase, lowercase, number, special character, min 8 characters.
+                Must include uppercase, lowercase, number, special character,
+                min 8 characters.
               </p>
               {errors.password && (
-                <p className="text-sm font-medium text-destructive">{errors.password}</p>
+                <p className="text-sm font-medium text-destructive">
+                  {errors.password}
+                </p>
               )}
             </div>
 
             <input type="hidden" name="role" value={form.role} />
             {errors.role && (
-              <p className="text-sm font-medium text-destructive md:col-span-2">{errors.role}</p>
+              <p className="text-sm font-medium text-destructive md:col-span-2">
+                {errors.role}
+              </p>
             )}
 
             {status.message && (
@@ -179,7 +213,8 @@ export default function Register() {
                 {isSubmitting ? 'Submitting…' : 'Create account'}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                By continuing you agree to our Terms of Service and acknowledge our Privacy Policy.
+                By continuing you agree to our Terms of Service and acknowledge
+                our Privacy Policy.
               </p>
             </div>
           </form>

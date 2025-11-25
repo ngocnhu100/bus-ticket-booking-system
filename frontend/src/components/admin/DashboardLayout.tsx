@@ -1,9 +1,9 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/admin/AppSidebar";
-import { User } from "lucide-react";
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/admin/AppSidebar'
+import { User } from 'lucide-react'
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -21,11 +21,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <span className="text-sm font-medium">[Admin Name]</span>
             </div>
           </header>
-          <main className="flex-1 p-6">
-            {children}
-          </main>
+          <main className="flex-1 p-6">{children}</main>
         </div>
       </div>
     </SidebarProvider>
-  );
+  )
 }

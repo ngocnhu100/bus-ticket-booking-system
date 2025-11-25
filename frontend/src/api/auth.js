@@ -48,7 +48,9 @@ async function request(path, { body, token, ...options } = {}) {
 
   const isError = !response.ok || (data && data.success === false)
   if (isError) {
-    const message = data?.error?.message || 'Unable to complete the request. Please try again.'
+    const message =
+      data?.error?.message ||
+      'Unable to complete the request. Please try again.'
     const error = new Error(message)
     error.code = data?.error?.code || response.status
     throw error
@@ -63,7 +65,13 @@ export async function login({ identifier, password }) {
   return response?.data
 }
 
-export async function registerAccount({ email, phone, password, fullName, role = 'passenger' }) {
+export async function registerAccount({
+  email,
+  phone,
+  password,
+  fullName,
+  role = 'passenger',
+}) {
   const payload = { email, phone, password, fullName, role }
   const response = await request('/auth/register', { body: payload })
   return response?.data

@@ -39,7 +39,10 @@ export default function ForgotPassword() {
 
     try {
       await requestPasswordReset({ email: form.email })
-      setStatus({ type: 'success', message: 'If an account exists, a reset link has been sent.' })
+      setStatus({
+        type: 'success',
+        message: 'If an account exists, a reset link has been sent.',
+      })
       setForm(initialState)
     } catch (err) {
       setStatus({
@@ -58,9 +61,12 @@ export default function ForgotPassword() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
             Bus Ticket Booking System
           </p>
-          <CardTitle className="text-3xl font-semibold">Forgot your password?</CardTitle>
+          <CardTitle className="text-3xl font-semibold">
+            Forgot your password?
+          </CardTitle>
           <CardDescription>
-            Enter the email associated with your account and we will send instructions to reset it.
+            Enter the email associated with your account and we will send
+            instructions to reset it.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -76,7 +82,9 @@ export default function ForgotPassword() {
                 value={form.email}
                 onChange={handleChange}
               />
-              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+              {error && (
+                <p className="text-sm font-medium text-destructive">{error}</p>
+              )}
             </div>
 
             {status.message && (

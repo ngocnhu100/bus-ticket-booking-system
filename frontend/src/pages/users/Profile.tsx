@@ -1,9 +1,9 @@
-import { DashboardLayout } from "../../components/users/DashboardLayout";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import '@/styles/admin.css';
+import { DashboardLayout } from '../../components/users/DashboardLayout'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import '@/styles/admin.css'
 
 const Profile = () => {
   return (
@@ -11,7 +11,9 @@ const Profile = () => {
       <div className="max-w-2xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Profile</h1>
-          <p className="text-muted-foreground">Manage your account information</p>
+          <p className="text-muted-foreground">
+            Manage your account information
+          </p>
         </div>
 
         <Card className="p-6">
@@ -23,7 +25,11 @@ const Profile = () => {
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="john.doe@email.com" />
+              <Input
+                id="email"
+                type="email"
+                defaultValue="john.doe@email.com"
+              />
             </div>
 
             <div className="space-y-2">
@@ -44,7 +50,7 @@ const Profile = () => {
         </Card>
       </div>
     </DashboardLayout>
-  );
-};
+  )
+}
 
-export default Profile;
+export default Profile

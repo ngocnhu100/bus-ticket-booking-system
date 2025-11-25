@@ -18,7 +18,9 @@ declare global {
             auto_select?: boolean
             cancel_on_tap_outside?: boolean
           }) => void
-          prompt: (callback?: (notification: GooglePromptNotification) => void) => void
+          prompt: (
+            callback?: (notification: GooglePromptNotification) => void
+          ) => void
         }
       }
     }
@@ -30,7 +32,8 @@ const googleClientId =
   import.meta.env.REACT_APP_GOOGLE_CLIENT_ID ??
   ''
 
-export const isGoogleOAuthReady = () => Boolean(window.google?.accounts?.id && googleClientId)
+export const isGoogleOAuthReady = () =>
+  Boolean(window.google?.accounts?.id && googleClientId)
 
 export function getGoogleIdToken() {
   return new Promise<string>((resolve, reject) => {
@@ -57,12 +60,14 @@ export function getGoogleIdToken() {
       cancel_on_tap_outside: true,
     })
 
-    window.google.accounts.id.prompt((notification?: GooglePromptNotification) => {
-      if (!notification) return
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        reject(new Error('Google sign-in was cancelled.'))
+    window.google.accounts.id.prompt(
+      (notification?: GooglePromptNotification) => {
+        if (!notification) return
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          reject(new Error('Google sign-in was cancelled.'))
+        }
       }
-    })
+    )
   })
 }
 
