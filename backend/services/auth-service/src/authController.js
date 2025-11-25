@@ -767,13 +767,6 @@ class AuthController {
       }
 
       // Verify current password
-      if (!currentPassword || !user.password_hash) {
-        return res.status(400).json({
-          success: false,
-          error: { code: 'VAL_001', message: 'Invalid password data' },
-          timestamp: new Date().toISOString()
-        });
-      }
 
       if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
         return res.status(401).json({
