@@ -1,16 +1,26 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import Button from '../components/Button'
-import Card from '../components/Card'
-import GoogleIcon from '../components/GoogleIcon'
-import Input from '../components/Input'
-import { postJSON } from '../lib/api'
-import { hasErrors, validateCredentials } from '../lib/validation'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import GoogleIcon from '@/components/GoogleIcon'
+import { getGoogleIdToken } from '@/lib/google'
+import { login, loginWithGoogle, storeTokens } from '@/api/auth'
+import { hasErrors, validateLogin } from '@/lib/validation'
+
+const initialState = { identifier: '', password: '' }
 
 export default function Login() {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
-  const [errors, setErrors] = useState({ email: '', password: '' })
+  const [form, setForm] = useState(initialState)
+  const [errors, setErrors] = useState({ identifier: '', password: '' })
   const [status, setStatus] = useState({ type: 'idle', message: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -25,7 +35,7 @@ export default function Login() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    const validation = validateCredentials(form)
+    const validation = validateLogin(form)
 
     if (hasErrors(validation)) {
       setErrors(validation)
@@ -36,14 +46,23 @@ export default function Login() {
     setStatus({ type: 'idle', message: '' })
 
     try {
-      await postJSON('/auth/login', form)
+      const authData = await login(form)
+      storeTokens(authData ?? {})
       setStatus({ type: 'success', message: 'Login successful. Redirecting you now...' })
-      setTimeout(() => navigate('/dashboard', { replace: true }), 900)
+      setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
-      setStatus({ type: 'error', message: error.message || 'Unable to sign in right now.' })
+      setStatus({
+        type: 'error',
+        message: error.message || 'Unable to sign in right now.',
+      })
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const goToForgotPassword = (event) => {
+    event.preventDefault()
+    navigate('/forgot-password')
   }
 
   const handleGoogleSignIn = async () => {
@@ -51,9 +70,11 @@ export default function Login() {
     setIsGoogleLoading(true)
 
     try {
-      await postJSON('/auth/oauth/google')
-      setStatus({ type: 'success', message: 'Google sign-in successful. Redirecting you now...' })
-      setTimeout(() => navigate('/dashboard', { replace: true }), 900)
+      const idToken = await getGoogleIdToken()
+      const authData = await loginWithGoogle({ idToken })
+      storeTokens(authData ?? {})
+      setStatus({ type: 'success', message: 'Google sign-in successful. Redirecting...' })
+      setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
       setStatus({ type: 'error', message: error.message || 'Google sign-in failed.' })
     } finally {
@@ -62,79 +83,105 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-600">Welcome back</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-900">Sign in to your account</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Enter your credentials to access your dashboard.
+    <section className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-indigo-50 px-4 py-12">
+      <Card className="w-full max-w-lg border-none shadow-2xl shadow-indigo-100">
+        <CardHeader className="space-y-3 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+            Bus Ticket Booking System
           </p>
-        </div>
-
-        <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-          <Input
-            label="Email address"
-            name="email"
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={handleChange}
-            error={errors.email}
-          />
-
-          <Input
-            label="Password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            minLength={8}
-            value={form.password}
-            onChange={handleChange}
-            error={errors.password}
-          />
-
-          {status.message && (
-            <div
-              className={`rounded-2xl px-4 py-3 text-sm ${
-                status.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'
-              }`}
-            >
-              {status.message}
+          <CardTitle className="text-3xl font-semibold">Sign in</CardTitle>
+          
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-6" onSubmit={handleSubmit} noValidate>
+            <div className="space-y-2">
+              <Label htmlFor="identifier">Email</Label>
+              <Input
+                id="identifier"
+                name="identifier"
+                placeholder="you@example.com"
+                autoComplete="username"
+                value={form.identifier}
+                onChange={handleChange}
+              />
+              {errors.identifier && (
+                <p className="text-sm font-medium text-destructive">{errors.identifier}</p>
+              )}
             </div>
-          )}
 
-          <Button type="submit" fullWidth isLoading={isSubmitting}>
-            Sign in
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                value={form.password}
+                onChange={handleChange}
+              />
+              {errors.password && (
+                <p className="text-sm font-medium text-destructive">{errors.password}</p>
+              )}
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={goToForgotPassword}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            </div>
+
+            {status.message && (
+              <div
+                className={`rounded-lg border px-4 py-3 text-sm ${
+                  status.type === 'error'
+                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                }`}
+              >
+                {status.message}
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+
+          <div className="my-8 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+            disabled={isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              'Contacting Google…'
+            ) : (
+              <span className="flex w-full items-center justify-center gap-2">
+                <GoogleIcon className="h-5 w-5" />
+                Continue with Google
+              </span>
+            )}
           </Button>
-        </form>
 
-        <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-          <span className="h-px flex-1 bg-slate-200" />
-          or
-          <span className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <Button
-          type="button"
-          variant="secondary"
-          fullWidth
-          leadingIcon={<GoogleIcon className="h-5 w-5" />}
-          onClick={handleGoogleSignIn}
-          isLoading={isGoogleLoading}
-        >
-          Continue with Google
-        </Button>
-
-        <p className="mt-8 text-center text-sm text-slate-600">
-          Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700">
-            Create one
-          </Link>
-        </p>
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{' '}
+            <Link to="/register" className="font-semibold text-primary">
+              Register now
+            </Link>
+          </p>
+        </CardContent>
       </Card>
-    </div>
+    </section>
   )
 }
