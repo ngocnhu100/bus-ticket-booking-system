@@ -13,7 +13,6 @@ export async function postJSON<T extends Json = Json>(
       'Content-Type': 'application/json',
       ...(init?.headers ?? {}),
     },
-    credentials: 'include',
     body: payload ? JSON.stringify(payload) : undefined,
     ...init,
   })

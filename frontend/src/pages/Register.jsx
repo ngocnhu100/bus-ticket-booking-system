@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import GoogleIcon from '@/components/GoogleIcon'
-import { getGoogleIdToken } from '@/lib/google'
+import { requestGoogleIdToken } from '@/lib/googleAuth'
 import { hasErrors, validateRegister } from '@/lib/validation'
 import { loginWithGoogle, registerAccount, storeTokens } from '@/api/auth'
 
@@ -79,7 +79,7 @@ export default function Register() {
     setIsGoogleLoading(true)
 
     try {
-      const idToken = await getGoogleIdToken()
+      const idToken = await requestGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
       storeTokens(authData ?? {})
       setStatus({
@@ -88,10 +88,7 @@ export default function Register() {
       })
       setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
-      setStatus({
-        type: 'error',
-        message: error.message || 'Google sign-in failed.',
-      })
+      setStatus({ type: 'error', message: error?.message || 'Google sign-in failed.' })
     } finally {
       setIsGoogleLoading(false)
     }
