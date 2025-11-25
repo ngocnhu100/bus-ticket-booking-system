@@ -11,6 +11,12 @@ if (process.env.NODE_ENV !== 'production') {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Validate FRONTEND_URL in production
+if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
+  console.error('❌ FRONTEND_URL environment variable is required in production for CORS security');
+  process.exit(1);
+}
+
 // Middleware
 app.use(helmet());
 app.use(cors({

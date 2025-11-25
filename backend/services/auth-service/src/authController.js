@@ -641,6 +641,9 @@ class AuthController {
         throw new Error('Failed to send OTP email');
       }
 
+      // Reset OTP attempts for new request
+      await authService.resetOTPAttempts(email);
+
       res.json({
         success: true,
         message: 'If the email exists, an OTP has been sent.',
@@ -669,8 +672,20 @@ class AuthController {
 
       const { email, otp } = value;
 
+      // Check OTP verification attempts
+      const attempts = await authService.getOTPAttempts(email);
+      if (attempts >= 5) {
+        return res.status(429).json({
+          success: false,
+          error: { code: 'AUTH_011', message: 'Too many OTP verification attempts. Please request a new OTP.' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
       const storedOTP = await authService.getOTP(email);
       if (!storedOTP || storedOTP !== otp) {
+        // Increment attempts on failure
+        await authService.incrementOTPAttempts(email);
         return res.status(401).json({
           success: false,
           error: { code: 'AUTH_008', message: 'Invalid or expired OTP' },
@@ -678,8 +693,9 @@ class AuthController {
         });
       }
 
-      // OTP is valid, delete it
+      // OTP is valid, delete it and reset attempts
       await authService.deleteOTP(email);
+      await authService.resetOTPAttempts(email);
 
       // Find user
       const user = await userRepository.findByEmail(email);

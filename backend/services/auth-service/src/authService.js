@@ -137,6 +137,39 @@ class AuthService {
       console.error('⚠️ Failed to delete OTP from Redis:', error.message);
     }
   }
+
+  async incrementOTPAttempts(email) {
+    try {
+      const key = `otp_attempts:${email}`;
+      const attempts = await this.redisClient.incr(key);
+      // Set expiration if first attempt
+      if (attempts === 1) {
+        await this.redisClient.expire(key, 15 * 60); // 15 minutes
+      }
+      return attempts;
+    } catch (error) {
+      console.error('⚠️ Failed to increment OTP attempts in Redis:', error.message);
+      return 0;
+    }
+  }
+
+  async getOTPAttempts(email) {
+    try {
+      const attempts = await this.redisClient.get(`otp_attempts:${email}`);
+      return attempts ? parseInt(attempts, 10) : 0;
+    } catch (error) {
+      console.error('⚠️ Failed to get OTP attempts from Redis:', error.message);
+      return 0;
+    }
+  }
+
+  async resetOTPAttempts(email) {
+    try {
+      await this.redisClient.del(`otp_attempts:${email}`);
+    } catch (error) {
+      console.error('⚠️ Failed to reset OTP attempts in Redis:', error.message);
+    }
+  }
 }
 
 module.exports = new AuthService();
