@@ -49,6 +49,36 @@ beforeAll(() => {
       timestamp: new Date().toISOString()
     });
 
+  // Mock token verification
+  nock('http://localhost:3001')
+    .persist()
+    .post('/verify')
+    .reply(200, function(uri, requestBody) {
+      const { token } = requestBody;
+      try {
+        const decoded = jwt.verify(token, 'test-secret');
+        return {
+          success: true,
+          data: {
+            valid: true,
+            user: {
+              userId: decoded.userId,
+              email: decoded.email,
+              role: decoded.role
+            }
+          },
+          timestamp: new Date().toISOString()
+        };
+      } catch (error) {
+        return {
+          success: false,
+          data: { valid: false },
+          error: { code: 'AUTH_002', message: 'Token expired or invalid' },
+          timestamp: new Date().toISOString()
+        };
+      }
+    });
+
   // Mock successful login for passenger
   nock('http://localhost:3001')
     .persist()
