@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const userRepository = require('./userRepository');
 const authService = require('./authService');
-const { registerSchema, loginSchema, googleAuthSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema } = require('./authValidators');
+const { registerSchema, loginSchema, googleAuthSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema, requestOtpSchema, verifyOtpSchema, changePasswordSchema } = require('./authValidators');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -124,6 +124,15 @@ class AuthController {
         });
       }
 
+      // Check if account is locked
+      if (user.account_locked_until && user.account_locked_until > new Date()) {
+        return res.status(423).json({
+          success: false,
+          error: { code: 'AUTH_010', message: 'Account is temporarily locked due to too many failed login attempts. Please try again later.' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
       // Check if user has Google ID (OAuth account)
       if (user.google_id) {
         return res.status(401).json({
@@ -133,12 +142,29 @@ class AuthController {
         });
       }
 
-      if (!(await bcrypt.compare(password, user.password_hash))) {
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      if (!isValidPassword) {
+        // Increment failed login attempts
+        const newFailedAttempts = (user.failed_login_attempts || 0) + 1;
+        let lockUntil = null;
+
+        if (newFailedAttempts >= 5) {
+          // Lock account for 15 minutes after 5 failed attempts
+          lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+
+        await userRepository.updateFailedLoginAttempts(user.user_id, newFailedAttempts, lockUntil);
+
         return res.status(401).json({
           success: false,
           error: { code: 'AUTH_001', message: 'Invalid credentials' },
           timestamp: new Date().toISOString()
         });
+      }
+
+      // Reset failed login attempts on successful login
+      if (user.failed_login_attempts > 0) {
+        await userRepository.updateFailedLoginAttempts(user.user_id, 0, null);
       }
 
       // Check if email is verified
@@ -535,15 +561,272 @@ class AuthController {
         });
       }
 
+      // Check if new password is different from current password
+      const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+      if (isSamePassword) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'AUTH_009', message: 'New password must be different from current password' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
       // Hash new password
       const passwordHash = await bcrypt.hash(newPassword, 12);
 
-      // Update password and clear reset token
+      // Update password and clear reset token (single use)
       await userRepository.updatePassword(user.user_id, passwordHash);
+
+      // Invalidate all refresh tokens for security
+      await authService.deleteRefreshToken(user.user_id);
 
       res.json({
         success: true,
         message: 'Password reset successfully. You can now log in with your new password.',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('⚠️', error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  async requestOTP(req, res) {
+    try {
+      const { error, value } = requestOtpSchema.validate(req.body);
+      if (error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Validation error', details: error.details },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { email } = value;
+
+      const user = await userRepository.findByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists or not for security
+        return res.json({
+          success: true,
+          message: 'If the email exists, an OTP has been sent.',
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Generate 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Store OTP in Redis
+      try {
+        await authService.storeOTP(email, otp);
+      } catch (redisError) {
+        console.error('⚠️ Failed to store OTP in Redis, but proceeding with email:', redisError.message);
+      }
+
+      // Send OTP email via notification service
+      try {
+        await axios.post(`${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003'}/send-email`, {
+          to: email,
+          type: 'otp',
+          otp: otp
+        });
+      } catch (emailError) {
+        console.error('⚠️ Failed to send OTP email:', emailError.message);
+        // If email fails, we should not proceed as user can't get OTP
+        throw new Error('Failed to send OTP email');
+      }
+
+      res.json({
+        success: true,
+        message: 'If the email exists, an OTP has been sent.',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('⚠️', error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  async verifyOTP(req, res) {
+    try {
+      const { error, value } = verifyOtpSchema.validate(req.body);
+      if (error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Validation error', details: error.details },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { email, otp } = value;
+
+      const storedOTP = await authService.getOTP(email);
+      if (!storedOTP || storedOTP !== otp) {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'AUTH_008', message: 'Invalid or expired OTP' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // OTP is valid, delete it
+      await authService.deleteOTP(email);
+
+      // Find user
+      const user = await userRepository.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_001', message: 'User not found' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Generate tokens
+      const accessToken = authService.generateAccessToken({ userId: user.user_id, role: user.role });
+      const refreshToken = authService.generateRefreshToken({ userId: user.user_id });
+
+      // Store refresh token
+      await authService.storeRefreshToken(user.user_id, refreshToken);
+
+      res.json({
+        success: true,
+        data: {
+          accessToken,
+          refreshToken,
+          expiresIn: 3600, // 1 hour
+          user: {
+            userId: user.user_id,
+            email: user.email,
+            fullName: user.full_name,
+            role: user.role
+          }
+        },
+        message: 'OTP verified successfully. You are now logged in.',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('⚠️', error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  async changePassword(req, res) {
+    try {
+      const { error, value } = changePasswordSchema.validate(req.body);
+      if (error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Validation error', details: error.details },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { currentPassword, newPassword } = value;
+      const userId = req.user.userId;
+
+      // Get user
+      const user = await userRepository.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'USER_001', message: 'User not found' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Check if user has Google OAuth (no real password)
+      if (user.google_id) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'AUTH_010', message: 'Password change not available for Google OAuth accounts' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Check if user has a password hash
+      if (!user.password_hash) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'AUTH_011', message: 'No password set for this account' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Verify current password
+      if (!(await bcrypt.compare(currentPassword, user.password_hash))) {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'AUTH_001', message: 'Current password is incorrect' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Check if new password is different from current
+      if (!newPassword || !user.password_hash) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'Invalid password data' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      if (await bcrypt.compare(newPassword, user.password_hash)) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'AUTH_009', message: 'New password must be different from current password' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Hash new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 12);
+
+      // Update password
+      await userRepository.updatePassword(userId, newPasswordHash);
+
+      // Invalidate all other refresh tokens (keep current session active)
+      // Note: This is a simplified approach. In production, you'd want to track sessions properly
+      await authService.deleteRefreshToken(userId);
+
+      // Generate new refresh token for current session
+      const newRefreshToken = authService.generateRefreshToken({ userId });
+      await authService.storeRefreshToken(userId, newRefreshToken);
+
+      // Send confirmation email
+      try {
+        await axios.post(`${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003'}/send-email`, {
+          to: user.email,
+          type: 'password-changed',
+          userName: user.full_name
+        });
+      } catch (emailError) {
+        console.error('⚠️ Failed to send password change confirmation email:', emailError.message);
+        // Don't fail the request if email fails
+      }
+
+      // Audit log
+      console.log(`🔐 Password changed for user ${user.email} (ID: ${userId}) at ${new Date().toISOString()}`);
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully. All other sessions have been logged out.',
+        data: {
+          newRefreshToken // Send new refresh token to maintain current session
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error) {

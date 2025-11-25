@@ -5,7 +5,7 @@ class AuthService {
   constructor() {
     this.redisClient = redis.createClient({
       url: process.env.REDIS_URL || 'redis://localhost:6379',
-      socket: process.env.REDIS_URL ? { tls: true } : {},
+      socket: process.env.REDIS_URL && process.env.NODE_ENV === 'production' ? { tls: true } : {},
     });
 
     this.redisClient.connect()
@@ -108,6 +108,33 @@ class AuthService {
       return jwt.verify(token, process.env.JWT_SECRET);
     } catch (error) {
       return null;
+    }
+  }
+
+  async storeOTP(email, otp) {
+    try {
+      const expiresIn = 5 * 60; // 5 minutes
+      await this.redisClient.set(`otp:${email}`, otp, { EX: expiresIn });
+    } catch (error) {
+      console.error('⚠️ Failed to store OTP in Redis:', error.message);
+      throw new Error(`Failed to store OTP: ${error.message}`);
+    }
+  }
+
+  async getOTP(email) {
+    try {
+      return await this.redisClient.get(`otp:${email}`);
+    } catch (error) {
+      console.error('⚠️ Failed to get OTP from Redis:', error.message);
+      return null;
+    }
+  }
+
+  async deleteOTP(email) {
+    try {
+      await this.redisClient.del(`otp:${email}`);
+    } catch (error) {
+      console.error('⚠️ Failed to delete OTP from Redis:', error.message);
     }
   }
 }

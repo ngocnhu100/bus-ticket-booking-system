@@ -68,6 +68,32 @@ app.post('/send-email', async (req, res) => {
         break;
       }
 
+      case 'otp': {
+        const { otp } = req.body;
+        if (!otp) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'VAL_001', message: 'OTP required for OTP emails' },
+            timestamp: new Date().toISOString()
+          });
+        }
+        await emailService.sendOTPEmail(to, otp);
+        break;
+      }
+
+      case 'password-changed': {
+        const { userName } = req.body;
+        if (!userName) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'VAL_001', message: 'User name required for password changed emails' },
+            timestamp: new Date().toISOString()
+          });
+        }
+        await emailService.sendPasswordChangedEmail(to, userName);
+        break;
+      }
+
       default:
         // Generic email sending
         {
@@ -83,7 +109,7 @@ app.post('/send-email', async (req, res) => {
 
           const msg = {
             to,
-            from: process.env.EMAIL_FROM || 'noreply@busticket.com',
+            from: process.env.EMAIL_FROM || 'noreply@quad-n.me',
             subject,
             html
           };
@@ -100,6 +126,7 @@ app.post('/send-email', async (req, res) => {
     });
   } catch (error) {
     console.error('⚠️ Email sending error:', error);
+    console.error('⚠️ SendGrid response:', error.response?.body || error.message);
     res.status(500).json({
       success: false,
       error: { code: 'EMAIL_001', message: 'Failed to send email' },
