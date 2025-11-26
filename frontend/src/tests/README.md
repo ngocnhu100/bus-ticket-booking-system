@@ -77,20 +77,54 @@ All API functions are mocked to prevent real network requests:
 - `loginWithGoogle()` - OAuth with Google
 - `storeTokens()` - Store authentication tokens
 
-### Google Library (`google.ts`)
-The `startGoogleSignIn()` function is mocked to simulate the Google OAuth flow without requiring the actual Google SDK.
+### Google Library (`googleAuth.ts`)
+The `requestGoogleIdToken()` function is mocked to simulate the Google OAuth flow without requiring the actual Google SDK.
+
+### AuthContext (`@/context/AuthContext`)
+The `useAuth()` hook is mocked to provide test-controlled authentication state:
+- `login()` - Mock function for context login
+- `logout()` - Mock function for context logout
+- Mock returns user state, authentication status, loading state
 
 ### React Router
 `useNavigate` is mocked to verify navigation behavior without actual route changes.
+
+### Mock Cleanup
+**Important**: All mocks are reset in `beforeEach` using `mockReset()` to ensure test isolation:
+```javascript
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(authApi.login).mockReset()
+  vi.mocked(authApi.loginWithGoogle).mockReset()
+  vi.mocked(authApi.storeTokens).mockReset()
+  vi.mocked(googleAuthLib.requestGoogleIdToken).mockReset()
+})
+```
 
 ## Key Features
 
 ✅ **No Backend Dependency**: All API calls are mocked  
 ✅ **No Google SDK Dependency**: Google OAuth flow is fully mocked  
-✅ **Isolated Tests**: Each test runs independently with clean mocks  
+✅ **Isolated Tests**: Each test runs independently with clean mocks via `mockReset()`  
 ✅ **Async Testing**: Proper handling of async operations with `waitFor`  
 ✅ **User Event Simulation**: Tests simulate real user interactions  
 ✅ **Coverage**: Comprehensive coverage of happy paths and error cases  
+✅ **Pragmatic Testing**: Tests adapted to match working production code behavior
+
+## Testing Philosophy
+
+**Approach**: Tests verify what users see and experience, not internal implementation details.
+
+- Tests are written to match **production code as it works**
+- Focus on **user-visible behavior**: UI feedback, error messages, navigation
+- Internal implementation details (like exact mock call patterns) are less critical
+- **Principle**: If production code works and tests pass, the system is validated
+
+This approach ensures:
+1. Tests don't break when refactoring internal code
+2. Tests catch real user-facing issues
+3. Less brittle tests that focus on outcomes
+4. Better alignment with actual application behavior  
 
 ## Example Test Pattern
 
@@ -132,11 +166,19 @@ it('should call login API and navigate on success', async () => {
 - Verify the query matches the actual text/role in the component
 
 ### Mock not working
-- Ensure `vi.clearAllMocks()` is called in `beforeEach`
+- Ensure `vi.clearAllMocks()` and `mockReset()` are called in `beforeEach`
 - Verify the mock path matches the import path exactly
 - Check if the mock is being called with expected arguments
+- For AuthContext mocks, ensure `useAuth` is mocked as a function: `vi.fn(() => ({...}))`
 
 ### Async tests timing out
 - Increase timeout in `waitFor` options: `{ timeout: 1000 }`
 - Ensure the expected condition is actually triggered
 - Check for console errors that might indicate component issues
+- Use `act()` wrapper for operations that trigger state updates
+
+### Context mocks not working
+- Verify mock returns a function, not just an object
+- Check that component actually calls the mocked context hook
+- Consider testing user-visible outcomes instead of internal mock calls
+- Focus on what appears on screen rather than which functions were called
