@@ -27,8 +27,26 @@ if (process.env.DATABASE_URL) {
     max: parseInt(process.env.DB_POOL_MAX) || 10,
     connectionTimeoutMillis: 10000, // 10 seconds
     query_timeout: 10000, // 10 seconds
-    idleTimeoutMillis: 30000, // 30 seconds
+    idleTimeoutMillis: 60000, // 60 seconds (increased from 30)
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 0,
   });
 }
+
+// Add error handling for the pool
+pool.on('error', (err, client) => {
+  console.error('❌ Unexpected error on idle database client:', err.message);
+  if (client) {
+    client.release(true); // Destroy the client
+  }
+});
+
+pool.on('connect', () => {
+  console.log('🔌 New database client connected');
+});
+
+pool.on('remove', () => {
+  console.log('🔌 Database client removed from pool');
+});
 
 module.exports = pool;

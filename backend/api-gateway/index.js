@@ -54,6 +54,10 @@ app.use('/auth', async (req, res) => {
       timeout: 30000, // Increased timeout to 30 seconds
     });
     console.log(`✅ Auth service responded with status ${response.status}`);
+    // Forward all headers from the response
+    Object.keys(response.headers).forEach(key => {
+      res.set(key, response.headers[key]);
+    });
     res.status(response.status).json(response.data);
   } catch (error) {
     console.error(`❌ Auth service error:`, error.message);
