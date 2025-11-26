@@ -72,11 +72,10 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setStatus({ type: 'idle', message: '' })
     setIsGoogleLoading(true)
-    authLogin(authData)
     try {
       const idToken = await requestGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
-
+      authLogin(authData) // Dùng context để lưu và redirect dựa trên role
       storeTokens(authData ?? {})
       setStatus({
         type: 'success',
