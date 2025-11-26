@@ -1,26 +1,28 @@
 // src/components/admin/DashboardLayout.tsx
-import React from 'react' // QUAN TRỌNG NHẤT – phải có dòng này!
+import React from 'react'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/admin/AppSidebar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
-import { LogOut, User } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { LogOut } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext' // ← Quan trọng: lấy user + logout
 
-// Sửa interface đúng cú pháp
 interface DashboardLayoutProps {
-  children: React.ReactNode // đúng kiểu cho React
+  children: React.ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const navigate = useNavigate()
+  const { user, logout } = useAuth() // ← Lấy user và hàm logout từ context
 
-  const handleLogout = () => {
-    // Xóa token/auth data
-    localStorage.removeItem('auth-token')
-    // hoặc localStorage.clear()
-    navigate('/login', { replace: true })
-  }
+  // Fallback nếu chưa load xong
+  const displayName = user?.fullName || 'Admin'
+  const displayEmail = user?.email || 'admin@travel.com'
+  const initials = displayName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 
   return (
     <SidebarProvider>
@@ -42,20 +44,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="flex items-center gap-3">
               <ThemeToggle />
 
-              <div className="flex items-center gap-3">
-                {/* Avatar + Name */}
-                <div className="hidden sm:flex items-center gap-2 text-sm">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-4 w-4 text-primary" />
+              {/* User Info */}
+              <div className="hidden sm:flex items-center gap-3 text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                    {initials}
                   </div>
-                  <span className="font-medium">Admin Name</span>
+                  <div className="text-left">
+                    <p className="font-medium text-foreground">{displayName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {displayEmail}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Logout */}
+                {/* Logout Button */}
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleLogout}
+                  onClick={logout} // ← Dùng logout từ context → xóa hết token + user
                   className="gap-1.5 text-muted-foreground hover:text-foreground"
                 >
                   <LogOut className="h-4 w-4" />

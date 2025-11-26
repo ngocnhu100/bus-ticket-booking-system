@@ -54,7 +54,6 @@ export default function Login() {
         type: 'success',
         message: 'Login successful. Redirecting...',
       })
-      setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
       setStatus({
         type: 'error',
@@ -83,7 +82,6 @@ export default function Login() {
         type: 'success',
         message: 'Google sign-in successful. Redirecting...',
       })
-      setTimeout(() => navigate('/dashboard', { replace: true }), 600)
     } catch (error) {
       setStatus({
         type: 'error',
