@@ -18,13 +18,10 @@ The system is built using a **microservices architecture** with the following se
 
 ```
 backend/
-├── app.js                    # API Gateway (proxy only)
-├── routes/
-│   ├── authRoutes.js        # Proxies to auth-service:3001
-│   └── dashboardRoutes.js   # Local dashboard
+├── api-gateway
 └── services/                # Microservices
     ├── auth-service/        # Auth business logic
-    └── notification-service/
+    └── notification-service/ # Manages email notifications
 ```
 
 ## Features
@@ -75,8 +72,6 @@ backend/
 
 4. The services will be available at:
    - API Gateway: http://localhost:3000
-   - Auth Service: http://localhost:3001
-   - Notification Service: http://localhost:3003
    - PostgreSQL: localhost:5432
    - Redis: localhost:6379
 
@@ -132,10 +127,23 @@ backend/
    - **Notification Service**: `cd backend/services/notification-service && npm run dev`
 
 6. Test health checks:
+
    ```bash
    curl http://localhost:3000/health  # API Gateway
    curl http://localhost:3001/health  # Auth Service
    curl http://localhost:3003/health  # Notification Service
+   ```
+
+7. **Run tests**:
+
+   ```bash
+   # API Gateway tests
+   cd backend/api-gateway
+   npm test
+
+   # Auth Service tests
+   cd ../services/auth-service
+   npm test
    ```
 
 ### API Endpoints
@@ -158,10 +166,18 @@ All auth endpoints are proxied to the auth service:
 
 #### Dashboard
 
-- `GET /dashboard/summary` - Summary metrics
-- `GET /dashboard/activity` - Recent activities
-- `GET /dashboard/stats` - Statistics (role-based)
-- `GET /dashboard/admin-data` - Admin-only data
+- `GET /dashboard/summary` - Summary metrics (authenticated users)
+- `GET /dashboard/activity` - Recent user activities (authenticated users)
+- `GET /dashboard/passenger-profile` - Passenger profile data (passengers only)
+- `GET /dashboard/upcoming-trips` - Upcoming trips (passengers only)
+- `GET /dashboard/trip-history` - Trip history (passengers only)
+- `GET /dashboard/payment-history` - Payment history (passengers only)
+- `GET /dashboard/notifications` - User notifications (passengers only)
+- `GET /dashboard/stats` - General statistics (admin only)
+- `GET /dashboard/admin/stats` - Admin statistics (admin only)
+- `GET /dashboard/admin/bookings-trend` - Bookings trend data (admin only)
+- `GET /dashboard/admin/top-routes` - Top performing routes (admin only)
+- `GET /dashboard/admin/recent-bookings` - Recent bookings (admin only)
 
 #### Service Health Checks
 
@@ -188,6 +204,44 @@ All auth endpoints are proxied to the auth service:
 - **Database**: PostgreSQL with connection pooling
 - **Redis**: For refresh token storage
 
+## Layout & Design System
+
+### Global Theme
+
+- **Color Tokens**: Primary (`#007bff`), Secondary (`#6c757d`), Surface (`#ffffff`), Error (`#dc3545`), Success (`#28a745`). Defined in `frontend/tailwind.config.ts`.
+- **Typography Scale**: H1 (2rem, bold), Body (1rem), Caption (0.875rem). Uses Inter font from Google Fonts.
+- **Spacing Scale**: Sm (0.5rem), Md (1rem), Lg (1.5rem). Applied via Tailwind utilities.
+
+### Reusable Components
+
+- **AppShell**: Layout wrapper with header (nav + logo), sidebar (role-based menu), content area, and footer. Responsive with Tailwind breakpoints.
+- **Card**: Container for widgets (e.g., `border rounded-lg p-4`).
+- **Button**: Variants (primary, secondary) with hover states.
+- **FormField**: Input wrapper with labels, validation errors.
+- **Theme Switcher**: Toggle between light/dark modes (stored in localStorage).
+
+### Implementation
+
+- **Framework**: Tailwind CSS for utility-first styling. Components in `frontend/src/components` are modular with props (e.g., `Button` accepts `variant`, `size`). Designed for reusability across pages.
+- **Responsiveness**: Mobile-first design; AppShell collapses sidebar on small screens.
+
+## Dashboard
+
+### Implementation
+
+- **Widgets**:
+  - SummaryCards: Displays booking count, revenue (admins see totals; passengers see personal stats).
+  - ActivityList: Recent user actions (filtered by role).
+  - TripHistory: Upcoming trips (passengers only).
+- **Interactivity**: Widgets fetch data from API. Real-time updates via Tanstack Query polling.
+- **Role Adaptation**: Admins see extra widgets (e.g., admin stats via `/dashboard/admin/stats`); passengers see personalized data. Enforced via `AuthContext` and conditional rendering.
+- **Data Handling**: API responses are typed (TypeScript interfaces) and cached. Error states show fallbacks.
+
+### Features
+
+- Responsive grid layout using Tailwind CSS.
+- Loading states and error handling for API calls.
+
 ### Decisions & Tradeoffs
 
 - **Microservices Architecture**: Proper separation with API Gateway proxying vs monolithic implementation
@@ -206,7 +260,7 @@ Run the test suite for individual services:
 cd backend/services/auth-service
 npm test
 
-# API Gateway tests (when implemented)
+# API Gateway tests
 cd ../../api-gateway
 npm test
 ```
@@ -221,59 +275,5 @@ All tests use mocked dependencies for fast, reliable execution.
 
 ## Deployment
 
-The backend is deployed on Railway. Live URL: [To be added after deployment]
-
-### Deployment Steps
-
-1. Connect GitHub repo to Railway
-2. Set environment variables in Railway dashboard
-3. Deploy automatically on push to main branch
-4. Database: Use Railway PostgreSQL
-5. Redis: Use Railway Redis
-
-### Environment Variables
-
-#### API Gateway (.env)
-
-```
-NODE_ENV=development
-PORT=3000
-AUTH_SERVICE_URL=http://localhost:3001
-NOTIFICATION_SERVICE_URL=http://localhost:3003
-```
-
-#### Auth Service (.env)
-
-```
-NODE_ENV=development
-PORT=3001
-DATABASE_URL=postgresql://postgres:password@localhost:5432/bus_ticket_dev
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-GOOGLE_CLIENT_ID=your-google-client-id
-NOTIFICATION_SERVICE_URL=http://localhost:3003
-```
-
-#### Notification Service (.env)
-
-```
-NODE_ENV=development
-PORT=3003
-SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@quad-n.me
-FRONTEND_URL=http://localhost:5173
-```
-
-#### Docker Environment Variables
-
-For Docker Compose deployment, set these in your shell or create a `.env` file in the backend directory:
-
-```
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-GOOGLE_CLIENT_ID=your-google-client-id
-SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@quad-n.me
-FRONTEND_URL=http://localhost:5173
-```
+- The frontend is deployed on Vercel. Live URL: https://bus-ticket-booking-system-neon.vercel.app
+- The backend is deployed on Digital Ocean. Live URL: https://api.quad-n.me
