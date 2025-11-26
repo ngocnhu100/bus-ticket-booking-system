@@ -91,7 +91,7 @@ describe('Authorization Middleware', () => {
       .expect(401);
 
     expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe('AUTH_001');
+    expect(response.body.error.code).toBe('AUTH_002'); // Changed from AUTH_001 since refresh endpoint no longer uses authenticate middleware
   });
 
   it('should deny access with invalid token', async () => {

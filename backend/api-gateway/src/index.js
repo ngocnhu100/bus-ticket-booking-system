@@ -3,10 +3,9 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const axios = require('axios');
-const { authenticate, authorize } = require('./middlewares/auth');
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+const { authenticate, authorize } = require('./authMiddleware.js');
+// Always load .env file for development and Docker environments
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -534,9 +533,10 @@ app.get('/dashboard/admin/recent-bookings', authenticate, authorize(['admin']), 
   }
 });
 
-// Error handling
+// Error handling - only handle actual errors
 app.use((err, req, res, next) => {
-  console.error('⚠️', err.stack);
+  if (!err || typeof err !== 'object' || (!err.message && !err.stack)) return next();
+  console.error('⚠️', err.stack || err);
   res.status(500).json({
     success: false,
     error: { code: 'SYS_001', message: 'Internal server error' },

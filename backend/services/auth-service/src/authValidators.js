@@ -3,7 +3,7 @@ const Joi = require('joi');
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   phone: Joi.string()
-    .pattern(/^(\+84|84|0)[35789][0-9]{8}$/)
+    .pattern(/^(\+84|84|0)[0-9]{8,10}$/)
     .required(), // Vietnamese phone
   password: Joi.string()
     .min(8)

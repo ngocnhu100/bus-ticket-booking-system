@@ -2,9 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
-}
+// Always load .env file for development and Docker environments
+require('dotenv').config();
 
 const authController = require('./authController');
 const { authenticate } = require('./authMiddleware');
@@ -33,8 +32,7 @@ app.get('/health', (req, res) => {
 app.post('/register', authController.register);
 app.post('/login', authController.login);
 app.post('/oauth/google', authController.googleAuth);
-app.post('/refresh', authenticate, authController.refresh);
-app.post('/logout', authenticate, authController.logout);
+app.post('/refresh', authController.refresh);
 app.post('/verify', authController.verifyToken);
 app.get('/verify-email', authController.verifyEmail);
 app.post('/resend-verification', authController.resendVerificationEmail);
@@ -42,10 +40,11 @@ app.post('/forgot-password', authController.forgotPassword);
 app.post('/reset-password', authController.resetPassword);
 app.post('/request-otp', authController.requestOTP);
 app.post('/verify-otp', authController.verifyOTP);
+app.post('/logout', authenticate, authController.logout);
 app.post('/change-password', authenticate, authController.changePassword);
 
 // Error handling
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.error('⚠️', err.stack);
   res.status(500).json({
     success: false,

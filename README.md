@@ -1,10 +1,9 @@
-# Bus Ticket Booking System
-
 ## Overview
 
 This project is a bus ticket booking system built as Assignment 1 for a course, focusing on secure authentication, role-based authorization, and dashboard features. It uses a microservices architecture to handle user management, notifications, and API routing. The backend is implemented with Node.js/Express, while the frontend uses Vite/React with Tanstack Query for state management.
 
 Key features include:
+
 - User registration and login (email/password, Google OAuth)
 - Role-based access (passenger and admin)
 - Email verification and password reset via SendGrid
@@ -14,6 +13,7 @@ Key features include:
 ## Architecture
 
 The system follows a microservices pattern:
+
 - **API Gateway** (Port 3000): Proxies requests to services and handles dashboard endpoints.
 - **Auth Service** (Port 3001): Manages authentication, JWT tokens, and user data.
 - **Notification Service** (Port 3003): Sends emails for verification and resets.
@@ -54,6 +54,7 @@ frontend/
 ### Installation
 
 1. Clone the repository:
+
    ```
    git clone <repository-url>
    cd bus-ticket-booking-system
@@ -74,9 +75,11 @@ frontend/
 1. Create a `.env` file in `backend/` with required variables (see Environment Variables section).
 
 2. Start services:
+
    ```
    docker-compose up -d
    ```
+
    - This starts PostgreSQL, Redis, API Gateway, Auth Service, and Notification Service.
    - Access API at `http://localhost:3000`
 
@@ -94,6 +97,7 @@ frontend/
 2. Set environment variables in `.env` files for each backend service.
 
 3. Start backend services:
+
    - API Gateway: `cd backend/api-gateway && npm start`
    - Auth Service: `cd backend/auth-service && npm start`
    - Notification Service: `cd backend/notification-service && npm start`
@@ -103,6 +107,7 @@ frontend/
 ### Build for Production
 
 1. Backend: Each service can be built individually (though Express doesn't require build; use PM2 or similar for production).
+
    ```
    # Example for API Gateway
    cd backend/api-gateway
@@ -152,7 +157,7 @@ frontend/
 
 ### External Services
 
-- **Google OAuth**: 
+- **Google OAuth**:
   - Create a Google Cloud project → Enable Google+ API → Create OAuth 2.0 Client ID (web app type).
   - Set `Authorized redirect URIs`: `http://localhost:5173/auth/google/callback`.
   - Add `GOOGLE_CLIENT_ID` to Auth Service `.env`.
@@ -172,3 +177,4 @@ No other externals required for core functionality.
 - **No Additional Packages**: Relied on built-in libs where possible (e.g., no extra ORM like Prisma; raw SQL in repositories). Tradeoff: More code, but lightweight.
 - **Error Handling**: Custom error codes (e.g., AUTH_001). Tradeoff: Verbose logs, but aids debugging.
 - **Testing/Deployment**: Focused on local Docker for dev; Railway for prod. Tradeoff: Easy setup, but requires env vars management.
+  > > > > > > > origin/main
