@@ -16,13 +16,16 @@ if (process.env.DATABASE_URL) {
 } else {
   console.log('🔌 Using individual env vars');
   // Use individual environment variables (for development)
+  const isNeonConnection = process.env.DB_HOST && process.env.DB_HOST.includes('neon.tech');
+  const sslConfig = isNeonConnection ? { rejectUnauthorized: false } : (process.env.NODE_ENV === 'production');
+  
   pool = new Pool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    ssl: process.env.NODE_ENV === 'production', // Only require SSL in production
+    ssl: sslConfig,
     min: 1,
     max: parseInt(process.env.DB_POOL_MAX) || 10,
     connectionTimeoutMillis: 10000, // 10 seconds
