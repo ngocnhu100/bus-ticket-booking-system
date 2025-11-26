@@ -369,7 +369,7 @@ describe('Login Component', () => {
         })
       })
 
-      // Verify AuthContext login was called
+      // Verify context login was called with auth data
       await waitFor(() => {
         expect(mockAuthLogin).toHaveBeenCalledWith(mockAuthData)
       })

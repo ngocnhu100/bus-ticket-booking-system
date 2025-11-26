@@ -109,10 +109,24 @@ frontend/
 
 To run tests for the backend services, ensure the required services (PostgreSQL, Redis) are running, either via Docker Compose or manually.
 
+**Backend Tests:**
+
 - API Gateway: `cd backend/api-gateway && npm test`
 - Auth Service: `cd backend/services/auth-service && npm test`
 
-For frontend tests: `cd frontend && npm test`
+**Frontend Tests:**
+
+- All tests: `cd frontend && npm test`
+- With coverage: `cd frontend && npm run test:coverage`
+- With UI: `cd frontend && npm run test:ui`
+
+**Frontend Test Coverage (35/35 passing):**
+
+- Login.test.jsx (17 tests): Rendering, validation, login flow, Google OAuth, error handling, navigation
+- Register.test.jsx (18 tests): Rendering, validation, registration flow, Google OAuth, error handling, navigation
+- Tools: Vitest, React Testing Library, jsdom
+- All external dependencies mocked (no backend/Google SDK required)
+- Execution time: ~15s
 
 ### Build for Production
 
