@@ -88,6 +88,7 @@ frontend/
    cd frontend
    npm run dev
    ```
+
    - Access app at `http://localhost:5173`
 
 #### Manual Start (Without Docker)
@@ -97,12 +98,20 @@ frontend/
 2. Set environment variables in `.env` files for each backend service.
 
 3. Start backend services:
-
    - API Gateway: `cd backend/api-gateway && npm start`
    - Auth Service: `cd backend/auth-service && npm start`
    - Notification Service: `cd backend/notification-service && npm start`
 
 4. Start frontend: `cd frontend && npm run dev`
+
+### Running Tests
+
+To run tests for the backend services, ensure the required services (PostgreSQL, Redis) are running, either via Docker Compose or manually.
+
+- API Gateway: `cd backend/api-gateway && npm test`
+- Auth Service: `cd backend/services/auth-service && npm test`
+
+For frontend tests: `cd frontend && npm test`
 
 ### Build for Production
 
@@ -119,6 +128,7 @@ frontend/
    cd frontend
    npm run build
    ```
+
    - Output in `dist/` – serve with Nginx or similar.
 
 ## Authentication and Authorization Design
@@ -176,5 +186,4 @@ No other externals required for core functionality.
 - **Protected Routes**: Client-side checks (role in context) + server-side middleware. Tradeoff: Client can be bypassed, but server enforces security.
 - **No Additional Packages**: Relied on built-in libs where possible (e.g., no extra ORM like Prisma; raw SQL in repositories). Tradeoff: More code, but lightweight.
 - **Error Handling**: Custom error codes (e.g., AUTH_001). Tradeoff: Verbose logs, but aids debugging.
-- **Testing/Deployment**: Focused on local Docker for dev; Railway for prod. Tradeoff: Easy setup, but requires env vars management.
-  > > > > > > > origin/main
+- **Testing/Deployment**: Leverages Docker Compose for efficient local development setups and DigitalOcean for production deployment. This strategy offers quick environment initialization but demands diligent handling of environment variables to prevent configuration discrepancies.

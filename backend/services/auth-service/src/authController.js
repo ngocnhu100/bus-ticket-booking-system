@@ -240,11 +240,10 @@ class AuthController {
           await userRepository.updateGoogleId(user.user_id, googleId);
         } else {
           // Create new user
-          const passwordHash = await bcrypt.hash(Math.random().toString(36), 12); // Random password
           user = await userRepository.create({
             email,
             phone: null,
-            passwordHash,
+            passwordHash: null, // No password for Google OAuth users
             fullName: name,
             role: 'passenger',
             emailVerified: email_verified
@@ -495,6 +494,16 @@ class AuthController {
         });
       }
 
+      // Check if user has a password (not OAuth-only user)
+      if (!user.password_hash) {
+        // Don't send reset email for users without passwords
+        return res.json({
+          success: true,
+          message: 'If the email exists, a password reset link has been sent.',
+          timestamp: new Date().toISOString()
+        });
+      }
+
       // Generate password reset token
       const resetToken = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
@@ -547,6 +556,15 @@ class AuthController {
         return res.status(400).json({
           success: false,
           error: { code: 'AUTH_006', message: 'Invalid or expired reset token' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Check if user has a password
+      if (!user.password_hash) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'AUTH_011', message: 'Password reset not available for this account' },
           timestamp: new Date().toISOString()
         });
       }
