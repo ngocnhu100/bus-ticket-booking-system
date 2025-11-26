@@ -15,7 +15,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "upgrade-insecure-requests"
+          "value": "connect-src 'self' http://209.97.174.250:3000 https://209.97.174.250:3000 wss: data: blob:"
         }
       ]
     }
