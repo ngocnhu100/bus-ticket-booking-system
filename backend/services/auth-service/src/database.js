@@ -34,11 +34,9 @@ if (process.env.DATABASE_URL) {
 }
 
 // Add error handling for the pool
-pool.on('error', (err, client) => {
+pool.on('error', (err) => {
   console.error('❌ Unexpected error on idle database client:', err.message);
-  if (client) {
-    client.release(true); // Destroy the client
-  }
+  // Note: Do not call client.release() here, as the pool handles it automatically
 });
 
 pool.on('connect', () => {
