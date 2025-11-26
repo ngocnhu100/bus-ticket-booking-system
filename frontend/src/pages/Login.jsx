@@ -75,14 +75,12 @@ export default function Login() {
     try {
       const idToken = await requestGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
-
-      if (authData) {
-        storeTokens(authData)
-        setStatus({
-          type: 'success',
-          message: 'Google sign-in successful. Redirecting...',
-        })
-      }
+      authLogin(authData) // Dùng context để lưu và redirect dựa trên role
+      storeTokens(authData ?? {})
+      setStatus({
+        type: 'success',
+        message: 'Google sign-in successful. Redirecting...',
+      })
     } catch (error) {
       setStatus({
         type: 'error',

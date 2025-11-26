@@ -4,15 +4,23 @@
     "lint-staged": "^16.2.7"
   },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint:frontend": "cd frontend && npm run lint",
+    "format:frontend": "cd frontend && npm run format",
+    "lint:backend": "cd backend && npm run lint",
+    "format:backend": "cd backend && npm run format"
   },
   "lint-staged": {
-  "*.{js,jsx,ts,tsx}": [
-    "eslint --fix",
-    "prettier --write"
-  ],
-  "*.{json,md,css}": [
-    "prettier --write"
-  ]
-}
+    "frontend/src/**/*.{js,jsx,ts,tsx}": [
+      "npm run lint:frontend",
+      "npm run format:frontend"
+    ],
+    "backend/src/**/*.{js,ts}": [
+      "npm run lint:backend",
+      "npm run format:backend"
+    ],
+    "*.{json,md,css,yml,yaml}": [
+      "npx prettier --write"
+    ]
+  }
 }

@@ -83,7 +83,7 @@ const exchangeCodeForIdToken = async (code: string) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
     })
-  } catch (networkError) {
+  } catch {
     throw new Error('Unable to reach Google token endpoint. Please try again.')
   }
 
@@ -114,8 +114,8 @@ export async function requestGoogleIdToken() {
 
   try {
     window.sessionStorage?.setItem(STATE_KEY, state)
-  } catch (_error) {
-    // Ignore sessionStorage failures (private mode) but continue.
+  } catch {
+    // _error không còn được dùng → bỏ tên biến
   }
 
   const popup = window.open(authUrl, 'google-oauth', POPUP_FEATURES)
@@ -137,8 +137,8 @@ export async function requestGoogleIdToken() {
       window.clearInterval(closeWatcher)
       try {
         window.sessionStorage?.removeItem(STATE_KEY)
-      } catch (_error) {
-        // ignore
+      } catch {
+        // _error không còn được dùng → bỏ tên biến
       }
       if (!popup.closed) {
         popup.close()

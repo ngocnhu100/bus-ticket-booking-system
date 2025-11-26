@@ -2,278 +2,173 @@
 
 ## Overview
 
-This is Assignment 1 for the course, building the foundational authentication, authorization, and dashboard components for a bus ticket booking system. The project demonstrates secure auth flows, role-based access, and data APIs for a dashboard.
+This project is a bus ticket booking system built as Assignment 1 for a course, focusing on secure authentication, role-based authorization, and dashboard features. It uses a microservices architecture to handle user management, notifications, and API routing. The backend is implemented with Node.js/Express, while the frontend uses Vite/React with Tanstack Query for state management.
+
+Key features include:
+- User registration and login (email/password, Google OAuth)
+- Role-based access (passenger and admin)
+- Email verification and password reset via SendGrid
+- Dashboards for passengers (trip history, profile, payments, notifications) and admins (stats, bookings)
+- Protected routes and personalized data display
 
 ## Architecture
 
-The system is built using a **microservices architecture** with the following services:
+The system follows a microservices pattern:
+- **API Gateway** (Port 3000): Proxies requests to services and handles dashboard endpoints.
+- **Auth Service** (Port 3001): Manages authentication, JWT tokens, and user data.
+- **Notification Service** (Port 3003): Sends emails for verification and resets.
+- **PostgreSQL** (Port 5432): Stores user and business data.
+- **Redis** (Port 6379): Caches refresh tokens and sessions.
 
-- **API Gateway** (Port 3000): Entry point for all client requests, routes to appropriate services
-- **Auth Service** (Port 3001): Handles user authentication, authorization, and user management
-- **Notification Service** (Port 3003): Manages email notifications (verification, password reset)
-- **PostgreSQL** (Port 5432): Primary database for user data and business entities
-- **Redis** (Port 6379): Cache for JWT refresh tokens and session management
-
-### Architecture
+Frontend routes are protected using React Context for auth state and React Router for navigation.
 
 ```
 backend/
-├── app.js                    # API Gateway (proxy only)
-├── routes/
-│   ├── authRoutes.js        # Proxies to auth-service:3001
-│   └── dashboardRoutes.js   # Local dashboard
-└── services/                # Microservices
-    ├── auth-service/        # Auth business logic
-    └── notification-service/
+├── api-gateway/             # Entry point and proxy
+├── auth-service/            # Auth logic
+├── notification-service/    # Email handling
+frontend/
+├── src/api/                 # API clients (auth.js)
+├── src/context/             # AuthContext.tsx
+├── src/pages/               # Login, dashboards, etc.
+├── src/components/          # Layouts, protected routes
 ```
-
-## Features
-
-- **Authentication**: Email/password signup/login, Google OAuth integration
-- **Authorization**: Role-based access (passenger, admin)
-- **Email Verification**: SendGrid integration for email verification and password reset
-- **Dashboard**: Data endpoints for summary, activity, and stats
-- **API**: RESTful endpoints following the provided specification
 
 ## Tech Stack
 
-- **Backend**: Node.js, Express.js, PostgreSQL, Redis
-- **Auth**: JWT (Access + Refresh tokens)
-- **Email**: SendGrid for notifications
+- **Backend**: Node.js, Express.js, PostgreSQL, Redis, JWT, bcrypt, SendGrid
+- **Frontend**: Vite/React, React Router, Tanstack Query, Shadcn/UI, Tailwind CSS
 - **Testing**: Jest, Supertest
-- **Containerization**: Docker & Docker Compose for local development
+- **Containerization**: Docker & Docker Compose
 
-## Local Development
+## How to Run the App Locally
 
 ### Prerequisites
 
 - Node.js 18+
 - PostgreSQL 13+
-- Redis
-- Docker & Docker Compose (optional, for containerized development)
+- Redis 6+
+- Docker & Docker Compose (recommended for easy setup)
+- Git
 
-### Setup
-
-#### Option 1: Docker Compose (Recommended)
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/ngocnhu100/bus-ticket-booking-system.git
-   cd bus-ticket-booking-system/backend
-   ```
-
-2. Set up environment variables:
-
-   - Copy `.env` and update values (DB credentials, JWT secrets, Google Client ID, SendGrid API key)
-
-3. Start all services with Docker Compose:
-
-   ```bash
-   docker-compose up --build
-   ```
-
-4. The services will be available at:
-   - API Gateway: http://localhost:3000
-   - Auth Service: http://localhost:3001
-   - Notification Service: http://localhost:3003
-   - PostgreSQL: localhost:5432
-   - Redis: localhost:6379
-
-#### Option 2: Manual Setup
+### Installation
 
 1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/ngocnhu100/bus-ticket-booking-system.git
+   ```
+   git clone <repository-url>
    cd bus-ticket-booking-system
    ```
 
-2. Install dependencies for all services:
-
-   ```bash
-   # API Gateway (main backend)
+2. Install backend dependencies (for all services):
+   ```
    cd backend
    npm install
-
-   # Auth Service
-   cd services/auth-service
-   npm install
-
-   # Notification Service
-   cd ../notification-service
+   cd ../frontend
    npm install
    ```
 
-3. Set up environment variables:
+### Development Start
 
-   - Copy `.env` files to each service directory and update values
+#### Using Docker Compose (Recommended for Full Stack)
 
-4. Set up database:
+1. Create a `.env` file in `backend/` with required variables (see Environment Variables section).
 
-   - Create PostgreSQL database: `bus_ticket_dev`
-   - Run migrations from `backend/sql/` directory
+2. Start services:
+   ```
+   docker-compose up -d
+   ```
+   - This starts PostgreSQL, Redis, API Gateway, Auth Service, and Notification Service.
+   - Access API at `http://localhost:3000`
 
-5. Start services:
+3. Start frontend:
+   ```
+   cd frontend
+   npm run dev
+   ```
+   - Access app at `http://localhost:5173`
 
-   - **PostgreSQL**: Start your PostgreSQL server
-   - **Redis**: Run the startup script from backend directory:
+#### Manual Start (Without Docker)
 
-     ```bash
-     # Windows
-     .\scripts\start-redis.bat
+1. Start PostgreSQL and Redis locally (or use cloud instances).
 
-     # Linux/Mac
-     ./scripts/start-redis.sh
-     ```
+2. Set environment variables in `.env` files for each backend service.
 
-   - **API Gateway**: `cd backend && npm run dev`
-   - **Auth Service**: `cd backend/services/auth-service && npm run dev`
-   - **Notification Service**: `cd backend/services/notification-service && npm run dev`
+3. Start backend services:
+   - API Gateway: `cd backend/api-gateway && npm start`
+   - Auth Service: `cd backend/auth-service && npm start`
+   - Notification Service: `cd backend/notification-service && npm start`
 
-6. Test health checks:
-   ```bash
-   curl http://localhost:3000/health  # API Gateway
-   curl http://localhost:3001/health  # Auth Service
-   curl http://localhost:3003/health  # Notification Service
+4. Start frontend: `cd frontend && npm run dev`
+
+### Build for Production
+
+1. Backend: Each service can be built individually (though Express doesn't require build; use PM2 or similar for production).
+   ```
+   # Example for API Gateway
+   cd backend/api-gateway
+   npm run build  # If using TypeScript; otherwise, skip
    ```
 
-### API Endpoints
+2. Frontend:
+   ```
+   cd frontend
+   npm run build
+   ```
+   - Output in `dist/` – serve with Nginx or similar.
 
-All API requests go through the API Gateway at `http://localhost:3000`. The gateway routes requests to the appropriate microservice.
+## Authentication and Authorization Design
 
-#### Authentication
+### Authentication
 
-All auth endpoints are proxied to the auth service:
+- **Login/Register**: Uses email/phone + password (hashed with bcrypt). Google OAuth is integrated for social login.
+- **Tokens**: JWT-based.
+  - **Access Token**: Short-lived (e.g., 15m), signed with `JWT_SECRET`, contains user claims (id, role).
+  - **Refresh Token**: Long-lived (e.g., 7d), stored in Redis for revocation, used to generate new access tokens.
+- **Storage**:
+  - Access Token: In-memory (JS variable `accessTokenInMemory` in `frontend/src/api/auth.js`) for security (avoids XSS).
+  - Refresh Token: localStorage (key: `refreshToken`) for persistence across reloads.
+  - User Info (id, name, email, role): localStorage (key: `user`) for quick access and role-based rendering.
+- **Flow**:
+  1. Login → Auth Service verifies credentials → Issues tokens + user data.
+  2. Frontend stores tokens/user via `storeTokens` and `AuthContext`.
+  3. API calls include `Authorization: Bearer <accessToken>`.
+  4. On expiration, refresh endpoint uses refresh token to get new access token.
 
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login with email/phone
-- `POST /auth/oauth/google` - Google OAuth login
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - Logout
-- `GET /auth/verify-email` - Verify email with token
-- `POST /auth/resend-verification` - Resend verification email
-- `POST /auth/forgot-password` - Request password reset
-- `POST /auth/reset-password` - Reset password with token
+### Authorization
 
-#### Dashboard
+- **Roles**: Stored in DB (`users` table, `role` column: `'passenger'` or `'admin'`). Defaults to `'passenger'`.
+- **Representation**: JWT payload includes `role`. No scopes; simple role-based checks.
+- **Backend**: Middleware (`authenticate` verifies JWT via Auth Service; `authorize(roles)` checks `req.user.role`).
+- **Frontend**: `AuthContext` holds role; Protected Routes (`PassengerRoute`, `AdminRoute`) check `user.role` and redirect if mismatch.
+- **Redirect**: Post-login, `AuthContext.login` navigates based on role (`/dashboard` for passenger, `/admin` for admin).
 
-- `GET /dashboard/summary` - Summary metrics
-- `GET /dashboard/activity` - Recent activities
-- `GET /dashboard/stats` - Statistics (role-based)
-- `GET /dashboard/admin-data` - Admin-only data
+## Backend or External Setup Required
 
-#### Service Health Checks
+### Backend Setup
 
-- `GET /health` - API Gateway health
+- **Database**: Run PostgreSQL migrations (if any) or ensure `users` table exists with columns: `user_id`, `email`, `phone`, `password_hash`, `full_name`, `role`, `email_verified`, `failed_login_attempts`, `account_locked_until`.
+- **Redis**: Required for refresh tokens; configure `REDIS_URL`.
+- **Environment Variables**: See sample in provided README. Critical: `JWT_SECRET`, `SENDGRID_API_KEY`, `GOOGLE_CLIENT_ID`.
 
-### Authentication & Authorization Design
+### External Services
 
-#### Token Handling
+- **Google OAuth**: 
+  - Create a Google Cloud project → Enable Google+ API → Create OAuth 2.0 Client ID (web app type).
+  - Set `Authorized redirect URIs`: `http://localhost:5173/auth/google/callback`.
+  - Add `GOOGLE_CLIENT_ID` to Auth Service `.env`.
+- **SendGrid**: For emails (verification, resets).
+  - Sign up for SendGrid → Get API key → Set `SENDGRID_API_KEY` and `EMAIL_FROM` in Notification Service `.env`.
+  - Verify domain/sender for production.
 
-- **Access Token**: Short-lived (15 min), used for API access
-- **Refresh Token**: Long-lived (7 days), stored in Redis for revocation
-- **Storage**: Tokens sent in Authorization header; refresh tokens server-side only
-- **Choice**: JWT over sessions for stateless, scalable auth
+No other externals required for core functionality.
 
-#### Roles & Enforcement
+## Decisions and Tradeoffs
 
-- **Roles**: 'passenger' (default), 'admin'
-- **Server-Side**: Middleware checks JWT payload for role; 403 for insufficient access
-- **Client-Side**: Frontend should use route guards and hide UI based on role (not implemented here)
-
-#### External Setup
-
-- **Google OAuth**: Obtain Client ID/Secret from Google Cloud Console, set in `.env`
-- **Database**: PostgreSQL with connection pooling
-- **Redis**: For refresh token storage
-
-### Decisions & Tradeoffs
-
-- **Microservices Architecture**: Proper separation with API Gateway proxying vs monolithic implementation
-- **JWT vs Sessions**: JWT chosen for stateless auth, but requires refresh logic for security
-- **Password Hashing**: bcrypt with salt rounds 12 for security
-- **Role-Based Auth**: Simple roles over scopes for this assignment; extensible
-- **Mock Data**: Dashboard uses mock data; replace with real DB queries later
-- **Code Organization**: Removed duplication by implementing proper service boundaries
-
-## Testing
-
-Run the test suite for individual services:
-
-```bash
-# Auth Service tests
-cd backend/services/auth-service
-npm test
-
-# API Gateway tests (when implemented)
-cd ../../api-gateway
-npm test
-```
-
-Tests cover:
-
-- Authentication endpoints (register, login, Google OAuth, refresh, logout)
-- Authorization middleware (role-based access control)
-- Dashboard data APIs (summary, activity, stats with role filtering)
-
-All tests use mocked dependencies for fast, reliable execution.
-
-## Deployment
-
-The backend is deployed on Railway. Live URL: [To be added after deployment]
-
-### Deployment Steps
-
-1. Connect GitHub repo to Railway
-2. Set environment variables in Railway dashboard
-3. Deploy automatically on push to main branch
-4. Database: Use Railway PostgreSQL
-5. Redis: Use Railway Redis
-
-### Environment Variables
-
-#### API Gateway (.env)
-
-```
-NODE_ENV=development
-PORT=3000
-AUTH_SERVICE_URL=http://localhost:3001
-NOTIFICATION_SERVICE_URL=http://localhost:3003
-```
-
-#### Auth Service (.env)
-
-```
-NODE_ENV=development
-PORT=3001
-DATABASE_URL=postgresql://postgres:password@localhost:5432/bus_ticket_dev
-REDIS_URL=redis://localhost:6379
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-GOOGLE_CLIENT_ID=your-google-client-id
-NOTIFICATION_SERVICE_URL=http://localhost:3003
-```
-
-#### Notification Service (.env)
-
-```
-NODE_ENV=development
-PORT=3003
-SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@quad-n.me
-FRONTEND_URL=http://localhost:5173
-```
-
-#### Docker Environment Variables
-
-For Docker Compose deployment, set these in your shell or create a `.env` file in the backend directory:
-
-```
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-GOOGLE_CLIENT_ID=your-google-client-id
-SENDGRID_API_KEY=your-sendgrid-api-key
-EMAIL_FROM=noreply@quad-n.me
-FRONTEND_URL=http://localhost:5173
-```
+- **Microservices Architecture**: Chosen for scalability and separation of concerns (auth vs notifications). Tradeoff: Increased complexity in local dev (multiple services) vs monolith simplicity. Mitigated by Docker Compose for easy startup.
+- **JWT for Auth**: Stateless, scalable. Access in memory for security (prevents XSS); refresh in localStorage for UX (auto-refresh on reload). Tradeoff: localStorage vulnerable to XSS if not careful, but mitigated by no sensitive data in user object.
+- **Role-Based over Scope-Based**: Simpler for assignment (passenger/admin). Easy to extend to scopes later. Tradeoff: Less granular than RBAC with permissions, but sufficient for current needs.
+- **Frontend State Management**: React Context + localStorage for auth. Tradeoff: Simpler than Redux/Zustand, but less scalable for complex state. Tanstack Query used for data fetching to avoid over-fetching.
+- **Protected Routes**: Client-side checks (role in context) + server-side middleware. Tradeoff: Client can be bypassed, but server enforces security.
+- **No Additional Packages**: Relied on built-in libs where possible (e.g., no extra ORM like Prisma; raw SQL in repositories). Tradeoff: More code, but lightweight.
+- **Error Handling**: Custom error codes (e.g., AUTH_001). Tradeoff: Verbose logs, but aids debugging.
+- **Testing/Deployment**: Focused on local Docker for dev; Railway for prod. Tradeoff: Easy setup, but requires env vars management.
