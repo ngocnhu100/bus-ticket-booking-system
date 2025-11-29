@@ -205,13 +205,13 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
                     </p>
                   </div>
                 )}
-                {trip.busType && (
+                {trip.plateNumber && (
                   <div className="p-4 bg-muted/30 rounded-lg border border-muted">
                     <h5 className="font-medium text-sm text-muted-foreground mb-1">
-                      Type
+                      Plate Number
                     </h5>
                     <p className="text-foreground font-medium">
-                      {trip.busType}
+                      {trip.plateNumber}
                     </p>
                   </div>
                 )}
@@ -262,7 +262,7 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
                 </div>
                 <div>
                   <h5 className="font-medium text-sm text-foreground">
-                    Change Policy
+                    Modification Policy
                   </h5>
                   <p className="text-sm text-muted-foreground">
                     {trip.policies.change}
@@ -276,6 +276,16 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
                     {trip.policies.luggage}
                   </p>
                 </div>
+                {trip.serviceFee && (
+                  <div>
+                    <h5 className="font-medium text-sm text-foreground">
+                      Service Fee
+                    </h5>
+                    <p className="text-sm text-muted-foreground">
+                      {trip.serviceFee.toLocaleString('vi-VN')}đ per booking
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -36,12 +36,14 @@ const mockTrips: Trip[] = [
     price: 170000,
     originalPrice: 190000,
     discount: 20000,
+    serviceFee: 10000,
     seatType: 'limousine',
     availableSeats: 9,
     totalSeats: 9,
     busModel: 'Mercedes-Benz Sprinter',
     busCapacity: 16,
     busType: 'VIP Limousine',
+    plateNumber: '51B-12345',
     amenities: [
       { id: 'wifi', name: 'WiFi' },
       { id: 'ac', name: 'Air Conditioning' },
@@ -152,6 +154,7 @@ const mockTrips: Trip[] = [
     busModel: 'Toyota Hiace',
     busCapacity: 16,
     busType: 'Premium Limousine',
+    plateNumber: '30A-67890',
     amenities: [
       { id: 'wifi', name: 'WiFi' },
       { id: 'ac', name: 'Air Conditioning' },
@@ -648,7 +651,7 @@ export function TripSearchResults() {
 
   // State for trips data
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [trips, setTrips] = useState<Trip[]>(mockTrips)
+  const [trips, _setTrips] = useState<Trip[]>(mockTrips)
 
   // TODO: Fetch trips from GET /trips/search API
   useEffect(() => {
@@ -657,7 +660,7 @@ export function TripSearchResults() {
     //   try {
     //     const response = await fetch(`/api/trips/search?origin=${from}&destination=${to}&date=${date}&passengers=${passengers}`);
     //     const data = await response.json();
-    //     setTrips(data.data); // Assuming API response structure
+    //     _setTrips(data.data); // Assuming API response structure
     //   } catch (error) {
     //     console.error('Failed to fetch trips:', error);
     //     // Fallback to mock data

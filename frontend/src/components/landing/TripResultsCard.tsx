@@ -33,12 +33,14 @@ export interface Trip {
   price: number
   originalPrice?: number
   discount?: number
+  serviceFee?: number
   seatType: 'standard' | 'limousine' | 'sleeper'
   availableSeats: number
   totalSeats: number
   busModel?: string
   busCapacity?: number
   busType?: string
+  plateNumber?: string
   amenities: Amenity[]
   isBestPrice?: boolean
   isLimitedOffer?: boolean
@@ -97,9 +99,17 @@ export function TripResultsCard({
         {/* Header with operator and price */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Ticket className="w-4 h-4 text-primary" />
-            </div>
+            {trip.operatorLogo ? (
+              <img
+                src={trip.operatorLogo}
+                alt={`${trip.operatorName} logo`}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Ticket className="w-4 h-4 text-primary" />
+              </div>
+            )}
             <div>
               <h3 className="font-semibold text-foreground text-sm md:text-base">
                 {trip.operatorName}
