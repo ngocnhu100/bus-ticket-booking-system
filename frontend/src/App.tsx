@@ -20,6 +20,7 @@ import Notifications from './pages/users/Notifications'
 import { AuthProvider } from '@/context/AuthContext'
 import { PassengerRoute, AdminRoute } from '@/components/ProtectedRoute'
 import AdminDashboard from '@/pages/admin/Dashboard'
+import Landing from './pages/Landing'
 
 const queryClient = new QueryClient()
 
@@ -52,7 +53,7 @@ const App = () => (
             <Sonner />
             <Routes>
               {/* Public routes */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
