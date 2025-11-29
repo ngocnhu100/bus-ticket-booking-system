@@ -39,6 +39,9 @@ const mockTrips: Trip[] = [
     seatType: 'limousine',
     availableSeats: 9,
     totalSeats: 9,
+    busModel: 'Mercedes-Benz Sprinter',
+    busCapacity: 16,
+    busType: 'VIP Limousine',
     amenities: [
       { id: 'wifi', name: 'WiFi' },
       { id: 'ac', name: 'Air Conditioning' },
@@ -46,6 +49,90 @@ const mockTrips: Trip[] = [
     ],
     isLimitedOffer: true,
     isBestPrice: true,
+    policies: {
+      cancellation:
+        'Free cancellation up to 2 hours before departure. 50% refund within 2 hours.',
+      refund:
+        'Full refund if cancelled 24 hours before. Partial refund for later cancellations.',
+      change:
+        'Date/time changes allowed up to 4 hours before with 10,000đ fee.',
+      luggage:
+        'Free luggage allowance: 1 suitcase (20kg) + 1 carry-on. Additional luggage 50,000đ per piece.',
+    },
+    routeDetails: {
+      stops: [
+        {
+          name: 'District 1 Office',
+          address: '123 Nguyen Trai St, District 1, Ho Chi Minh City',
+          time: '19:45',
+        },
+        {
+          name: 'Highway Rest Area',
+          address: 'Long Thanh Highway, Dong Nai Province',
+          time: '20:30',
+        },
+        {
+          name: 'Vung Tau Office',
+          address: '456 Le Hong Phong St, Vung Tau City',
+          time: '21:15',
+        },
+      ],
+      distance: '116 km',
+      duration: '2h',
+      pickupPoints: [
+        {
+          name: 'District 1 Office',
+          address: '123 Nguyen Trai St, District 1, Ho Chi Minh City',
+          time: '19:30',
+        },
+        {
+          name: 'Tan Son Nhat Airport',
+          address: 'Truong Son Road, Tan Binh District, Ho Chi Minh City',
+          time: '20:00',
+        },
+        {
+          name: 'Pham Ngu Lao Area',
+          address: 'Pham Ngu Lao Street, District 1, Ho Chi Minh City',
+          time: '19:45',
+        },
+      ],
+      dropoffPoints: [
+        {
+          name: 'Vung Tau Center',
+          address: 'Tran Phu Boulevard, Vung Tau City',
+          time: '21:30',
+        },
+        {
+          name: 'Vung Tau Office',
+          address: '456 Le Hong Phong St, Vung Tau City',
+          time: '21:30',
+        },
+        {
+          name: 'Back Beach Area',
+          address: 'Thuy Van Street, Vung Tau City',
+          time: '21:45',
+        },
+      ],
+    },
+    reviews: {
+      recent: [
+        {
+          author: 'Nguyen Van A',
+          rating: 5,
+          comment: 'Very comfortable limousine, driver was professional.',
+        },
+        {
+          author: 'Tran Thi B',
+          rating: 4,
+          comment: 'Good service, but WiFi was slow.',
+        },
+      ],
+    },
+    busImages: [
+      'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+    ],
   },
   {
     id: '2',
@@ -62,9 +149,88 @@ const mockTrips: Trip[] = [
     seatType: 'limousine',
     availableSeats: 9,
     totalSeats: 9,
+    busModel: 'Toyota Hiace',
+    busCapacity: 16,
+    busType: 'Premium Limousine',
     amenities: [
       { id: 'wifi', name: 'WiFi' },
       { id: 'ac', name: 'Air Conditioning' },
+    ],
+    policies: {
+      cancellation: 'Free cancellation up to 3 hours before departure.',
+      refund:
+        'Full refund if cancelled 12 hours before. No refund within 2 hours.',
+      change: 'Changes allowed up to 6 hours before with no fee.',
+      luggage:
+        'Free luggage allowance: 15kg. Oversized luggage (over 30kg) will incur additional charges of 30,000đ per piece. Pets are not allowed.',
+    },
+    routeDetails: {
+      stops: [
+        {
+          name: 'Tan Son Nhat Airport',
+          address: 'Truong Son Road, Tan Binh District, Ho Chi Minh City',
+          time: '09:15',
+        },
+        {
+          name: 'Highway Rest Area',
+          address: 'Long Thanh Highway, Dong Nai Province',
+          time: '10:00',
+        },
+        {
+          name: 'Vung Tau Office',
+          address: '456 Le Hong Phong St, Vung Tau City',
+          time: '11:00',
+        },
+      ],
+      distance: '116 km',
+      duration: '2h30m',
+      pickupPoints: [
+        {
+          name: 'Tan Son Nhat Airport',
+          address: 'Truong Son Road, Tan Binh District, Ho Chi Minh City',
+          time: '09:00',
+        },
+        {
+          name: 'District 1 Office',
+          address: '123 Nguyen Trai St, District 1, Ho Chi Minh City',
+          time: '09:15',
+        },
+        {
+          name: 'Pham Ngu Lao Area',
+          address: 'Pham Ngu Lao Street, District 1, Ho Chi Minh City',
+          time: '09:30',
+        },
+      ],
+      dropoffPoints: [
+        {
+          name: 'Vung Tau Office',
+          address: '456 Le Hong Phong St, Vung Tau City',
+          time: '11:30',
+        },
+        {
+          name: 'Vung Tau Center',
+          address: 'Tran Phu Boulevard, Vung Tau City',
+          time: '11:30',
+        },
+        {
+          name: 'Back Beach Area',
+          address: 'Thuy Van Street, Vung Tau City',
+          time: '11:45',
+        },
+      ],
+    },
+    reviews: {
+      recent: [
+        {
+          author: 'Le Thi C',
+          rating: 5,
+          comment: 'Excellent service from airport pickup.',
+        },
+      ],
+    },
+    busImages: [
+      'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
+      'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop',
     ],
   },
   {

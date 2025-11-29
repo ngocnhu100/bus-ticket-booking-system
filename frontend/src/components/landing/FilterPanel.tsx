@@ -41,12 +41,14 @@ interface CollapsibleSectionProps {
   title: string
   children: React.ReactNode
   defaultOpen?: boolean
+  activeCount?: number
 }
 
 function CollapsibleSection({
   title,
   children,
   defaultOpen = true,
+  activeCount,
 }: CollapsibleSectionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
 
@@ -56,7 +58,14 @@ function CollapsibleSection({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-3 px-4 hover:bg-accent/50 transition-colors"
       >
-        <h3 className="font-semibold text-foreground text-sm">{title}</h3>
+        <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+          {title}
+          {activeCount !== undefined && activeCount > 0 && (
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+              {activeCount}
+            </span>
+          )}
+        </h3>
         <ChevronDown
           className={cn(
             'w-4 h-4 text-muted-foreground transition-transform',
@@ -195,6 +204,26 @@ export function FilterPanel({
     filters.minRating > 0 ||
     filters.minSeatsAvailable > 0
 
+  // Count active filters in each section
+  const getDepartureTimeCount = () => filters.departureTimeSlots.length
+  const getPriceRangeCount = () =>
+    filters.priceRange[0] > 0 || filters.priceRange[1] < 5000000 ? 1 : 0
+  const getOperatorsCount = () => filters.operators.length
+  const getBusTypesCount = () => filters.busTypes.length
+  const getAmenitiesCount = () => filters.amenities.length
+  const getSeatAvailabilityCount = () => (filters.minSeatsAvailable > 0 ? 1 : 0)
+  const getSeatLocationCount = () => filters.seatLocations.length
+
+  // Calculate total active filters
+  const getTotalActiveFilters = () =>
+    getDepartureTimeCount() +
+    getPriceRangeCount() +
+    getOperatorsCount() +
+    getBusTypesCount() +
+    getAmenitiesCount() +
+    getSeatAvailabilityCount() +
+    getSeatLocationCount()
+
   // Calculate rating counts
   const getRatingCount = (minRating: number) => {
     return availableOperators.filter((operatorName) => {
@@ -207,7 +236,14 @@ export function FilterPanel({
     <Card className="p-0 h-fit sticky top-20 bg-card border-border">
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div>
-          <h2 className="font-semibold text-foreground">Filters</h2>
+          <h2 className="font-semibold text-foreground flex items-center gap-2">
+            Filters
+            {getTotalActiveFilters() > 0 && (
+              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                {getTotalActiveFilters()}
+              </span>
+            )}
+          </h2>
           <p className="text-sm text-muted-foreground">
             {resultsCount} result{resultsCount !== 1 ? 's' : ''}
           </p>
@@ -227,7 +263,11 @@ export function FilterPanel({
 
       <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
         {/* Departure Time Slots */}
-        <CollapsibleSection title="Departure Time" defaultOpen>
+        <CollapsibleSection
+          title="Departure Time"
+          defaultOpen
+          activeCount={getDepartureTimeCount()}
+        >
           <div className="space-y-2">
             {timeSlots.map((slot) => (
               <Checkbox
@@ -247,7 +287,10 @@ export function FilterPanel({
         </CollapsibleSection>
 
         {/* Price Range */}
-        <CollapsibleSection title="Price Range">
+        <CollapsibleSection
+          title="Price Range"
+          activeCount={getPriceRangeCount()}
+        >
           <RangeSlider
             min={0}
             max={5000000}
@@ -260,7 +303,11 @@ export function FilterPanel({
 
         {/* Operators */}
         {availableOperators.length > 0 && (
-          <CollapsibleSection title="Operators" defaultOpen={false}>
+          <CollapsibleSection
+            title="Operators"
+            defaultOpen={false}
+            activeCount={getOperatorsCount()}
+          >
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {availableOperators.map((operator) => (
                 <Checkbox
@@ -281,7 +328,7 @@ export function FilterPanel({
         )}
 
         {/* Bus Types */}
-        <CollapsibleSection title="Bus Type">
+        <CollapsibleSection title="Bus Type" activeCount={getBusTypesCount()}>
           <div className="space-y-2">
             {busTypes.map((type) => (
               <Checkbox
@@ -301,7 +348,11 @@ export function FilterPanel({
         </CollapsibleSection>
 
         {/* Amenities */}
-        <CollapsibleSection title="Amenities" defaultOpen={false}>
+        <CollapsibleSection
+          title="Amenities"
+          defaultOpen={false}
+          activeCount={getAmenitiesCount()}
+        >
           <div className="space-y-2">
             {amenities.map((amenity) => (
               <Checkbox
@@ -321,7 +372,11 @@ export function FilterPanel({
         </CollapsibleSection>
 
         {/* Seat Availability */}
-        <CollapsibleSection title="Seat Availability" defaultOpen={false}>
+        <CollapsibleSection
+          title="Seat Availability"
+          defaultOpen={false}
+          activeCount={getSeatAvailabilityCount()}
+        >
           <div className="space-y-2">
             {seatAvailabilityOptions.map((option) => (
               <Checkbox
@@ -341,7 +396,11 @@ export function FilterPanel({
         </CollapsibleSection>
 
         {/* Seat Location */}
-        <CollapsibleSection title="Seat Position" defaultOpen={false}>
+        <CollapsibleSection
+          title="Seat Position"
+          defaultOpen={false}
+          activeCount={getSeatLocationCount()}
+        >
           <div className="space-y-2">
             {seatLocations.map((location) => (
               <Checkbox

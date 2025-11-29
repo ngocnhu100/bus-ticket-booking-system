@@ -1,7 +1,16 @@
-import { Star, Wifi, AirVent, Usb, Armchair, Ticket, Bus } from 'lucide-react'
+import {
+  Star,
+  Armchair,
+  Ticket,
+  Bus,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 import { MdOutlineTripOrigin, MdOutlineLocationOn } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useState } from 'react'
+import { TripDetails } from './TripDetails'
 
 interface Amenity {
   id: string
@@ -27,9 +36,29 @@ export interface Trip {
   seatType: 'standard' | 'limousine' | 'sleeper'
   availableSeats: number
   totalSeats: number
+  busModel?: string
+  busCapacity?: number
+  busType?: string
   amenities: Amenity[]
   isBestPrice?: boolean
   isLimitedOffer?: boolean
+  policies?: {
+    cancellation: string
+    refund: string
+    change: string
+    luggage: string
+  }
+  routeDetails?: {
+    stops: { name: string; address: string; time?: string }[]
+    pickupPoints?: { name: string; address: string; time?: string }[]
+    dropoffPoints?: { name: string; address: string; time?: string }[]
+    distance: string
+    duration: string
+  }
+  reviews?: {
+    recent: { author: string; rating: number; comment: string }[]
+  }
+  busImages?: string[]
 }
 
 interface TripResultsCardProps {
@@ -43,6 +72,8 @@ export function TripResultsCard({
   onSelectTrip,
   isSelected = false,
 }: TripResultsCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
   const discountPercentage = trip.discount
     ? Math.round((trip.discount / trip.originalPrice!) * 100)
     : 0
@@ -51,16 +82,6 @@ export function TripResultsCard({
     standard: 'Standard Seat',
     limousine: 'Limousine 9 seats',
     sleeper: 'Sleeper Bus',
-  }
-
-  const getAmenityIcon = (amenityId: string) => {
-    const amenityMap: Record<string, React.ReactNode> = {
-      wifi: <Wifi className="w-4 h-4" />,
-      ac: <AirVent className="w-4 h-4" />,
-      usb: <Usb className="w-4 h-4" />,
-      toilet: <span className="text-sm font-semibold">WC</span>,
-    }
-    return amenityMap[amenityId] || null
   }
 
   return (
@@ -175,33 +196,37 @@ export function TripResultsCard({
           </div>
         </div>
 
-        {/* Amenities */}
-        {trip.amenities && trip.amenities.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {trip.amenities.map((amenity) => (
-              <div
-                key={amenity.id}
-                className="flex items-center gap-1 px-3 py-1 bg-secondary/20 rounded-full text-sm"
-              >
-                {getAmenityIcon(amenity.id)}
-                <span>{amenity.name}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Action buttons */}
         <div className="flex gap-3 pt-2">
-          <Button variant="outline" className="flex-1">
-            View Details
-          </Button>
+          <button
+            className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors text-sm font-medium"
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsExpanded(!isExpanded)
+            }}
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="w-4 h-4" />
+                Hide Details
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-4 h-4" />
+                View Details
+              </>
+            )}
+          </button>
           <Button
             variant={isSelected ? 'outline' : 'default'}
             className="flex-1"
           >
-            Select Trip
+            Select Seats
           </Button>
         </div>
+
+        {/* Expanded Details */}
+        {isExpanded && <TripDetails trip={trip} onSelectTrip={onSelectTrip} />}
       </div>
     </Card>
   )
