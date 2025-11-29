@@ -1,14 +1,5 @@
-import {
-  Star,
-  Wifi,
-  AirVent,
-  Usb,
-  Armchair,
-  Ticket,
-  Bus,
-  MapPin,
-} from 'lucide-react'
-import { FaDotCircle } from 'react-icons/fa'
+import { Star, Wifi, AirVent, Usb, Armchair, Ticket, Bus } from 'lucide-react'
+import { MdOutlineTripOrigin, MdOutlineLocationOn } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
@@ -43,10 +34,15 @@ export interface Trip {
 
 interface TripResultsCardProps {
   trip: Trip
-  onSelectTrip: (tripId: string) => void
+  onSelectTrip?: (tripId: string) => void
+  isSelected?: boolean
 }
 
-export function TripResultsCard({ trip, onSelectTrip }: TripResultsCardProps) {
+export function TripResultsCard({
+  trip,
+  onSelectTrip,
+  isSelected = false,
+}: TripResultsCardProps) {
   const discountPercentage = trip.discount
     ? Math.round((trip.discount / trip.originalPrice!) * 100)
     : 0
@@ -68,7 +64,14 @@ export function TripResultsCard({ trip, onSelectTrip }: TripResultsCardProps) {
   }
 
   return (
-    <Card className="p-4 md:p-6 hover:shadow-lg transition-all duration-300 border-2 border-border">
+    <Card
+      className={`p-4 md:p-6 hover:shadow-lg active:shadow-xl transition-all duration-300 border-2 cursor-pointer ${
+        isSelected
+          ? 'shadow-2xl border-primary ring-4 ring-primary/50 scale-[1.02]'
+          : 'border-border'
+      }`}
+      onClick={() => onSelectTrip?.(trip.id)}
+    >
       <div className="space-y-4">
         {/* Header with operator and price */}
         <div className="flex items-start justify-between gap-4">
@@ -92,12 +95,12 @@ export function TripResultsCard({ trip, onSelectTrip }: TripResultsCardProps) {
           <div className="text-right">
             <div className="flex items-center gap-2 mb-1">
               {trip.discount && (
-                <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded">
+                <span className="px-2 py-1 bg-destructive/10 text-destructive text-xs font-semibold rounded">
                   -{discountPercentage}%
                 </span>
               )}
               {trip.isBestPrice && (
-                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">
+                <span className="px-2 py-1 bg-success/10 text-success text-xs font-semibold rounded">
                   Best Price
                 </span>
               )}
@@ -121,7 +124,7 @@ export function TripResultsCard({ trip, onSelectTrip }: TripResultsCardProps) {
                 {trip.departureTime}
               </div>
               <div className="flex items-center gap-1 mt-1">
-                <FaDotCircle className="w-3 h-3 text-primary" />
+                <MdOutlineTripOrigin className="w-3 h-3 text-primary" />
                 <span className="text-xs text-muted-foreground">
                   {trip.departureLocation}
                 </span>
@@ -146,7 +149,7 @@ export function TripResultsCard({ trip, onSelectTrip }: TripResultsCardProps) {
                 {trip.arrivalTime}
               </div>
               <div className="flex items-center gap-1 mt-1">
-                <MapPin className="w-3 h-3 text-primary" />
+                <MdOutlineLocationOn className="w-3 h-3 text-primary" />
                 <span className="text-xs text-muted-foreground">
                   {trip.arrivalLocation}
                 </span>
@@ -187,30 +190,14 @@ export function TripResultsCard({ trip, onSelectTrip }: TripResultsCardProps) {
           </div>
         )}
 
-        {/* Special offers */}
-        {trip.isLimitedOffer && (
-          <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
-            <div className="flex items-center gap-2 text-orange-800">
-              <span className="text-sm">⏰</span>
-              <span className="text-sm font-medium">
-                Limited availability! Big discount, free cancellation
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Action buttons */}
         <div className="flex gap-3 pt-2">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => onSelectTrip(trip.id)}
-          >
+          <Button variant="outline" className="flex-1">
             View Details
           </Button>
           <Button
-            className="flex-1 bg-primary hover:bg-primary/90"
-            onClick={() => onSelectTrip(trip.id)}
+            variant={isSelected ? 'outline' : 'default'}
+            className="flex-1"
           >
             Select Trip
           </Button>
