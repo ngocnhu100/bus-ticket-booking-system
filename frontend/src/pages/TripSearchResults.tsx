@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, Filter, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -646,6 +646,28 @@ export function TripSearchResults() {
   const date = searchParams.get('date') || '29-11-2025'
   const passengers = searchParams.get('passengers') || '1'
 
+  // State for trips data
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [trips, setTrips] = useState<Trip[]>(mockTrips)
+
+  // TODO: Fetch trips from GET /trips/search API
+  useEffect(() => {
+    // TODO: Implement API call to GET /trips/search
+    // const fetchTrips = async () => {
+    //   try {
+    //     const response = await fetch(`/api/trips/search?origin=${from}&destination=${to}&date=${date}&passengers=${passengers}`);
+    //     const data = await response.json();
+    //     setTrips(data.data); // Assuming API response structure
+    //   } catch (error) {
+    //     console.error('Failed to fetch trips:', error);
+    //     // Fallback to mock data
+    //     setTrips(mockTrips);
+    //   }
+    // };
+    // fetchTrips();
+    // For now, using mock data (no API call)
+  }, [from, to, date, passengers])
+
   // State management
   const [filters, setFilters] = useState<Filters>({
     departureTimeSlots: [],
@@ -667,20 +689,20 @@ export function TripSearchResults() {
   const [isLoadingMore, setIsLoadingMore] = useState(false) // Loading state for load more
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null) // Selected trip for shadow effect
 
-  // Extract available operators from mock data
+  // Extract available operators from trips data
   const availableOperators = useMemo(
-    () => Array.from(new Set(mockTrips.map((trip) => trip.operatorName))),
-    []
+    () => Array.from(new Set(trips.map((trip) => trip.operatorName))),
+    [trips]
   )
 
   // Create operator ratings mapping
   const operatorRatings = useMemo(() => {
     const ratings: Record<string, number> = {}
-    mockTrips.forEach((trip) => {
+    trips.forEach((trip) => {
       ratings[trip.operatorName] = trip.rating
     })
     return ratings
-  }, [])
+  }, [trips])
 
   // Get active filters with labels and removal functions
   const getActiveFilters = () => {
@@ -806,7 +828,7 @@ export function TripSearchResults() {
 
   // Apply filters and sorting
   const filteredAndSortedTrips = useMemo(() => {
-    let result = [...mockTrips]
+    let result = [...trips]
 
     // Apply filters
     result = result.filter((trip) => {
@@ -885,7 +907,7 @@ export function TripSearchResults() {
     })
 
     return result
-  }, [filters, sortBy])
+  }, [filters, sortBy, trips])
 
   // Pagination / Load More logic
   const totalPages = Math.ceil(filteredAndSortedTrips.length / itemsPerPage)
