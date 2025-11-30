@@ -20,6 +20,11 @@ import Notifications from './pages/users/Notifications'
 import { AuthProvider } from '@/context/AuthContext'
 import { PassengerRoute, AdminRoute } from '@/components/ProtectedRoute'
 import AdminDashboard from '@/pages/admin/Dashboard'
+import AdminTripScheduling from '@/pages/admin/AdminTripScheduling'
+import AdminRouteManagement from '@/pages/admin/AdminRouteManagement'
+import AdminBusManagement from '@/pages/admin/AdminBusManagement'
+import AdminSeatMapManagement from '@/pages/admin/AdminSeatMapManagement'
+import AdminOperatorManagement from '@/pages/admin/AdminOperatorManagement'
 import Landing from './pages/Landing'
 import TripSearchResults from './pages/TripSearchResults'
 
@@ -86,6 +91,31 @@ const App = () => (
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminDashboard />} />{' '}
                 {/* Admin Dashboard */}
+                <Route
+                  path="/admin/trips"
+                  element={<AdminTripScheduling />}
+                />{' '}
+                {/* Trip Scheduling */}
+                <Route
+                  path="/admin/routes"
+                  element={<AdminRouteManagement />}
+                />{' '}
+                {/* Route Management */}
+                <Route
+                  path="/admin/buses"
+                  element={<AdminBusManagement />}
+                />{' '}
+                {/* Bus Management */}
+                <Route
+                  path="/admin/seat-maps"
+                  element={<AdminSeatMapManagement />}
+                />{' '}
+                {/* Seat Map Management */}
+                <Route
+                  path="/admin/operators"
+                  element={<AdminOperatorManagement />}
+                />{' '}
+                {/* Operator Management */}
                 {/* Add thêm admin sub-routes nếu có, e.g. /admin/users, /admin/bookings */}
               </Route>
 
