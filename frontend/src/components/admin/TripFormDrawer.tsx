@@ -1,27 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import { ArrowRight } from 'lucide-react'
-import type { Trip, Route, Bus, TripFormData } from '../../types/trip.types'
+import type {
+  Trip,
+  RouteAdminData,
+  BusAdminData,
+  TripFormData,
+} from '../../types/trip.types'
 import { CustomDropdown } from '../ui/custom-dropdown'
-import { CustomDatePicker } from '../ui/custom-datepicker'
+
 const emptyForm: TripFormData = {
   routeId: '',
   busId: '',
-  date: new Date().toISOString().slice(0, 10),
   departureTime: '',
   arrivalTime: '',
-  basePrice: '',
-  status: 'ACTIVE',
-  isRecurring: false,
-  recurrenceType: 'NONE',
-  recurrenceDays: [],
-  recurrenceEndDate: '',
+  basePrice: 0,
+  status: 'active',
 }
 
 interface TripFormDrawerProps {
   open: boolean
   onClose: () => void
-  routes: Route[]
-  buses: Bus[]
+  routes: RouteAdminData[]
+  buses: BusAdminData[]
   initialTrip: Trip | null
   onSave: (values: TripFormData) => void
 }
@@ -41,20 +41,13 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
     if (initialTrip) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
-        id: initialTrip.tripId,
+        tripId: initialTrip.tripId,
         routeId: initialTrip.route.routeId,
         busId: initialTrip.bus.busId,
-        date: initialTrip.schedule.departureTime.split('T')[0],
-        departureTime: initialTrip.schedule.departureTime
-          .split('T')[1]
-          .slice(0, 5),
-        arrivalTime: initialTrip.schedule.arrivalTime.split('T')[1].slice(0, 5),
-        basePrice: initialTrip.pricing.basePrice.toString(),
-        status: initialTrip.status === 'active' ? 'ACTIVE' : 'INACTIVE',
-        isRecurring: false,
-        recurrenceType: 'NONE',
-        recurrenceDays: [],
-        recurrenceEndDate: '',
+        departureTime: initialTrip.schedule.departureTime,
+        arrivalTime: initialTrip.schedule.arrivalTime,
+        basePrice: initialTrip.pricing.basePrice,
+        status: initialTrip.status,
       })
     } else {
       setForm(emptyForm)
@@ -142,25 +135,25 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
               </label>
               <CustomDropdown
                 options={routes.map((r) => ({
-                  id: r.id,
+                  id: r.routeId || '',
                   label: (
                     <div className="flex items-center gap-2">
-                      <span>{r.from}</span>
+                      <span>{r.origin}</span>
                       <ArrowRight
                         className="w-3 h-3"
                         style={{ color: 'var(--primary)' }}
                       />
-                      <span>{r.to}</span>
+                      <span>{r.destination}</span>
                     </div>
                   ),
                   displayLabel: (
                     <div className="flex items-center gap-2">
-                      <span>{r.from}</span>
+                      <span>{r.origin}</span>
                       <ArrowRight
                         className="w-3 h-3"
                         style={{ color: 'var(--primary)' }}
                       />
-                      <span>{r.to}</span>
+                      <span>{r.destination}</span>
                     </div>
                   ),
                 }))}
@@ -179,7 +172,7 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
               </label>
               <CustomDropdown
                 options={buses.map((b) => ({
-                  id: b.id,
+                  id: b.busId || '',
                   label: `${b.name} · ${b.type} · ${b.capacity} seats`,
                   displayLabel: `${b.name} · ${b.type} · ${b.capacity} seats`,
                 }))}
@@ -198,58 +191,27 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
             >
               Schedule
             </h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-3">
-                <label
-                  className="block text-xs font-medium"
-                  style={{ color: 'var(--foreground)' }}
-                >
-                  Date *
-                </label>
-                <CustomDatePicker
-                  selected={form.date ? new Date(form.date) : null}
-                  onChange={(date) =>
-                    handleChange(
-                      'date',
-                      date ? date.toISOString().slice(0, 10) : ''
-                    )
-                  }
-                  placeholderText="Select date"
-                  required
-                />
-              </div>
-
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label
                   className="block text-xs font-medium"
                   style={{ color: 'var(--foreground)' }}
                 >
-                  Departure *
+                  Departure Time *
                 </label>
                 <input
-                  type="time"
+                  type="datetime-local"
                   required
                   className="mt-1 w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
                   style={{
                     border: '1px solid var(--border)',
                     backgroundColor: 'var(--card)',
                     color: 'var(--foreground)',
-                    boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                   }}
-                  value={form.departureTime}
+                  value={form.departureTime.slice(0, 16)}
                   onChange={(e) =>
-                    handleChange('departureTime', e.target.value)
+                    handleChange('departureTime', e.target.value + ':00')
                   }
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      '0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)'
-                    e.currentTarget.style.borderColor = 'var(--primary)'
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      '0 1px 2px 0 rgb(0 0 0 / 0.05)'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                  }}
                 />
               </div>
 
@@ -258,185 +220,44 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
                   className="block text-xs font-medium"
                   style={{ color: 'var(--foreground)' }}
                 >
-                  Arrival *
+                  Arrival Time *
                 </label>
                 <input
-                  type="time"
+                  type="datetime-local"
                   required
                   className="mt-1 w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
                   style={{
                     border: '1px solid var(--border)',
                     backgroundColor: 'var(--card)',
                     color: 'var(--foreground)',
-                    boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
                   }}
-                  value={form.arrivalTime}
-                  onChange={(e) => handleChange('arrivalTime', e.target.value)}
-                  onFocus={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      '0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)'
-                    e.currentTarget.style.borderColor = 'var(--primary)'
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.boxShadow =
-                      '0 1px 2px 0 rgb(0 0 0 / 0.05)'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="block text-xs font-medium"
-                  style={{ color: 'var(--foreground)' }}
-                >
-                  Status
-                </label>
-                <CustomDropdown
-                  options={[
-                    { id: 'ACTIVE', label: 'Active', displayLabel: 'Active' },
-                    {
-                      id: 'INACTIVE',
-                      label: 'Inactive',
-                      displayLabel: 'Inactive',
-                    },
-                  ]}
-                  value={form.status}
-                  onChange={(id) =>
-                    handleChange('status', id as 'ACTIVE' | 'INACTIVE')
+                  value={form.arrivalTime.slice(0, 16)}
+                  onChange={(e) =>
+                    handleChange('arrivalTime', e.target.value + ':00')
                   }
-                  placeholder="Select status"
                 />
               </div>
             </div>
-          </div>
 
-          {/* Recurrence */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                id="recurring"
-                type="checkbox"
-                className="h-4 w-4 rounded focus:outline-none"
-                style={{
-                  border: '1px solid var(--border)',
-                  accentColor: 'var(--primary)',
-                  boxShadow:
-                    '0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent)',
-                }}
-                checked={form.isRecurring}
-                onChange={(e) => handleChange('isRecurring', e.target.checked)}
-              />
+            <div>
               <label
-                htmlFor="recurring"
-                className="text-xs font-medium"
+                className="block text-xs font-medium"
                 style={{ color: 'var(--foreground)' }}
               >
-                Repeat this trip
+                Status
               </label>
+              <CustomDropdown
+                options={[
+                  { id: 'active', label: 'Active' },
+                  { id: 'inactive', label: 'Inactive' },
+                ]}
+                value={form.status}
+                onChange={(id) =>
+                  handleChange('status', id as 'active' | 'inactive')
+                }
+                placeholder="Select status"
+              />
             </div>
-
-            {form.isRecurring && (
-              <div
-                className="space-y-3 rounded-2xl p-3"
-                style={{
-                  border: '1px solid var(--border)',
-                  backgroundColor: 'var(--muted)',
-                }}
-              >
-                <div>
-                  <label
-                    className="block text-xs font-medium"
-                    style={{ color: 'var(--foreground)' }}
-                  >
-                    Pattern
-                  </label>
-                  <CustomDropdown
-                    options={[
-                      { id: 'DAILY', label: 'Daily', displayLabel: 'Daily' },
-                      { id: 'WEEKLY', label: 'Weekly', displayLabel: 'Weekly' },
-                    ]}
-                    value={form.recurrenceType}
-                    onChange={(id) =>
-                      handleChange('recurrenceType', id as 'DAILY' | 'WEEKLY')
-                    }
-                    placeholder="Select pattern"
-                  />
-                </div>
-
-                {form.recurrenceType === 'WEEKLY' && (
-                  <div className="flex flex-wrap gap-1">
-                    {[
-                      'Monday',
-                      'Tuesday',
-                      'Wednesday',
-                      'Thursday',
-                      'Friday',
-                      'Saturday',
-                      'Sunday',
-                    ].map((day) => {
-                      const selected = form.recurrenceDays.includes(day)
-                      return (
-                        <button
-                          key={day}
-                          type="button"
-                          className="rounded-full border px-2 py-1 text-[10px] font-medium transition"
-                          style={{
-                            border: '1px solid var(--border)',
-                            backgroundColor: selected
-                              ? 'var(--primary)'
-                              : 'var(--card)',
-                            color: selected
-                              ? 'var(--primary-foreground)'
-                              : 'var(--muted-foreground)',
-                          }}
-                          onClick={() => {
-                            handleChange(
-                              'recurrenceDays',
-                              selected
-                                ? form.recurrenceDays.filter((d) => d !== day)
-                                : [...form.recurrenceDays, day]
-                            )
-                          }}
-                        >
-                          {day}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                <div>
-                  <label
-                    className="block text-xs font-medium"
-                    style={{ color: 'var(--foreground)' }}
-                  >
-                    Repeat until
-                  </label>
-                  <CustomDatePicker
-                    selected={
-                      form.recurrenceEndDate
-                        ? new Date(form.recurrenceEndDate)
-                        : null
-                    }
-                    onChange={(date) =>
-                      handleChange(
-                        'recurrenceEndDate',
-                        date ? date.toISOString().slice(0, 10) : ''
-                      )
-                    }
-                    placeholderText="Select end date"
-                  />
-                  <p
-                    className="mt-1 text-[10px]"
-                    style={{ color: 'var(--muted-foreground)' }}
-                  >
-                    Trips will be generated for each selected day until this
-                    date (implementation to be handled in backend logic).
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Pricing */}

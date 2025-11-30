@@ -1,18 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
-
-export interface RouteData {
-  routeId?: string
-  origin: string
-  destination: string
-  distanceKm: number
-  estimatedMinutes: number
-  pickupPoints?: string[]
-  dropoffPoints?: string[]
-  status: 'active' | 'inactive'
-  operatorId?: string
-  createdAt?: string
-}
+import type { RouteAdminData } from '../../types/trip.types'
 
 interface PaginatedResponse<T> {
   success: boolean
@@ -29,7 +17,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 export function useAdminRoutes() {
-  const [routes, setRoutes] = useState<RouteData[]>([])
+  const [routes, setRoutes] = useState<RouteAdminData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -58,7 +46,7 @@ export function useAdminRoutes() {
           )
         }
 
-        const data: PaginatedResponse<RouteData> = await response.json()
+        const data: PaginatedResponse<RouteAdminData> = await response.json()
         setRoutes(data.data)
         return data.pagination
       } catch (err) {
@@ -78,7 +66,7 @@ export function useAdminRoutes() {
   )
 
   const createRoute = useCallback(
-    async (routeData: Omit<RouteData, 'routeId' | 'createdAt'>) => {
+    async (routeData: Omit<RouteAdminData, 'routeId' | 'createdAt'>) => {
       setIsLoading(true)
       try {
         const response = await fetch(`${API_BASE_URL}/admin/routes`, {
@@ -88,12 +76,11 @@ export function useAdminRoutes() {
             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
           body: JSON.stringify({
+            operatorId: routeData.operatorId,
             origin: routeData.origin,
             destination: routeData.destination,
             distanceKm: routeData.distanceKm,
             estimatedMinutes: routeData.estimatedMinutes,
-            pickupPoints: routeData.pickupPoints || [],
-            dropoffPoints: routeData.dropoffPoints || [],
           }),
         })
 
@@ -126,7 +113,7 @@ export function useAdminRoutes() {
   const updateRoute = useCallback(
     async (
       routeId: string,
-      routeData: Omit<RouteData, 'routeId' | 'createdAt'>
+      routeData: Omit<RouteAdminData, 'routeId' | 'createdAt'>
     ) => {
       setIsLoading(true)
       try {

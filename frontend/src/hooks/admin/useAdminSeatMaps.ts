@@ -1,25 +1,9 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
+import type { SeatMapData } from '../../types/trip.types'
 
-export interface SeatMapData {
-  tripId: string
-  busId?: string
-  layout: string // e.g., "2-2", "2-3"
-  rows: number
-  columns: number
-  seats: SeatInfo[]
-}
-
-export interface SeatInfo {
-  seatId: string
-  seatCode: string
-  row: number
-  column: number
-  seatType: 'standard' | 'vip' | 'window' | 'aisle'
-  position: 'window' | 'aisle'
-  price: number
-  status: 'available' | 'occupied' | 'locked' | 'disabled'
-}
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 export interface SeatMapTemplate {
   templateId: string
@@ -42,16 +26,31 @@ interface SeatMapApiResponse {
     layout: string
     rows: number
     columns: number
-    seats: SeatInfo[]
+    seats: Array<{
+      seatId: string
+      seatCode: string
+      row: number
+      column: number
+      seatType: 'standard' | 'vip' | 'window' | 'aisle'
+      position: 'window' | 'aisle'
+      price: number
+      status: 'available' | 'occupied' | 'locked' | 'disabled'
+    }>
   }
   layout?: string
   rows?: number
   columns?: number
-  seats?: SeatInfo[]
+  seats?: Array<{
+    seatId: string
+    seatCode: string
+    row: number
+    column: number
+    seatType: 'standard' | 'vip' | 'window' | 'aisle'
+    position: 'window' | 'aisle'
+    price: number
+    status: 'available' | 'occupied' | 'locked' | 'disabled'
+  }>
 }
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 // Transform API response which may have nested seatMap structure
 // API can return either { seatMap: { layout, rows, columns, seats } } or flat structure
@@ -62,7 +61,6 @@ function transformSeatMapResponse(
   const seatMapData = apiResponse.seatMap || apiResponse
   return {
     tripId: apiResponse.tripId,
-    busId: apiResponse.busId,
     layout: seatMapData.layout || '',
     rows: seatMapData.rows || 0,
     columns: seatMapData.columns || 0,

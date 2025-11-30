@@ -1,18 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
-
-export interface BusData {
-  busId?: string
-  name: string
-  model: string
-  plateNumber: string
-  type: 'standard' | 'limousine' | 'sleeper'
-  capacity: number
-  amenities: string[]
-  status: 'active' | 'inactive' | 'maintenance'
-  imageUrl?: string
-  createdAt?: string
-}
+import type { BusAdminData } from '../../types/trip.types'
 
 interface PaginatedResponse<T> {
   success: boolean
@@ -29,7 +17,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 export function useAdminBuses() {
-  const [buses, setBuses] = useState<BusData[]>([])
+  const [buses, setBuses] = useState<BusAdminData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -56,7 +44,7 @@ export function useAdminBuses() {
           throw new Error('Failed to fetch buses')
         }
 
-        const data: PaginatedResponse<BusData> = await response.json()
+        const data: PaginatedResponse<BusAdminData> = await response.json()
         setBuses(data.data)
         return data.data
       } catch {
@@ -74,7 +62,7 @@ export function useAdminBuses() {
   )
 
   const createBus = useCallback(
-    async (busData: Omit<BusData, 'busId' | 'createdAt'>) => {
+    async (busData: Omit<BusAdminData, 'busId' | 'createdAt'>) => {
       setIsLoading(true)
       try {
         const response = await fetch(`${API_BASE_URL}/admin/buses`, {
@@ -111,7 +99,10 @@ export function useAdminBuses() {
   )
 
   const updateBus = useCallback(
-    async (busId: string, busData: Omit<BusData, 'busId' | 'createdAt'>) => {
+    async (
+      busId: string,
+      busData: Omit<BusAdminData, 'busId' | 'createdAt'>
+    ) => {
       setIsLoading(true)
       try {
         const response = await fetch(`${API_BASE_URL}/admin/buses/${busId}`, {

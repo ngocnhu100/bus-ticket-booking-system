@@ -1,4 +1,4 @@
-import type { Route, Bus } from '../../types/trip.types'
+import type { RouteAdminData, BusAdminData } from '../../types/trip.types'
 import { CustomDropdown } from '../ui/custom-dropdown'
 
 export interface TripFiltersData {
@@ -8,8 +8,8 @@ export interface TripFiltersData {
 }
 
 interface TripFiltersProps {
-  routes: Route[]
-  buses: Bus[]
+  routes: RouteAdminData[]
+  buses: BusAdminData[]
   filters: TripFiltersData
   onFiltersChange: (filters: TripFiltersData) => void
   onApplyFilters: () => void
@@ -52,8 +52,8 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
             options={[
               { id: '', label: 'All routes' },
               ...routes.map((r) => ({
-                id: r.id,
-                label: `${r.from} → ${r.to}`,
+                id: r.routeId || '',
+                label: `${r.origin} → ${r.destination}`,
               })),
             ]}
             value={filters.routeId}
@@ -70,7 +70,7 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
             options={[
               { id: '', label: 'All buses' },
               ...buses.map((b) => ({
-                id: b.id,
+                id: b.busId || '',
                 label: b.name,
               })),
             ]}
@@ -87,8 +87,8 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
           <CustomDropdown
             options={[
               { id: '', label: 'All statuses' },
-              { id: 'ACTIVE', label: 'Active' },
-              { id: 'INACTIVE', label: 'Inactive' },
+              { id: 'active', label: 'Active' },
+              { id: 'inactive', label: 'Inactive' },
             ]}
             value={filters.status}
             onChange={(value) => handleFilterChange('status', value)}

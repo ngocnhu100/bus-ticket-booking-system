@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import {
-  type Trip,
-  type Route,
-  type Bus,
-  type TripFormData,
+import type {
+  Trip,
+  RouteAdminData,
+  BusAdminData,
+  TripFormData,
 } from '../../types/trip.types'
 import '@/styles/admin.css'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
@@ -18,49 +18,77 @@ import { CustomDatePicker } from '@/components/ui/custom-datepicker'
 // MOCK DATA
 // ============================================================================
 
-const initialRoutes: Route[] = [
+const initialRoutes: RouteAdminData[] = [
   {
-    id: 'r1',
-    from: 'Ho Chi Minh City',
-    to: 'Da Lat',
-    distance: 0,
-    estimatedDuration: 0,
-    pickupPoints: [],
-    dropoffPoints: [],
-    status: 'INACTIVE',
+    routeId: 'r1',
+    operatorId: 'op-001',
+    origin: 'Ho Chi Minh City',
+    destination: 'Da Lat',
+    distanceKm: 308,
+    estimatedMinutes: 360,
+    pickupPoints: [
+      {
+        pointId: 'p1',
+        name: 'Ben Thanh Station',
+        address: 'Ben Thanh, District 1',
+        time: '08:00',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd1',
+        name: 'Da Lat Station',
+        address: 'District 1',
+        time: '14:00',
+      },
+    ],
   },
   {
-    id: 'r2',
-    from: 'Ho Chi Minh City',
-    to: 'Nha Trang',
-    distance: 0,
-    estimatedDuration: 0,
-    pickupPoints: [],
-    dropoffPoints: [],
-    status: 'INACTIVE',
+    routeId: 'r2',
+    operatorId: 'op-001',
+    origin: 'Ho Chi Minh City',
+    destination: 'Nha Trang',
+    distanceKm: 450,
+    estimatedMinutes: 480,
+    pickupPoints: [
+      {
+        pointId: 'p2',
+        name: 'Ben Thanh Station',
+        address: 'Ben Thanh, District 1',
+        time: '06:30',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd2',
+        name: 'Nha Trang Station',
+        address: 'Nha Trang City',
+        time: '11:00',
+      },
+    ],
   },
 ]
 
-const initialBuses: Bus[] = [
+const initialBuses: BusAdminData[] = [
   {
-    id: 'b1',
+    busId: 'b1',
     name: 'Limousine 20-seat',
-    type: 'LIMOUSINE',
+    type: 'limousine',
     capacity: 20,
-    model: '',
-    plateNumber: '',
-    amenities: [],
-    status: 'INACTIVE',
+    model: 'Hyundai Universe Limousine',
+    plateNumber: '51B-12345',
+    amenities: ['WiFi', 'AC', 'Toilet', 'Entertainment'],
+    status: 'active',
   },
   {
-    id: 'b2',
+    busId: 'b2',
     name: 'Sleeper 40-seat',
-    type: 'SLEEPER',
+    type: 'sleeper',
     capacity: 40,
-    model: '',
-    plateNumber: '',
-    amenities: [],
-    status: 'INACTIVE',
+    model: 'Thaco Universe Sleeper',
+    plateNumber: '51B-12346',
+    amenities: ['WiFi', 'AC', 'Sleeping Beds', 'Toilet'],
+    status: 'active',
   },
 ]
 
@@ -86,7 +114,7 @@ const initialTrips: Trip[] = [
       model: 'Limousine 20-seat',
       plateNumber: '51B-12345',
       seatCapacity: 20,
-      busType: 'LIMOUSINE',
+      busType: 'limousine',
       amenities: ['wifi', 'ac', 'toilet', 'entertainment'],
     },
     schedule: {
@@ -137,17 +165,16 @@ const initialTrips: Trip[] = [
       estimatedMinutes: 360,
     },
     operator: {
-      operatorId: 'opr_futa',
+      operatorId: 'op-001',
       name: 'Futa Bus Lines',
       rating: 4.5,
-      logo: 'https://cdn.example.com/futa-logo.png',
     },
     bus: {
       busId: 'b2',
       model: 'Sleeper 40-seat',
       plateNumber: '51B-67890',
       seatCapacity: 40,
-      busType: 'SLEEPER',
+      busType: 'sleeper',
       amenities: ['wifi', 'ac', 'toilet', 'entertainment', 'bed'],
     },
     schedule: {
@@ -208,7 +235,7 @@ const initialTrips: Trip[] = [
       model: 'Limousine 20-seat',
       plateNumber: '51B-12345',
       seatCapacity: 20,
-      busType: 'LIMOUSINE',
+      busType: 'limousine',
       amenities: ['wifi', 'ac', 'toilet', 'entertainment'],
     },
     schedule: {
@@ -297,34 +324,16 @@ const AdminTripSchedulingPage: React.FC = () => {
     setDrawerOpen(true)
   }
 
-  // Validation and conflict detection
+  // Validation
   const validateTripForm = (form: TripFormData): string[] => {
     const errors: string[] = []
 
     // Required fields
     if (!form.routeId) errors.push('Route is required')
     if (!form.busId) errors.push('Bus is required')
-    if (!form.date) errors.push('Date is required')
     if (!form.departureTime) errors.push('Departure time is required')
     if (!form.arrivalTime) errors.push('Arrival time is required')
-    if (!form.basePrice || form.basePrice === '') {
-      errors.push('Base price is required')
-    }
-
-    // Price validation
-    if (form.basePrice && Number(form.basePrice) < 0) {
-      errors.push('Base price cannot be negative')
-    }
-
-    // Date validation
-    if (form.date) {
-      const selectedDate = new Date(form.date)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      if (selectedDate < today) {
-        errors.push('Date must be today or in the future')
-      }
-    }
+    if (form.basePrice < 0) errors.push('Base price must be positive')
 
     // Time validation
     if (form.departureTime && form.arrivalTime) {
@@ -335,184 +344,7 @@ const AdminTripSchedulingPage: React.FC = () => {
       }
     }
 
-    // Recurrence validation
-    if (form.isRecurring) {
-      if (!form.recurrenceType) {
-        errors.push('Recurrence type is required for recurring trips')
-      }
-      if (!form.recurrenceEndDate) {
-        errors.push('End date is required for recurring trips')
-      }
-      if (
-        form.recurrenceType === 'WEEKLY' &&
-        form.recurrenceDays.length === 0
-      ) {
-        errors.push('At least one day must be selected for weekly recurrence')
-      }
-      if (form.recurrenceEndDate && form.date) {
-        const startDate = new Date(form.date)
-        const endDate = new Date(form.recurrenceEndDate)
-        if (endDate <= startDate) {
-          errors.push('End date must be after start date')
-        }
-      }
-    }
-
     return errors
-  }
-
-  const detectConflicts = (
-    newTrip: TripFormData,
-    existingTrips: Trip[]
-  ): string[] => {
-    const conflicts: string[] = []
-    const selectedBus = buses.find((b) => b.id === newTrip.busId)
-    if (!selectedBus) return conflicts
-
-    const newDate = newTrip.date
-    const newDepTime = newTrip.departureTime
-    const newArrTime = newTrip.arrivalTime
-
-    // Check for same bus conflicts on same date
-    const sameBusTrips = existingTrips.filter(
-      (t) =>
-        t.bus.busId === newTrip.busId &&
-        t.schedule.departureTime.split('T')[0] === newDate &&
-        t.tripId !== newTrip.id // Exclude current trip when editing
-    )
-
-    for (const trip of sameBusTrips) {
-      // Check for time overlap
-      const tripDepTime = trip.schedule.departureTime.split('T')[1].slice(0, 5)
-      const tripArrTime = trip.schedule.arrivalTime.split('T')[1].slice(0, 5)
-      const tripRouteLabel = `${trip.route.origin} → ${trip.route.destination}`
-
-      // Two time ranges overlap if: start1 < end2 && start2 < end1
-      if (newDepTime < tripArrTime && tripDepTime < newArrTime) {
-        conflicts.push(
-          `Bus "${selectedBus.name}" has a conflicting trip: ${tripRouteLabel} (${tripDepTime} - ${tripArrTime})`
-        )
-      }
-    }
-
-    return conflicts
-  }
-
-  const generateRecurringTrips = (baseTrip: TripFormData): Trip[] => {
-    const trips: Trip[] = []
-    const startDate = new Date(baseTrip.date)
-    const endDate = new Date(baseTrip.recurrenceEndDate!)
-    const route = routes.find((r) => r.id === baseTrip.routeId)
-    const bus = buses.find((b) => b.id === baseTrip.busId)
-
-    if (!route || !bus) return trips
-
-    const currentDate = new Date(startDate)
-
-    while (currentDate <= endDate) {
-      let shouldCreate = false
-
-      if (baseTrip.recurrenceType === 'DAILY') {
-        shouldCreate = true
-      } else if (baseTrip.recurrenceType === 'WEEKLY') {
-        const dayOfWeek = currentDate.getDay() // 0 = Sunday, 1 = Monday, etc.
-        // Convert to our format: 0 = Monday, 6 = Sunday
-        const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-        shouldCreate = baseTrip.recurrenceDays.includes(
-          [
-            'Monday',
-            'Tuesday',
-            'Wednesday',
-            'Thursday',
-            'Friday',
-            'Saturday',
-            'Sunday',
-          ][adjustedDay]
-        )
-      }
-
-      if (shouldCreate) {
-        const departureDateTime = `${currentDate.toISOString().slice(0, 10)}T${baseTrip.departureTime}:00`
-        const arrivalDateTime = `${currentDate.toISOString().slice(0, 10)}T${baseTrip.arrivalTime}:00`
-
-        // Calculate duration based on times
-        const depParts = baseTrip.departureTime.split(':')
-        const arrParts = baseTrip.arrivalTime.split(':')
-        const depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1])
-        const arrMinutes = parseInt(arrParts[0]) * 60 + parseInt(arrParts[1])
-        const duration =
-          arrMinutes > depMinutes
-            ? arrMinutes - depMinutes
-            : 1440 + arrMinutes - depMinutes
-
-        const trip: Trip = {
-          tripId: crypto.randomUUID(),
-          route: {
-            routeId: baseTrip.routeId,
-            origin: route.from,
-            destination: route.to,
-            distanceKm: route.distance,
-            estimatedMinutes: route.estimatedDuration,
-          },
-          operator: {
-            operatorId: 'opr_default',
-            name: 'Default Operator',
-            rating: 4.0,
-          },
-          bus: {
-            busId: baseTrip.busId,
-            model: bus.model,
-            plateNumber: bus.plateNumber,
-            seatCapacity: bus.capacity,
-            busType: bus.type,
-            amenities: bus.amenities,
-          },
-          schedule: {
-            departureTime: departureDateTime,
-            arrivalTime: arrivalDateTime,
-            duration: duration,
-          },
-          pricing: {
-            basePrice: Number(baseTrip.basePrice),
-            currency: 'VND',
-          },
-          availability: {
-            totalSeats: bus.capacity,
-            availableSeats: bus.capacity,
-            occupancyRate: 0,
-          },
-          policies: {
-            cancellationPolicy:
-              'free cancellation up to 24 hours before departure',
-            modificationPolicy: 'modification allowed up to 12 hours before',
-            refundPolicy: '80% refund if cancelled 24h+ before departure',
-          },
-          pickupPoints: [
-            {
-              pointId: 'pp_' + crypto.randomUUID(),
-              name: route.pickupPoints[0] || 'Pickup Point',
-              address: 'Pickup Address',
-              time: departureDateTime,
-            },
-          ],
-          dropoffPoints: [
-            {
-              pointId: 'dp_' + crypto.randomUUID(),
-              name: route.dropoffPoints[0] || 'Dropoff Point',
-              address: 'Dropoff Address',
-              time: arrivalDateTime,
-            },
-          ],
-          status: baseTrip.status === 'ACTIVE' ? 'active' : 'inactive',
-        }
-        trips.push(trip)
-      }
-
-      // Move to next day
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
-
-    return trips
   }
 
   // Filter and get trips for selected date
@@ -561,24 +393,13 @@ const AdminTripSchedulingPage: React.FC = () => {
       return
     }
 
-    // Check for conflicts
-    const conflicts = detectConflicts(values, trips)
-    if (conflicts.length > 0) {
-      const proceed = confirm(
-        `Scheduling conflicts detected:\n\n${conflicts.join(
-          '\n\n'
-        )}Do you want to proceed anyway?`
-      )
-      if (!proceed) return
-    }
-
-    if (values.id) {
+    if (values.tripId) {
       // Update existing trip
       setTrips((prev) =>
         prev.map((t) => {
-          if (t.tripId === values.id) {
-            const route = routes.find((r) => r.id === values.routeId)
-            const bus = buses.find((b) => b.id === values.busId)
+          if (t.tripId === values.tripId) {
+            const route = routes.find((r) => r.routeId === values.routeId)
+            const bus = buses.find((b) => b.busId === values.busId)
             if (!route || !bus) return t
 
             const depParts = values.departureTime.split(':')
@@ -596,10 +417,10 @@ const AdminTripSchedulingPage: React.FC = () => {
               ...t,
               route: {
                 routeId: values.routeId,
-                origin: route.from,
-                destination: route.to,
-                distanceKm: route.distance,
-                estimatedMinutes: route.estimatedDuration,
+                origin: route.origin,
+                destination: route.destination,
+                distanceKm: route.distanceKm,
+                estimatedMinutes: route.estimatedMinutes,
               },
               bus: {
                 busId: values.busId,
@@ -610,108 +431,82 @@ const AdminTripSchedulingPage: React.FC = () => {
                 amenities: bus.amenities,
               },
               schedule: {
-                departureTime: `${values.date}T${values.departureTime}:00`,
-                arrivalTime: `${values.date}T${values.arrivalTime}:00`,
+                departureTime: values.departureTime,
+                arrivalTime: values.arrivalTime,
                 duration: duration,
               },
               pricing: {
                 ...t.pricing,
-                basePrice: Number(values.basePrice),
+                basePrice: values.basePrice,
               },
-              status: values.status === 'ACTIVE' ? 'active' : 'inactive',
+              status: values.status,
             }
           }
           return t
         })
       )
     } else {
-      // Create new trip(s)
-      if (values.isRecurring) {
-        // Generate recurring trips
-        const recurringTrips = generateRecurringTrips(values)
-        if (recurringTrips.length > 0) {
-          setTrips((prev) => [...prev, ...recurringTrips])
-          alert(
-            `Created ${recurringTrips.length} recurring trips successfully!`
-          )
-        }
-      } else {
-        // Create single trip
-        const route = routes.find((r) => r.id === values.routeId)
-        const bus = buses.find((b) => b.id === values.busId)
-        if (!route || !bus) return
+      // Create new trip
+      const route = routes.find((r) => r.routeId === values.routeId)
+      const bus = buses.find((b) => b.busId === values.busId)
+      if (!route || !bus) return
 
-        const depParts = values.departureTime.split(':')
-        const arrParts = values.arrivalTime.split(':')
-        const depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1])
-        const arrMinutes = parseInt(arrParts[0]) * 60 + parseInt(arrParts[1])
-        const duration =
-          arrMinutes > depMinutes
-            ? arrMinutes - depMinutes
-            : 1440 + arrMinutes - depMinutes
+      const depParts = values.departureTime.split(':')
+      const arrParts = values.arrivalTime.split(':')
+      const depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1])
+      const arrMinutes = parseInt(arrParts[0]) * 60 + parseInt(arrParts[1])
+      const duration =
+        arrMinutes > depMinutes
+          ? arrMinutes - depMinutes
+          : 1440 + arrMinutes - depMinutes
 
-        const newTrip: Trip = {
-          tripId: crypto.randomUUID(),
-          route: {
-            routeId: values.routeId,
-            origin: route.from,
-            destination: route.to,
-            distanceKm: route.distance,
-            estimatedMinutes: route.estimatedDuration,
-          },
-          operator: {
-            operatorId: 'opr_default',
-            name: 'Default Operator',
-            rating: 4.0,
-          },
-          bus: {
-            busId: values.busId,
-            model: bus.model,
-            plateNumber: bus.plateNumber,
-            seatCapacity: bus.capacity,
-            busType: bus.type,
-            amenities: bus.amenities,
-          },
-          schedule: {
-            departureTime: `${values.date}T${values.departureTime}:00`,
-            arrivalTime: `${values.date}T${values.arrivalTime}:00`,
-            duration: duration,
-          },
-          pricing: {
-            basePrice: Number(values.basePrice),
-            currency: 'VND',
-          },
-          availability: {
-            totalSeats: bus.capacity,
-            availableSeats: bus.capacity,
-            occupancyRate: 0,
-          },
-          policies: {
-            cancellationPolicy:
-              'free cancellation up to 24 hours before departure',
-            modificationPolicy: 'modification allowed up to 12 hours before',
-            refundPolicy: '80% refund if cancelled 24h+ before departure',
-          },
-          pickupPoints: [
-            {
-              pointId: 'pp_' + crypto.randomUUID(),
-              name: route.pickupPoints[0] || 'Pickup Point',
-              address: 'Pickup Address',
-              time: `${values.date}T${values.departureTime}:00`,
-            },
-          ],
-          dropoffPoints: [
-            {
-              pointId: 'dp_' + crypto.randomUUID(),
-              name: route.dropoffPoints[0] || 'Dropoff Point',
-              address: 'Dropoff Address',
-              time: `${values.date}T${values.arrivalTime}:00`,
-            },
-          ],
-          status: values.status === 'ACTIVE' ? 'active' : 'inactive',
-        }
-        setTrips((prev) => [...prev, newTrip])
+      const newTrip: Trip = {
+        tripId: crypto.randomUUID(),
+        route: {
+          routeId: values.routeId,
+          origin: route.origin,
+          destination: route.destination,
+          distanceKm: route.distanceKm,
+          estimatedMinutes: route.estimatedMinutes,
+        },
+        operator: {
+          operatorId: 'op-001',
+          name: 'Default Operator',
+          rating: 4.0,
+        },
+        bus: {
+          busId: values.busId,
+          model: bus.model,
+          plateNumber: bus.plateNumber,
+          seatCapacity: bus.capacity,
+          busType: bus.type,
+          amenities: bus.amenities,
+        },
+        schedule: {
+          departureTime: values.departureTime,
+          arrivalTime: values.arrivalTime,
+          duration: duration,
+        },
+        pricing: {
+          basePrice: values.basePrice,
+          currency: 'VND',
+        },
+        availability: {
+          totalSeats: bus.capacity,
+          availableSeats: bus.capacity,
+          occupancyRate: 0,
+        },
+        policies: {
+          cancellationPolicy:
+            'free cancellation up to 24 hours before departure',
+          modificationPolicy: 'modification allowed up to 12 hours before',
+          refundPolicy: '80% refund if cancelled 24h+ before departure',
+        },
+        pickupPoints: [],
+        dropoffPoints: [],
+        status: values.status,
       }
+      setTrips((prev) => [...prev, newTrip])
     }
     setDrawerOpen(false)
   }

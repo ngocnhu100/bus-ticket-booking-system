@@ -1,34 +1,13 @@
 import React, { useState } from 'react'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
-import { Plus, Search, Edit, Trash2, Bus } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Bus as BusIcon } from 'lucide-react'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
-
-interface Bus {
-  id: string
-  name: string
-  model: string
-  plateNumber: string
-  type: 'standard' | 'limousine' | 'sleeper'
-  capacity: number
-  amenities: string[]
-  status: 'active' | 'inactive' | 'maintenance'
-  imageUrl?: string
-}
-
-interface BusFormData {
-  name: string
-  model: string
-  plateNumber: string
-  type: string
-  capacity: string
-  status: string
-  imageUrl: string
-}
+import type { BusAdminData } from '@/types/trip.types'
 
 // Mock data - replace with API calls
-const initialBuses: Bus[] = [
+const initialBuses: BusAdminData[] = [
   {
-    id: '1',
+    busId: '1',
     name: 'Sapaco Tourist 001',
     model: 'Mercedes-Benz Sprinter',
     plateNumber: '51A-12345',
@@ -36,10 +15,9 @@ const initialBuses: Bus[] = [
     capacity: 45,
     amenities: ['WiFi', 'AC', 'Toilet'],
     status: 'active',
-    imageUrl: undefined,
   },
   {
-    id: '2',
+    busId: '2',
     name: 'The Sinh Tourist VIP',
     model: 'Hyundai Universe',
     plateNumber: '30A-67890',
@@ -47,7 +25,6 @@ const initialBuses: Bus[] = [
     capacity: 40,
     amenities: ['WiFi', 'AC', 'Toilet', 'Entertainment'],
     status: 'active',
-    imageUrl: undefined,
   },
 ]
 
@@ -55,7 +32,7 @@ const AdminBusManagement: React.FC = () => {
   const [buses, setBuses] = useState(initialBuses)
   const [searchTerm, setSearchTerm] = useState('')
   const [showForm, setShowForm] = useState(false)
-  const [editingBus, setEditingBus] = useState<Bus | null>(null)
+  const [editingBus, setEditingBus] = useState<BusAdminData | null>(null)
 
   const filteredBuses = buses.filter(
     (bus) =>
@@ -69,30 +46,32 @@ const AdminBusManagement: React.FC = () => {
     setShowForm(true)
   }
 
-  const handleEditBus = (bus: Bus) => {
+  const handleEditBus = (bus: BusAdminData) => {
     setEditingBus(bus)
     setShowForm(true)
   }
 
-  const handleDeleteBus = (busId: string) => {
+  const handleDeleteBus = (busId: string | undefined) => {
     if (
       confirm(
         'Are you sure you want to delete this bus? This action cannot be undone.'
       )
     ) {
-      setBuses(buses.filter((b) => b.id !== busId))
+      setBuses(buses.filter((b) => b.busId !== busId))
     }
   }
 
-  const handleSaveBus = (busData: Omit<Bus, 'id'>) => {
+  const handleSaveBus = (busData: Omit<BusAdminData, 'busId'>) => {
     if (editingBus) {
       setBuses(
         buses.map((b) =>
-          b.id === editingBus.id ? { ...busData, id: editingBus.id } : b
+          b.busId === editingBus.busId
+            ? { ...busData, busId: editingBus.busId }
+            : b
         )
       )
     } else {
-      setBuses([...buses, { ...busData, id: crypto.randomUUID() }])
+      setBuses([...buses, { ...busData, busId: crypto.randomUUID() }])
     }
     setShowForm(false)
   }
@@ -159,10 +138,10 @@ const AdminBusManagement: React.FC = () => {
               </thead>
               <tbody className="bg-card divide-y divide-border">
                 {filteredBuses.map((bus) => (
-                  <tr key={bus.id} className="hover:bg-muted/50">
+                  <tr key={bus.busId} className="hover:bg-muted/50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <Bus className="h-8 w-8 text-muted-foreground mr-3" />
+                        <BusIcon className="h-8 w-8 text-muted-foreground mr-3" />
                         <div>
                           <div className="text-sm font-medium text-foreground">
                             {bus.name}
@@ -233,7 +212,7 @@ const AdminBusManagement: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteBus(bus.id)}
+                        onClick={() => handleDeleteBus(bus.busId)}
                         className="text-destructive hover:text-destructive/80"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -261,9 +240,18 @@ const AdminBusManagement: React.FC = () => {
 
 // Bus Form Modal Component
 interface BusFormModalProps {
-  bus?: Bus | null
-  onSave: (bus: Omit<Bus, 'id'>) => void
+  bus?: BusAdminData | null
+  onSave: (bus: Omit<BusAdminData, 'busId'>) => void
   onClose: () => void
+}
+
+interface FormState {
+  name: string
+  model: string
+  plateNumber: string
+  type: string
+  capacity: number
+  status: string
 }
 
 const BusFormModal: React.FC<BusFormModalProps> = ({
@@ -271,14 +259,13 @@ const BusFormModal: React.FC<BusFormModalProps> = ({
   onSave,
   onClose,
 }) => {
-  const [formData, setFormData] = useState<BusFormData>({
+  const [formData, setFormData] = useState<FormState>({
     name: bus?.name || '',
     model: bus?.model || '',
     plateNumber: bus?.plateNumber || '',
-    type: bus?.type || 'STANDARD',
-    capacity: bus?.capacity?.toString() || '',
+    type: bus?.type || 'standard',
+    capacity: bus?.capacity || 0,
     status: bus?.status || 'active',
-    imageUrl: bus?.imageUrl || '',
   })
 
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>(
@@ -309,10 +296,12 @@ const BusFormModal: React.FC<BusFormModalProps> = ({
     }
 
     onSave({
-      ...formData,
-      capacity: Number(formData.capacity),
-      type: formData.type as Bus['type'],
-      status: formData.status as Bus['status'],
+      name: formData.name,
+      model: formData.model,
+      plateNumber: formData.plateNumber,
+      type: formData.type as 'standard' | 'limousine' | 'sleeper',
+      capacity: formData.capacity,
+      status: formData.status as 'active' | 'inactive',
       amenities: selectedAmenities,
     })
   }
@@ -388,7 +377,10 @@ const BusFormModal: React.FC<BusFormModalProps> = ({
                 type="number"
                 value={formData.capacity}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, capacity: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    capacity: Number(e.target.value),
+                  }))
                 }
                 className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 required
@@ -400,9 +392,9 @@ const BusFormModal: React.FC<BusFormModalProps> = ({
             <label className="block text-sm font-medium mb-1">Bus Type</label>
             <CustomDropdown
               options={[
-                { id: 'STANDARD', label: 'Standard' },
-                { id: 'LIMOUSINE', label: 'Limousine' },
-                { id: 'SLEEPER', label: 'Sleeper' },
+                { id: 'standard', label: 'Standard' },
+                { id: 'limousine', label: 'Limousine' },
+                { id: 'sleeper', label: 'Sleeper' },
               ]}
               value={formData.type}
               onChange={(value) =>
@@ -433,9 +425,8 @@ const BusFormModal: React.FC<BusFormModalProps> = ({
             <label className="block text-sm font-medium mb-1">Status</label>
             <CustomDropdown
               options={[
-                { id: 'ACTIVE', label: 'Active' },
-                { id: 'INACTIVE', label: 'Inactive' },
-                { id: 'MAINTENANCE', label: 'Maintenance' },
+                { id: 'active', label: 'Active' },
+                { id: 'inactive', label: 'Inactive' },
               ]}
               value={formData.status}
               onChange={(value) =>

@@ -10,10 +10,8 @@ import {
   BarChart3,
   Loader,
 } from 'lucide-react'
-import {
-  useAdminOperators,
-  type OperatorData,
-} from '@/hooks/admin/useAdminOperators'
+import type { OperatorAdminData } from '@/types/trip.types'
+import { useAdminOperators } from '@/hooks/admin/useAdminOperators'
 
 const AdminOperatorManagement: React.FC = () => {
   const {
@@ -32,9 +30,12 @@ const AdminOperatorManagement: React.FC = () => {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    // Fetch operators on component mount
-    fetchOperators(statusFilter !== 'ALL' ? statusFilter : undefined)
-  }, [statusFilter, fetchOperators])
+    // Fetch operators on component mount and when status filter changes
+    const status =
+      statusFilter !== 'ALL' ? statusFilter.toLowerCase() : undefined
+    fetchOperators(status)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter])
 
   const filteredOperators = operators.filter((operator) => {
     const matchesSearch =
@@ -335,7 +336,7 @@ export default AdminOperatorManagement
 
 // Operator Details Modal Component
 interface OperatorDetailsModalProps {
-  operator: OperatorData
+  operator: OperatorAdminData
   onClose: () => void
 }
 
@@ -399,6 +400,16 @@ const OperatorDetailsModal: React.FC<OperatorDetailsModalProps> = ({
               {new Date(operator.createdAt).toLocaleDateString()}
             </p>
           </div>
+          {operator.approvedAt && (
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground">
+                Approved
+              </label>
+              <p className="text-foreground">
+                {new Date(operator.approvedAt).toLocaleDateString()}
+              </p>
+            </div>
+          )}
 
           <div className="border-t pt-4">
             <h3 className="text-md font-semibold mb-3">Performance Metrics</h3>

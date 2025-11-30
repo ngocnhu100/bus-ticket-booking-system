@@ -1,117 +1,99 @@
 import React, { useState } from 'react'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
-import { Plus, Edit, Trash2, Grid3X3, Save } from 'lucide-react'
-
-interface Seat {
-  id: string
-  row: number
-  column: number
-  type: 'WINDOW' | 'AISLE' | 'MIDDLE' | 'STANDARD' | 'VIP'
-  price: number
-  isAvailable: boolean
-}
-
-interface SeatMap {
-  id: string
-  busId: string
-  name: string
-  rows: number
-  columns: number
-  seats: Seat[]
-}
-
-interface Bus {
-  id: string
-  name: string
-}
+import { Plus, Edit, Trash2, Grid3X3 } from 'lucide-react'
+import type { SeatMapData, Seat } from '@/types/trip.types'
 
 // Mock data - replace with API calls
-const initialSeatMaps: SeatMap[] = [
+const initialSeatMaps: SeatMapData[] = [
   {
-    id: '1',
-    busId: '1',
-    name: 'Sapaco Tourist Standard Layout',
+    tripId: '1',
+    layout: '2-2',
     rows: 12,
     columns: 4,
     seats: [
       {
-        id: '1-1',
+        seatId: '1-1',
+        seatCode: 'A1',
         row: 1,
         column: 1,
-        type: 'WINDOW' as const,
+        seatType: 'standard',
+        position: 'window',
         price: 0,
-        isAvailable: true,
+        status: 'available',
       },
       {
-        id: '1-2',
+        seatId: '1-2',
+        seatCode: 'A2',
         row: 1,
         column: 2,
-        type: 'AISLE' as const,
+        seatType: 'standard',
+        position: 'aisle',
         price: 0,
-        isAvailable: true,
+        status: 'available',
       },
       {
-        id: '1-3',
+        seatId: '1-3',
+        seatCode: 'A3',
         row: 1,
         column: 3,
-        type: 'AISLE' as const,
+        seatType: 'standard',
+        position: 'aisle',
         price: 0,
-        isAvailable: true,
+        status: 'available',
       },
       {
-        id: '1-4',
+        seatId: '1-4',
+        seatCode: 'A4',
         row: 1,
         column: 4,
-        type: 'WINDOW' as const,
+        seatType: 'standard',
+        position: 'window',
         price: 0,
-        isAvailable: true,
+        status: 'available',
       },
-      // Add more seats...
     ],
   },
-]
-
-const mockBuses = [
-  { id: '1', name: 'Sapaco Tourist 001' },
-  { id: '2', name: 'The Sinh Tourist VIP' },
 ]
 
 const AdminSeatMapManagement: React.FC = () => {
   const [seatMaps, setSeatMaps] = useState(initialSeatMaps)
   const [showEditor, setShowEditor] = useState(false)
-  const [editingSeatMap, setEditingSeatMap] = useState<SeatMap | null>(null)
+  const [editingSeatMap, setEditingSeatMap] = useState<SeatMapData | null>(null)
 
   const handleCreateSeatMap = () => {
     setEditingSeatMap(null)
     setShowEditor(true)
   }
 
-  const handleEditSeatMap = (seatMap: SeatMap) => {
+  const handleEditSeatMap = (seatMap: SeatMapData) => {
     setEditingSeatMap(seatMap)
     setShowEditor(true)
   }
 
-  const handleDeleteSeatMap = (seatMapId: string) => {
+  const handleDeleteSeatMap = (tripId: string) => {
     if (
       confirm(
         'Are you sure you want to delete this seat map? This action cannot be undone.'
       )
     ) {
-      setSeatMaps(seatMaps.filter((sm) => sm.id !== seatMapId))
+      setSeatMaps(seatMaps.filter((sm) => sm.tripId !== tripId))
     }
   }
 
-  const handleSaveSeatMap = (seatMapData: Omit<SeatMap, 'id'>) => {
+  const handleSaveSeatMap = (seatMapData: Omit<SeatMapData, 'tripId'>) => {
     if (editingSeatMap) {
       setSeatMaps(
         seatMaps.map((sm) =>
-          sm.id === editingSeatMap.id
-            ? { ...seatMapData, id: editingSeatMap.id }
+          sm.tripId === editingSeatMap.tripId
+            ? { ...seatMapData, tripId: editingSeatMap.tripId }
             : sm
         )
       )
     } else {
-      setSeatMaps([...seatMaps, { ...seatMapData, id: crypto.randomUUID() }])
+      setSeatMaps([
+        ...seatMaps,
+        { ...seatMapData, tripId: crypto.randomUUID() },
+      ])
     }
     setShowEditor(false)
   }
@@ -123,10 +105,10 @@ const AdminSeatMapManagement: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">
-              Seat Map Configuration
+              Seat Map Management
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create and configure custom seat layouts for buses
+              Create and manage bus seat layouts for trips
             </p>
           </div>
           <button
@@ -139,83 +121,73 @@ const AdminSeatMapManagement: React.FC = () => {
         </div>
 
         {/* Seat Maps List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {seatMaps.map((seatMap) => (
-            <div
-              key={seatMap.id}
-              className="bg-card rounded-lg border border-border p-6 shadow-sm"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">
-                    {seatMap.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {seatMap.rows} rows × {seatMap.columns} columns
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditSeatMap(seatMap)}
-                    className="p-2 text-primary hover:bg-primary/10 rounded-md"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSeatMap(seatMap.id)}
-                    className="p-2 text-destructive hover:bg-destructive/10 rounded-md"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Mini seat map preview */}
-              <div className="bg-muted rounded-lg p-4 mb-4">
-                <div className="grid grid-cols-4 gap-1 max-w-xs mx-auto">
-                  {Array.from(
-                    { length: Math.min(seatMap.rows * seatMap.columns, 16) },
-                    (_, i) => (
-                      <div
-                        key={i}
-                        className="aspect-square bg-primary/20 rounded border border-primary/30 flex items-center justify-center text-xs"
-                      >
-                        {i + 1}
+        <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Trip ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Layout
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Dimensions
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Total Seats
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-card divide-y divide-border">
+                {seatMaps.map((seatMap) => (
+                  <tr key={seatMap.tripId} className="hover:bg-muted/50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Grid3X3 className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">
+                          {seatMap.tripId}
+                        </span>
                       </div>
-                    )
-                  )}
-                </div>
-                <p className="text-xs text-center text-muted-foreground mt-2">
-                  Preview ({seatMap.seats.length} seats)
-                </p>
-              </div>
-
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  Bus: {mockBuses.find((b) => b.id === seatMap.busId)?.name}
-                </p>
-                <p>Total seats: {seatMap.seats.length}</p>
-              </div>
-            </div>
-          ))}
-
-          {/* Create new card */}
-          <div
-            onClick={handleCreateSeatMap}
-            className="bg-muted/50 rounded-lg border-2 border-dashed border-border p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors"
-          >
-            <Grid3X3 className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-sm font-medium text-muted-foreground">
-              Create New Seat Map
-            </p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {seatMap.layout}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {seatMap.rows} rows × {seatMap.columns} columns
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {seatMap.seats.length} seats
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleEditSeatMap(seatMap)}
+                        className="inline-flex items-center text-primary hover:text-primary/80"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSeatMap(seatMap.tripId)}
+                        className="inline-flex items-center text-destructive hover:text-destructive/80"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* Seat Map Editor Modal */}
         {showEditor && (
-          <SeatMapEditorModal
+          <SeatMapEditor
             seatMap={editingSeatMap}
-            buses={mockBuses}
             onSave={handleSaveSeatMap}
             onClose={() => setShowEditor(false)}
           />
@@ -225,236 +197,137 @@ const AdminSeatMapManagement: React.FC = () => {
   )
 }
 
-export default AdminSeatMapManagement
-
-// Seat Map Editor Modal Component
-interface SeatMapEditorModalProps {
-  seatMap?: SeatMap | null
-  buses: Bus[]
-  onSave: (seatMap: Omit<SeatMap, 'id'>) => void
+// Seat Map Editor Component
+interface SeatMapEditorProps {
+  seatMap?: SeatMapData | null
+  onSave: (seatMap: Omit<SeatMapData, 'tripId'>) => void
   onClose: () => void
 }
 
-const SeatMapEditorModal: React.FC<SeatMapEditorModalProps> = ({
+const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
   seatMap,
-  buses,
   onSave,
   onClose,
 }) => {
   const [formData, setFormData] = useState({
-    name: seatMap?.name || '',
-    busId: seatMap?.busId || '',
+    layout: seatMap?.layout || '2-2',
     rows: seatMap?.rows || 10,
     columns: seatMap?.columns || 4,
     seats: seatMap?.seats || [],
   })
 
-  const [selectedSeatType, setSelectedSeatType] = useState<
-    'STANDARD' | 'VIP' | 'WINDOW' | 'AISLE'
-  >('STANDARD')
-
-  // Initialize seats if creating new
-  React.useEffect(() => {
-    if (!seatMap && formData.rows && formData.columns) {
-      const newSeats: {
-        id: string
-        row: number
-        column: number
-        type: 'STANDARD'
-        price: number
-        isAvailable: boolean
-      }[] = []
-      for (let row = 1; row <= formData.rows; row++) {
-        for (let col = 1; col <= formData.columns; col++) {
-          newSeats.push({
-            id: `${row}-${col}`,
-            row,
-            column: col,
-            type: 'STANDARD' as const,
-            price: 0,
-            isAvailable: true,
-          })
-        }
-      }
-      setFormData((prev) => ({ ...prev, seats: newSeats }))
-    }
-  }, [formData.rows, formData.columns, seatMap])
-
-  const handleSeatClick = (seatId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      seats: prev.seats.map((seat) =>
-        seat.id === seatId ? { ...seat, type: selectedSeatType } : seat
-      ),
-    }))
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name || !formData.busId) {
+
+    if (!formData.layout || !formData.rows || !formData.columns) {
       alert('Please fill in all required fields')
       return
     }
 
-    onSave(formData)
+    // Generate seats if not editing
+    let seats = formData.seats
+    if (!seatMap || seats.length === 0) {
+      seats = generateSeats(formData.rows, formData.columns)
+    }
+
+    onSave({
+      layout: formData.layout,
+      rows: formData.rows,
+      columns: formData.columns,
+      seats,
+    })
   }
 
-  const getSeatColor = (type: string) => {
-    switch (type) {
-      case 'VIP':
-        return 'bg-purple-500'
-      case 'WINDOW':
-        return 'bg-blue-500'
-      case 'AISLE':
-        return 'bg-green-500'
-      default:
-        return 'bg-gray-500'
+  const generateSeats = (rows: number, columns: number): Seat[] => {
+    const seats: Seat[] = []
+    const seatTypes = ['standard', 'vip', 'window', 'aisle'] as const
+
+    for (let row = 1; row <= rows; row++) {
+      for (let col = 1; col <= columns; col++) {
+        const seatCode = `${String.fromCharCode(64 + row)}${col}`
+        const position = col === 1 || col === columns ? 'window' : 'aisle'
+        const seatType = seatTypes[(Math.random() * 2) | 0] // Random between standard and vip
+
+        seats.push({
+          seatId: `${row}-${col}`,
+          seatCode,
+          row,
+          column: col,
+          seatType,
+          position,
+          price: seatType === 'vip' ? 50000 : 30000,
+          status: 'available',
+        })
+      }
     }
+
+    return seats
   }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-card rounded-lg p-6 w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4">
+      <div className="bg-card rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-4 text-foreground">
           {seatMap ? 'Edit Seat Map' : 'Create Seat Map'}
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Layout Pattern *
+            </label>
+            <input
+              type="text"
+              value={formData.layout}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, layout: e.target.value }))
+              }
+              className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="e.g., 2-2, 2-3"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Seat Map Name *
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Rows *
               </label>
               <input
-                type="text"
-                value={formData.name}
+                type="number"
+                value={formData.rows}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    rows: Number(e.target.value),
+                  }))
                 }
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                min="1"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Bus *</label>
-              <select
-                value={formData.busId}
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Columns *
+              </label>
+              <input
+                type="number"
+                value={formData.columns}
                 onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, busId: e.target.value }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    columns: Number(e.target.value),
+                  }))
                 }
-                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                min="1"
                 required
-              >
-                <option value="">Select a bus</option>
-                {buses.map((bus) => (
-                  <option key={bus.id} value={bus.id}>
-                    {bus.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-sm font-medium mb-1">Rows</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={formData.rows}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      rows: Number(e.target.value),
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Columns
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.columns}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      columns: Number(e.target.value),
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
+              />
             </div>
           </div>
 
-          {/* Seat Type Selector */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Select Seat Type to Apply
-            </label>
-            <div className="flex gap-2">
-              {[
-                { type: 'STANDARD', label: 'Standard', color: 'bg-gray-500' },
-                { type: 'VIP', label: 'VIP', color: 'bg-purple-500' },
-                { type: 'WINDOW', label: 'Window', color: 'bg-blue-500' },
-                { type: 'AISLE', label: 'Aisle', color: 'bg-green-500' },
-              ].map(({ type, label, color }) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() =>
-                    setSelectedSeatType(
-                      type as 'STANDARD' | 'VIP' | 'WINDOW' | 'AISLE'
-                    )
-                  }
-                  className={`px-3 py-2 rounded-md text-white text-sm font-medium ${
-                    selectedSeatType === type
-                      ? 'ring-2 ring-offset-2 ring-primary'
-                      : ''
-                  } ${color}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Seat Map Editor */}
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Seat Layout (Click seats to change type)
-            </label>
-            <div className="bg-muted p-6 rounded-lg overflow-x-auto">
-              <div
-                className="grid gap-2 mx-auto"
-                style={{
-                  gridTemplateColumns: `repeat(${formData.columns}, 1fr)`,
-                  maxWidth: `${formData.columns * 50}px`,
-                }}
-              >
-                {formData.seats.map((seat: Seat) => (
-                  <button
-                    key={seat.id}
-                    type="button"
-                    onClick={() => handleSeatClick(seat.id)}
-                    className={`w-12 h-12 rounded border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-bold ${getSeatColor(seat.type)} hover:opacity-80 transition-opacity`}
-                  >
-                    {seat.row}-{seat.column}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Total seats: {formData.seats.length}
-            </p>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <button
               type="button"
               onClick={onClose}
@@ -464,10 +337,9 @@ const SeatMapEditorModal: React.FC<SeatMapEditorModalProps> = ({
             </button>
             <button
               type="submit"
-              className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
-              <Save className="mr-2 h-4 w-4" />
-              {seatMap ? 'Update Seat Map' : 'Create Seat Map'}
+              {seatMap ? 'Update' : 'Create'}
             </button>
           </div>
         </form>
@@ -475,3 +347,5 @@ const SeatMapEditorModal: React.FC<SeatMapEditorModalProps> = ({
     </div>
   )
 }
+
+export default AdminSeatMapManagement

@@ -1,18 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
-
-export interface OperatorData {
-  operatorId: string
-  name: string
-  contactEmail: string
-  contactPhone: string
-  status: 'approved' | 'pending' | 'rejected' | 'suspended'
-  totalRoutes: number
-  totalBuses: number
-  rating: number
-  approvedAt?: string
-  createdAt: string
-}
+import type { OperatorAdminData } from '../../types/trip.types'
 
 interface PaginatedResponse<T> {
   success: boolean
@@ -29,7 +17,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 export function useAdminOperators() {
-  const [operators, setOperators] = useState<OperatorData[]>([])
+  const [operators, setOperators] = useState<OperatorAdminData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -59,7 +47,7 @@ export function useAdminOperators() {
           throw new Error('Failed to fetch operators')
         }
 
-        const data: PaginatedResponse<OperatorData> = await response.json()
+        const data: PaginatedResponse<OperatorAdminData> = await response.json()
         setOperators(data.data)
         return data.pagination
       } catch {

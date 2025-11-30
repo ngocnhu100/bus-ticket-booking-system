@@ -1,18 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
-
-export interface TripData {
-  tripId?: string
-  routeId: string
-  busId: string
-  departureTime: string
-  arrivalTime: string
-  basePrice: number
-  status: 'active' | 'cancelled' | 'completed' | 'scheduled'
-  isRecurring?: boolean
-  recurringPattern?: 'daily' | 'weekly' | 'monthly'
-  createdAt?: string
-}
+import type { TripFormData } from '../../types/trip.types'
 
 interface PaginatedResponse<T> {
   success: boolean
@@ -28,10 +16,10 @@ interface PaginatedResponse<T> {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
-// Transform API response to match TripData interface
+// Transform API response to match TripFormData interface
 // API returns { schedule: { departureTime, arrivalTime } }
 // We flatten it to top-level departureTime and arrivalTime
-function transformTripResponse(apiTrip: Record<string, unknown>): TripData {
+function transformTripResponse(apiTrip: Record<string, unknown>): TripFormData {
   return {
     tripId: apiTrip.tripId as string | undefined,
     routeId: apiTrip.routeId as string,
@@ -43,23 +31,17 @@ function transformTripResponse(apiTrip: Record<string, unknown>): TripData {
       ((apiTrip.schedule as Record<string, unknown>)?.arrivalTime as string) ||
       (apiTrip.arrivalTime as string),
     basePrice: apiTrip.basePrice as number,
-    status: apiTrip.status as
-      | 'active'
-      | 'cancelled'
-      | 'completed'
-      | 'scheduled',
-    isRecurring: apiTrip.isRecurring as boolean | undefined,
-    recurringPattern: apiTrip.recurringPattern as
-      | 'daily'
-      | 'weekly'
-      | 'monthly'
-      | undefined,
+    status: apiTrip.status as 'active' | 'inactive',
+    isRecurring: (apiTrip.isRecurring as boolean) || false,
+    recurrencePattern:
+      (apiTrip.recurrencePattern as 'daily' | 'weekly' | 'monthly') ||
+      undefined,
     createdAt: apiTrip.createdAt as string | undefined,
   }
 }
 
 export function useAdminTrips() {
-  const [trips, setTrips] = useState<TripData[]>([])
+  const [trips, setTrips] = useState<TripFormData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -109,7 +91,7 @@ export function useAdminTrips() {
   )
 
   const createTrip = useCallback(
-    async (tripData: Omit<TripData, 'tripId' | 'createdAt'>) => {
+    async (tripData: Omit<TripFormData, 'tripId' | 'createdAt'>) => {
       setIsLoading(true)
       try {
         const response = await fetch(`${API_BASE_URL}/admin/trips`, {
@@ -151,7 +133,7 @@ export function useAdminTrips() {
   const updateTrip = useCallback(
     async (
       tripId: string,
-      tripData: Omit<TripData, 'tripId' | 'createdAt'>
+      tripData: Omit<TripFormData, 'tripId' | 'createdAt'>
     ) => {
       setIsLoading(true)
       try {

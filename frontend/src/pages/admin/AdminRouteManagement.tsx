@@ -11,65 +11,166 @@ import {
   ChevronRight,
   ArrowRight,
 } from 'lucide-react'
-import { useAdminRoutes, type RouteData } from '@/hooks/admin/useAdminRoutes'
+import type { RouteAdminData } from '@/types/trip.types'
+import { useAdminRoutes } from '@/hooks/admin/useAdminRoutes'
 import { useToast } from '@/hooks/use-toast'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 
 // Fallback mock data when API is unavailable
-const MOCK_ROUTES: RouteData[] = [
+const MOCK_ROUTES: RouteAdminData[] = [
   {
     routeId: '1',
+    operatorId: 'op-001',
     origin: 'Ho Chi Minh City',
     destination: 'Da Nang',
     distanceKm: 850,
     estimatedMinutes: 720,
-    pickupPoints: ['Ben Thanh Market', 'Pham Ngu Lao', 'Tan Son Nhat Airport'],
-    dropoffPoints: ['Da Nang Airport', 'Son Tra Peninsula', 'Marble Mountains'],
-    status: 'active',
+    pickupPoints: [
+      {
+        pointId: 'p1',
+        name: 'Ben Thanh Station',
+        address: 'Ben Thanh, District 1',
+        time: '06:00',
+      },
+      {
+        pointId: 'p2',
+        name: 'Tan Son Nhat Airport',
+        address: 'Tan Binh District',
+        time: '06:30',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd1',
+        name: 'Da Nang Station',
+        address: 'Hai Chau District',
+        time: '14:00',
+      },
+      {
+        pointId: 'd2',
+        name: 'Da Nang Airport',
+        address: 'Ngu Hanh Son District',
+        time: '14:30',
+      },
+    ],
     createdAt: '2025-01-15T10:30:00Z',
   },
   {
     routeId: '2',
+    operatorId: 'op-001',
     origin: 'Hanoi',
     destination: 'Ho Chi Minh City',
     distanceKm: 1700,
     estimatedMinutes: 1800,
-    pickupPoints: ['Old Quarter', 'Noi Bai Airport', 'Ha Dong'],
-    dropoffPoints: ['Tan Son Nhat Airport', 'Ben Thanh Market', 'Cu Chi'],
-    status: 'active',
+    pickupPoints: [
+      {
+        pointId: 'p3',
+        name: 'Hanoi Old Quarter',
+        address: 'Hoan Kiem District',
+        time: '20:00',
+      },
+      {
+        pointId: 'p4',
+        name: 'Noi Bai Airport',
+        address: 'Soc Son District',
+        time: '20:45',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd3',
+        name: 'Ben Thanh Station',
+        address: 'Ben Thanh, District 1',
+        time: '09:00',
+      },
+      {
+        pointId: 'd4',
+        name: 'Tan Son Nhat Airport',
+        address: 'Tan Binh District',
+        time: '09:30',
+      },
+    ],
     createdAt: '2025-01-16T14:20:00Z',
   },
   {
     routeId: '3',
+    operatorId: 'op-002',
     origin: 'Can Tho',
     destination: 'Ho Chi Minh City',
     distanceKm: 180,
     estimatedMinutes: 240,
-    pickupPoints: ['Can Tho Central Bus Station', 'Can Tho Airport'],
-    dropoffPoints: ['Ben Thanh Market', 'Tan Son Nhat Airport'],
-    status: 'active',
+    pickupPoints: [
+      {
+        pointId: 'p5',
+        name: 'Can Tho Station',
+        address: 'Ninh Kieu District',
+        time: '07:00',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd5',
+        name: 'Ben Thanh Station',
+        address: 'Ben Thanh, District 1',
+        time: '11:00',
+      },
+    ],
     createdAt: '2025-01-17T09:15:00Z',
   },
   {
     routeId: '4',
+    operatorId: 'op-002',
     origin: 'Da Lat',
     destination: 'Ho Chi Minh City',
     distanceKm: 305,
     estimatedMinutes: 480,
-    pickupPoints: ['Da Lat Bus Station', 'Flower Park'],
-    dropoffPoints: ['Ben Thanh Market'],
-    status: 'inactive',
+    pickupPoints: [
+      {
+        pointId: 'p6',
+        name: 'Da Lat Center',
+        address: 'District 1',
+        time: '08:00',
+      },
+      {
+        pointId: 'p7',
+        name: 'Da Lat Airport',
+        address: 'Lam Dong Province',
+        time: '08:30',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd6',
+        name: 'Ben Thanh Station',
+        address: 'Ben Thanh, District 1',
+        time: '16:00',
+      },
+    ],
     createdAt: '2025-01-18T11:45:00Z',
   },
   {
     routeId: '5',
+    operatorId: 'op-001',
     origin: 'Nha Trang',
     destination: 'Da Nang',
     distanceKm: 520,
     estimatedMinutes: 600,
-    pickupPoints: ['Nha Trang Bus Station', 'Nha Trang Airport'],
-    dropoffPoints: ['Da Nang Airport', 'Da Nang Bus Station'],
-    status: 'active',
+    pickupPoints: [
+      {
+        pointId: 'p8',
+        name: 'Nha Trang Station',
+        address: 'Nha Trang City',
+        time: '09:00',
+      },
+    ],
+    dropoffPoints: [
+      {
+        pointId: 'd7',
+        name: 'Da Nang Station',
+        address: 'Hai Chau District',
+        time: '19:00',
+      },
+    ],
     createdAt: '2025-01-19T16:00:00Z',
   },
 ]
@@ -93,7 +194,7 @@ const AdminRouteManagement: React.FC = () => {
     'ALL' | 'SHORT' | 'MEDIUM' | 'LONG'
   >('ALL')
   const [showForm, setShowForm] = useState(false)
-  const [editingRoute, setEditingRoute] = useState<RouteData | null>(null)
+  const [editingRoute, setEditingRoute] = useState<RouteAdminData | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [useMockData, setUseMockData] = useState(false)
@@ -126,10 +227,6 @@ const AdminRouteManagement: React.FC = () => {
       route.origin.toLowerCase().includes(searchTerm.toLowerCase()) ||
       route.destination.toLowerCase().includes(searchTerm.toLowerCase())
 
-    // Status filter
-    const matchesStatus =
-      statusFilter === 'all' || route.status === statusFilter
-
     // Distance filter
     let matchesDistance = true
     if (distanceFilter === 'SHORT') {
@@ -140,7 +237,7 @@ const AdminRouteManagement: React.FC = () => {
       matchesDistance = route.distanceKm > 800
     }
 
-    return matchesSearch && matchesStatus && matchesDistance
+    return matchesSearch && matchesDistance
   })
 
   // Paginate filtered results
@@ -157,7 +254,7 @@ const AdminRouteManagement: React.FC = () => {
     setShowForm(true)
   }
 
-  const handleEditRoute = (route: RouteData) => {
+  const handleEditRoute = (route: RouteAdminData) => {
     setEditingRoute(route)
     setShowForm(true)
   }
@@ -185,7 +282,9 @@ const AdminRouteManagement: React.FC = () => {
     }
   }
 
-  const handleSaveRoute = async (routeData: Omit<RouteData, 'routeId'>) => {
+  const handleSaveRoute = async (
+    routeData: Omit<RouteAdminData, 'routeId' | 'createdAt'>
+  ) => {
     try {
       if (editingRoute?.routeId) {
         await updateRoute(editingRoute.routeId, routeData)
@@ -370,7 +469,7 @@ const AdminRouteManagement: React.FC = () => {
                         Pickup Points
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Status
+                        Dropoff Points
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Actions
@@ -400,26 +499,30 @@ const AdminRouteManagement: React.FC = () => {
                           {route.estimatedMinutes % 60}m
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
-                          <div className="max-w-xs truncate">
-                            {route.pickupPoints?.join(', ') || 'N/A'}
+                          <div className="flex flex-wrap gap-1">
+                            {route.pickupPoints.map((point, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex px-2 py-1 text-xs bg-muted rounded"
+                                title={point.address}
+                              >
+                                {point.name}
+                              </span>
+                            ))}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                            style={{
-                              backgroundColor:
-                                route.status === 'active'
-                                  ? 'color-mix(in srgb, var(--success) 20%, transparent)'
-                                  : 'color-mix(in srgb, var(--muted) 20%, transparent)',
-                              color:
-                                route.status === 'active'
-                                  ? 'var(--success)'
-                                  : 'var(--muted-foreground)',
-                            }}
-                          >
-                            {route.status === 'active' ? 'Active' : 'Inactive'}
-                          </span>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                          <div className="flex flex-wrap gap-1">
+                            {route.dropoffPoints.map((point, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex px-2 py-1 text-xs bg-muted rounded"
+                                title={point.address}
+                              >
+                                {point.name}
+                              </span>
+                            ))}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
@@ -501,8 +604,8 @@ const AdminRouteManagement: React.FC = () => {
 
 // Route Form Modal Component
 interface RouteFormModalProps {
-  route?: RouteData | null
-  onSave: (route: Omit<RouteData, 'routeId'>) => void
+  route?: RouteAdminData | null
+  onSave: (route: Omit<RouteAdminData, 'routeId' | 'createdAt'>) => void
   onClose: () => void
 }
 
@@ -515,11 +618,14 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
   const [formData, setFormData] = useState({
     origin: route?.origin || '',
     destination: route?.destination || '',
-    distanceKm: route?.distanceKm || '',
-    estimatedMinutes: route?.estimatedMinutes || '',
-    pickupPoints: route?.pickupPoints || [''],
-    dropoffPoints: route?.dropoffPoints || [''],
-    status: route?.status || ('active' as const),
+    distanceKm: route?.distanceKm || 0,
+    estimatedMinutes: route?.estimatedMinutes || 0,
+    pickupPoints: route?.pickupPoints || [
+      { pointId: '', name: '', address: '', time: '' },
+    ],
+    dropoffPoints: route?.dropoffPoints || [
+      { pointId: '', name: '', address: '', time: '' },
+    ],
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -539,7 +645,14 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
       return
     }
 
-    if (formData.pickupPoints.filter((p) => p.trim()).length === 0) {
+    const pickupPointsFiltered = formData.pickupPoints.filter((p) =>
+      p.name.trim()
+    )
+    const dropoffPointsFiltered = formData.dropoffPoints.filter((p) =>
+      p.name.trim()
+    )
+
+    if (pickupPointsFiltered.length === 0) {
       toast({
         title: 'Validation Error',
         description: 'Please add at least one pickup point',
@@ -547,7 +660,7 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
       return
     }
 
-    if (formData.dropoffPoints.filter((p) => p.trim()).length === 0) {
+    if (dropoffPointsFiltered.length === 0) {
       toast({
         title: 'Validation Error',
         description: 'Please add at least one dropoff point',
@@ -557,14 +670,23 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
 
     setIsSubmitting(true)
     try {
+      const pickupPointsWithIds = pickupPointsFiltered.map((p) => ({
+        ...p,
+        pointId: p.pointId || `pickup-${Date.now()}-${Math.random()}`,
+      }))
+      const dropoffPointsWithIds = dropoffPointsFiltered.map((p) => ({
+        ...p,
+        pointId: p.pointId || `dropoff-${Date.now()}-${Math.random()}`,
+      }))
+
       await onSave({
+        operatorId: 'default-operator',
         origin: formData.origin,
         destination: formData.destination,
         distanceKm: Number(formData.distanceKm),
         estimatedMinutes: Number(formData.estimatedMinutes),
-        pickupPoints: formData.pickupPoints.filter((p) => p.trim()),
-        dropoffPoints: formData.dropoffPoints.filter((p) => p.trim()),
-        status: formData.status,
+        pickupPoints: pickupPointsWithIds,
+        dropoffPoints: dropoffPointsWithIds,
       })
     } catch (err) {
       // Error already handled by parent component
@@ -579,31 +701,32 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
       ...prev,
       [type === 'pickup' ? 'pickupPoints' : 'dropoffPoints']: [
         ...prev[type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'],
-        '',
+        { pointId: '', name: '', address: '', time: '' },
       ],
     }))
   }
 
-  const updatePoint = (
+  const updatePointField = (
     type: 'pickup' | 'dropoff',
     index: number,
+    field: 'name' | 'address' | 'time',
     value: string
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [type === 'pickup' ? 'pickupPoints' : 'dropoffPoints']: prev[
-        type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'
-      ].map((point, i) => (i === index ? value : point)),
-    }))
+    setFormData((prev) => {
+      const key = type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'
+      const points = [...prev[key]]
+      points[index] = { ...points[index], [field]: value }
+      return { ...prev, [key]: points }
+    })
   }
 
   const removePoint = (type: 'pickup' | 'dropoff', index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      [type === 'pickup' ? 'pickupPoints' : 'dropoffPoints']: prev[
-        type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'
-      ].filter((_, i) => i !== index),
-    }))
+    setFormData((prev) => {
+      const key = type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'
+      const points = [...prev[key]]
+      points.splice(index, 1)
+      return { ...prev, [key]: points }
+    })
   }
 
   return (
@@ -661,7 +784,7 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    distanceKm: e.target.value,
+                    distanceKm: Number(e.target.value),
                   }))
                 }
                 className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -679,7 +802,7 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    estimatedMinutes: e.target.value,
+                    estimatedMinutes: Number(e.target.value),
                   }))
                 }
                 className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -691,22 +814,44 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Pickup Points
+              Pickup Points *
             </label>
             {formData.pickupPoints.map((point, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+              <div
+                key={index}
+                className="space-y-2 mb-3 p-3 border border-border rounded-md"
+              >
                 <input
                   type="text"
-                  value={point}
-                  onChange={(e) => updatePoint('pickup', index, e.target.value)}
-                  placeholder="Enter pickup point"
-                  className="flex-1 px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={point.name}
+                  onChange={(e) =>
+                    updatePointField('pickup', index, 'name', e.target.value)
+                  }
+                  placeholder="Location name (e.g., Ben Thanh Station)"
+                  className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  value={point.address}
+                  onChange={(e) =>
+                    updatePointField('pickup', index, 'address', e.target.value)
+                  }
+                  placeholder="Address (e.g., Ben Thanh, District 1)"
+                  className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="time"
+                  value={point.time}
+                  onChange={(e) =>
+                    updatePointField('pickup', index, 'time', e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 {formData.pickupPoints.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removePoint('pickup', index)}
-                    className="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md transition"
+                    className="w-full px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md transition"
                   >
                     Remove
                   </button>
@@ -724,24 +869,49 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-2">
-              Dropoff Points
+              Dropoff Points *
             </label>
             {formData.dropoffPoints.map((point, index) => (
-              <div key={index} className="flex gap-2 mb-2">
+              <div
+                key={index}
+                className="space-y-2 mb-3 p-3 border border-border rounded-md"
+              >
                 <input
                   type="text"
-                  value={point}
+                  value={point.name}
                   onChange={(e) =>
-                    updatePoint('dropoff', index, e.target.value)
+                    updatePointField('dropoff', index, 'name', e.target.value)
                   }
-                  placeholder="Enter dropoff point"
-                  className="flex-1 px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Location name (e.g., Da Nang Station)"
+                  className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  value={point.address}
+                  onChange={(e) =>
+                    updatePointField(
+                      'dropoff',
+                      index,
+                      'address',
+                      e.target.value
+                    )
+                  }
+                  placeholder="Address (e.g., Hai Chau District)"
+                  className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="time"
+                  value={point.time}
+                  onChange={(e) =>
+                    updatePointField('dropoff', index, 'time', e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
                 {formData.dropoffPoints.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removePoint('dropoff', index)}
-                    className="px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md transition"
+                    className="w-full px-3 py-2 text-destructive hover:bg-destructive/10 rounded-md transition"
                   >
                     Remove
                   </button>
@@ -755,25 +925,6 @@ const RouteFormModal: React.FC<RouteFormModalProps> = ({
             >
               + Add dropoff point
             </button>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  status: e.target.value as 'active' | 'inactive',
-                }))
-              }
-              className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
