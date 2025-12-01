@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const axios = require('axios');
 const { authenticate, authorize } = require('./authMiddleware.js');
+const { filterTrips, paginateResults } = require('./tripService.js');
 // Always load .env file for development and Docker environments
 require('dotenv').config();
 
@@ -104,6 +105,171 @@ app.use('/notification', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     }
+  }
+});
+
+// Trip search endpoint with advanced filtering
+app.get('/trips/search', async (req, res) => {
+  try {
+    const { mockTrips } = require('./tripService.js');
+    
+    // Parse query parameters
+    const {
+      origin,
+      destination,
+      date,
+      passengers,
+      busType,
+      departureTime,
+      minPrice,
+      maxPrice,
+      operatorId,
+      amenities,
+      page = '1',
+      limit = '10'
+    } = req.query;
+
+    // Validate required parameters
+    if (!origin || !destination || !date) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Missing required parameters: origin, destination, and date are required'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Parse array parameters (busType, departureTime, amenities)
+    const busTypeArray = busType ? (Array.isArray(busType) ? busType : [busType]) : [];
+    const departureTimeArray = departureTime ? (Array.isArray(departureTime) ? departureTime : [departureTime]) : [];
+    const amenitiesArray = amenities ? (Array.isArray(amenities) ? amenities : [amenities]) : [];
+
+    // Parse numeric parameters
+    const parsedPage = parseInt(page) || 1;
+    const parsedLimit = parseInt(limit) || 10;
+    const parsedMinPrice = minPrice ? parseFloat(minPrice) : null;
+    const parsedMaxPrice = maxPrice ? parseFloat(maxPrice) : null;
+    const parsedPassengers = passengers ? parseInt(passengers) : null;
+
+    // Validate numeric parameters
+    if (parsedPage < 1) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Page must be greater than 0'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (parsedLimit < 1 || parsedLimit > 100) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Limit must be between 1 and 100'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    if (parsedMinPrice !== null && parsedMaxPrice !== null && parsedMinPrice > parsedMaxPrice) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'minPrice cannot be greater than maxPrice'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Validate busType values
+    const validBusTypes = ['standard', 'limousine', 'sleeper'];
+    if (busTypeArray.length > 0 && !busTypeArray.every(type => validBusTypes.includes(type))) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Invalid busType. Valid values are: ${validBusTypes.join(', ')}`
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Validate departureTime values
+    const validDepartureTimes = ['morning', 'afternoon', 'evening', 'night'];
+    if (departureTimeArray.length > 0 && !departureTimeArray.every(time => validDepartureTimes.includes(time))) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: `Invalid departureTime. Valid values are: ${validDepartureTimes.join(', ')}`
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Build filter object
+    const filters = {
+      origin,
+      destination,
+      date,
+      busType: busTypeArray,
+      departureTime: departureTimeArray,
+      minPrice: parsedMinPrice,
+      maxPrice: parsedMaxPrice,
+      operatorId,
+      amenities: amenitiesArray,
+      passengers: parsedPassengers
+    };
+
+    console.log('🔍 Searching trips with filters:', JSON.stringify(filters, null, 2));
+
+    // Filter trips
+    const filteredTrips = filterTrips(mockTrips, filters);
+    
+    console.log(`✅ Found ${filteredTrips.length} trips matching filters`);
+
+    // Paginate results
+    const result = paginateResults(filteredTrips, parsedPage, parsedLimit);
+
+    res.json({
+      success: true,
+      data: {
+        trips: result.trips,
+        totalCount: result.totalCount,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        filters: {
+          origin,
+          destination,
+          date,
+          busType: busTypeArray,
+          departureTime: departureTimeArray,
+          minPrice: parsedMinPrice,
+          maxPrice: parsedMaxPrice,
+          operatorId,
+          amenities: amenitiesArray,
+          passengers: parsedPassengers
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error searching trips:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An error occurred while searching trips'
+      },
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
