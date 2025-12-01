@@ -297,7 +297,7 @@ const initialTrips: Trip[] = [
 // ============================================================================
 
 const AdminTripSchedulingPage: React.FC = () => {
-  const { trips, setTrips, buses, routes, createTrip, updateTrip, deleteTrip } =
+  const { trips, buses, routes, createTrip, updateTrip, deleteTrip } =
     useAdminTripData(initialTrips, initialBuses, initialRoutes)
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
@@ -529,17 +529,21 @@ const AdminTripSchedulingPage: React.FC = () => {
     setOpenConfirmDialog(false)
   }
 
-  const handleBulkStatusUpdate = (newStatus: 'ACTIVE' | 'INACTIVE') => {
+  const handleBulkStatusUpdate = async (newStatus: 'ACTIVE' | 'INACTIVE') => {
     if (selectedTripIds.length === 0) return
 
     const statusValue = newStatus === 'ACTIVE' ? 'active' : 'inactive'
-    setTrips((prev) =>
-      prev.map((trip) =>
-        selectedTripIds.includes(trip.trip_id)
-          ? { ...trip, status: statusValue }
-          : trip
-      )
-    )
+    for (const tripId of selectedTripIds) {
+      const trip = trips.find((t) => t.trip_id === tripId)
+      if (trip) {
+        try {
+          await updateTrip(tripId, { ...trip, status: statusValue })
+        } catch (error) {
+          console.error(`Failed to update status for trip ${tripId}:`, error)
+          // Continue with next trip
+        }
+      }
+    }
     setSelectedTripIds([])
   }
 

@@ -44,9 +44,10 @@ export const useAdminTripData = (
         token: getAccessToken(),
         body: tripData,
       })
-      // Assuming the response has the created trip
-      setTrips((prev) => [...prev, response.data])
-      return response.data
+      // Use response data if available, otherwise use sent data
+      const createdTrip = response.data || tripData
+      setTrips((prev) => [...prev, createdTrip])
+      return createdTrip
     } catch (err) {
       setError('Failed to create trip')
       console.error('Failed to create trip:', err)
@@ -65,13 +66,14 @@ export const useAdminTripData = (
         token: getAccessToken(),
         body: tripData,
       })
-      // Update the trip in state
+      // Update the trip in state - use response data if available, otherwise use sent data
+      const updatedTrip = response.data || tripData
       setTrips((prev) =>
         prev.map((trip) =>
-          trip.trip_id === tripId ? { ...trip, ...response.data } : trip
+          trip.trip_id === tripId ? { ...trip, ...updatedTrip } : trip
         )
       )
-      return response.data
+      return updatedTrip
     } catch (err) {
       setError('Failed to update trip')
       console.error('Failed to update trip:', err)
