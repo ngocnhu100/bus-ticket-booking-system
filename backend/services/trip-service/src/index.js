@@ -8,6 +8,8 @@ const tripController = require('./controllers/tripController');
 const routeController = require('./controllers/routeController');
 const busModelController = require('./controllers/busModelController');
 const busController = require('./controllers/busController');
+const adminOperatorController = require('./controllers/adminOperatorController');
+
 const { authenticate, authorize } = require('./middleware/authMiddleware');
 
 const app = express();
@@ -58,6 +60,24 @@ app.delete('/buses/:id', authenticate, authorize(['admin']), busController.delet
 
 // API kiểm tra xe có trống không (rất quan trọng khi tạo chuyến)
 app.get('/buses/:id/availability', authenticate, authorize(['admin']), busController.checkAvailability);
+
+// ============================= ADMIN: OPERATOR MANAGEMENT (mới thêm - thẳng trong index.js) =============================
+
+// 1. Danh sách nhà xe + filter + phân trang + thống kê số tuyến, số xe
+app.get(
+  '/admin/operators',
+  authenticate,
+  authorize(['admin']),
+  adminOperatorController.getList
+);
+
+// 2. Duyệt / Từ chối nhà xe
+app.put(
+  '/admin/operators/:operatorId/approve',
+  authenticate,
+  authorize(['admin']),
+  adminOperatorController.approveOperator
+);
 
 // --- Error handling ---
 app.use((err, req, res, next) => { 
