@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import type { RouteAdminData } from '@/types/trip.types'
-import { Loader, Plus, Trash2 } from 'lucide-react'
+import { Loader, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 
-const emptyForm: Omit<RouteAdminData, 'routeId' | 'createdAt'> = {
-  operatorId: 'default-operator',
+const emptyForm: Omit<RouteAdminData, 'route_id' | 'created_at'> = {
+  operator_id: 'default-operator',
   origin: '',
   destination: '',
-  distanceKm: 0,
-  estimatedMinutes: 0,
-  pickupPoints: [{ pointId: '', name: '', address: '', time: '' }],
-  dropoffPoints: [{ pointId: '', name: '', address: '', time: '' }],
+  distance_km: 0,
+  estimated_minutes: 0,
+  pickup_points: [{ point_id: '', name: '', address: '', time: '' }],
+  dropoff_points: [{ point_id: '', name: '', address: '', time: '' }],
+  route_stops: [],
 }
 
 interface RouteFormDrawerProps {
   open: boolean
   onClose: () => void
   initialRoute: RouteAdminData | null
-  onSave: (values: Omit<RouteAdminData, 'routeId' | 'createdAt'>) => void
+  onSave: (values: Omit<RouteAdminData, 'route_id' | 'created_at'>) => void
 }
 
 export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
@@ -26,19 +27,20 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
   onSave,
 }) => {
   const [form, setForm] =
-    useState<Omit<RouteAdminData, 'routeId' | 'createdAt'>>(emptyForm)
+    useState<Omit<RouteAdminData, 'route_id' | 'created_at'>>(emptyForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (initialRoute) {
       setForm({
-        operatorId: initialRoute.operatorId,
+        operator_id: initialRoute.operator_id,
         origin: initialRoute.origin,
         destination: initialRoute.destination,
-        distanceKm: initialRoute.distanceKm,
-        estimatedMinutes: initialRoute.estimatedMinutes,
-        pickupPoints: initialRoute.pickupPoints,
-        dropoffPoints: initialRoute.dropoffPoints,
+        distance_km: initialRoute.distance_km,
+        estimated_minutes: initialRoute.estimated_minutes,
+        pickup_points: initialRoute.pickup_points,
+        dropoff_points: initialRoute.dropoff_points,
+        route_stops: initialRoute.route_stops,
       })
     } else {
       setForm(emptyForm)
@@ -52,8 +54,8 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
   const addPoint = (type: 'pickup' | 'dropoff') => {
     setForm((prev) => ({
       ...prev,
-      [type === 'pickup' ? 'pickupPoints' : 'dropoffPoints']: [
-        ...prev[type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'],
+      [type === 'pickup' ? 'pickup_points' : 'dropoff_points']: [
+        ...prev[type === 'pickup' ? 'pickup_points' : 'dropoff_points'],
         { pointId: '', name: '', address: '', time: '' },
       ],
     }))
@@ -66,8 +68,8 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
     value: string
   ) => {
     setForm((prev) => {
-      const key = type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'
-      const points = [...prev[key]] as typeof prev.pickupPoints
+      const key = type === 'pickup' ? 'pickup_points' : 'dropoff_points'
+      const points = [...prev[key]] as typeof prev.pickup_points
       points[index] = { ...points[index], [field]: value }
       return { ...prev, [key]: points }
     })
@@ -75,10 +77,66 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
 
   const removePoint = (type: 'pickup' | 'dropoff', index: number) => {
     setForm((prev) => {
-      const key = type === 'pickup' ? 'pickupPoints' : 'dropoffPoints'
+      const key = type === 'pickup' ? 'pickup_points' : 'dropoff_points'
       const points = [...prev[key]]
       points.splice(index, 1)
       return { ...prev, [key]: points }
+    })
+  }
+
+  const addStop = () => {
+    setForm((prev) => ({
+      ...prev,
+      route_stops: [
+        ...prev.route_stops,
+        { stop_name: '', sequence: prev.route_stops.length + 1 },
+      ],
+    }))
+  }
+
+  const updateStopField = (
+    index: number,
+    field:
+      | 'stop_name'
+      | 'sequence'
+      | 'arrival_offset_minutes'
+      | 'departure_offset_minutes',
+    value: string | number
+  ) => {
+    setForm((prev) => {
+      const stops = [...prev.route_stops]
+      stops[index] = { ...stops[index], [field]: value }
+      return { ...prev, route_stops: stops }
+    })
+  }
+
+  const removeStop = (index: number) => {
+    setForm((prev) => {
+      const stops = [...prev.route_stops]
+      stops.splice(index, 1)
+      // Re-sequence the remaining stops
+      const updatedStops = stops.map((stop, idx) => ({
+        ...stop,
+        sequence: idx + 1,
+      }))
+      return { ...prev, route_stops: updatedStops }
+    })
+  }
+
+  const moveStop = (index: number, direction: 'up' | 'down') => {
+    setForm((prev) => {
+      const stops = [...prev.route_stops]
+      if (direction === 'up' && index > 0) {
+        ;[stops[index], stops[index - 1]] = [stops[index - 1], stops[index]]
+      } else if (direction === 'down' && index < stops.length - 1) {
+        ;[stops[index], stops[index + 1]] = [stops[index + 1], stops[index]]
+      }
+      // Re-sequence all stops
+      const updatedStops = stops.map((stop, idx) => ({
+        ...stop,
+        sequence: idx + 1,
+      }))
+      return { ...prev, route_stops: updatedStops }
     })
   }
 
@@ -218,9 +276,9 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     backgroundColor: 'var(--card)',
                     color: 'var(--foreground)',
                   }}
-                  value={form.distanceKm}
+                  value={form.distance_km}
                   onChange={(e) =>
-                    handleChange('distanceKm', Number(e.target.value))
+                    handleChange('distance_km', Number(e.target.value))
                   }
                 />
               </div>
@@ -241,13 +299,144 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     backgroundColor: 'var(--card)',
                     color: 'var(--foreground)',
                   }}
-                  value={form.estimatedMinutes}
+                  value={form.estimated_minutes}
                   onChange={(e) =>
-                    handleChange('estimatedMinutes', Number(e.target.value))
+                    handleChange('estimated_minutes', Number(e.target.value))
                   }
                 />
               </div>
             </div>
+          </div>
+
+          {/* Route Stops */}
+          <div className="space-y-2">
+            <h3
+              className="text-xs font-semibold uppercase tracking-wide"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              Route Stops
+            </h3>
+            {form.route_stops.map((stop, idx) => (
+              <div
+                key={idx}
+                className="p-3 border rounded-lg space-y-2"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={stop.stop_name}
+                    onChange={(e) =>
+                      updateStopField(idx, 'stop_name', e.target.value)
+                    }
+                    placeholder="Stop name"
+                    className="flex-1 rounded px-2 py-1 text-xs"
+                    style={{
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--card)',
+                      color: 'var(--foreground)',
+                    }}
+                  />
+                  <input
+                    type="number"
+                    value={stop.sequence}
+                    readOnly
+                    className="w-12 rounded px-2 py-1 text-xs text-center"
+                    style={{
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--muted)',
+                      color: 'var(--muted-foreground)',
+                    }}
+                  />
+                  <div className="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveStop(idx, 'up')}
+                      disabled={idx === 0}
+                      className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Move up"
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveStop(idx, 'down')}
+                      disabled={idx === form.route_stops.length - 1}
+                      className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Move down"
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeStop(idx)}
+                    className="p-1 text-destructive hover:text-destructive/80"
+                    title="Remove stop"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      Arrival offset (min)
+                    </label>
+                    <input
+                      type="number"
+                      value={stop.arrival_offset_minutes || 0}
+                      onChange={(e) =>
+                        updateStopField(
+                          idx,
+                          'arrival_offset_minutes',
+                          Number(e.target.value)
+                        )
+                      }
+                      min="0"
+                      placeholder="0"
+                      className="w-full rounded px-2 py-1 text-xs"
+                      style={{
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--card)',
+                        color: 'var(--foreground)',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      Departure offset (min)
+                    </label>
+                    <input
+                      type="number"
+                      value={stop.departure_offset_minutes || 0}
+                      onChange={(e) =>
+                        updateStopField(
+                          idx,
+                          'departure_offset_minutes',
+                          Number(e.target.value)
+                        )
+                      }
+                      min="0"
+                      placeholder="0"
+                      className="w-full rounded px-2 py-1 text-xs"
+                      style={{
+                        border: '1px solid var(--border)',
+                        backgroundColor: 'var(--card)',
+                        color: 'var(--foreground)',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addStop}
+              className="text-xs text-primary hover:text-primary/80 font-medium inline-flex items-center gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add route stop
+            </button>
           </div>
 
           {/* Pickup Points */}
@@ -258,7 +447,7 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
             >
               Pickup Points
             </h3>
-            {form.pickupPoints.map((point, idx) => (
+            {form.pickup_points.map((point, idx) => (
               <div
                 key={idx}
                 className="space-y-2 p-2 border rounded-lg"
@@ -305,7 +494,7 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     color: 'var(--foreground)',
                   }}
                 />
-                {form.pickupPoints.length > 1 && (
+                {form.pickup_points.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removePoint('pickup', idx)}
@@ -335,7 +524,7 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
             >
               Dropoff Points
             </h3>
-            {form.dropoffPoints.map((point, idx) => (
+            {form.dropoff_points.map((point, idx) => (
               <div
                 key={idx}
                 className="space-y-2 p-2 border rounded-lg"
@@ -382,7 +571,7 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     color: 'var(--foreground)',
                   }}
                 />
-                {form.dropoffPoints.length > 1 && (
+                {form.dropoff_points.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removePoint('dropoff', idx)}

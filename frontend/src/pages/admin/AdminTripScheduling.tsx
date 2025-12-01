@@ -48,6 +48,7 @@ const initialRoutes: RouteAdminData[] = [
         time: '14:00',
       },
     ],
+    route_stops: [],
   },
   {
     route_id: 'r2',
@@ -72,6 +73,7 @@ const initialRoutes: RouteAdminData[] = [
         time: '11:00',
       },
     ],
+    route_stops: [],
   },
 ]
 

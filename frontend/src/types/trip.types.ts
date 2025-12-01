@@ -156,6 +156,7 @@ export interface RouteStop {
   sequence: number
   arrival_offset_minutes?: number
   departure_offset_minutes?: number
+  address?: string
 }
 
 /**
@@ -233,6 +234,7 @@ export interface Trip {
   policies: Policies
   pickup_points: PickupPoint[]
   dropoff_points: DropoffPoint[]
+  route_stops?: RouteStop[]
   status: 'active' | 'inactive'
 }
 

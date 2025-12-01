@@ -20,78 +20,102 @@ import { CustomDropdown } from '@/components/ui/custom-dropdown'
 // Fallback mock data when API is unavailable
 const MOCK_ROUTES: RouteAdminData[] = [
   {
-    routeId: '1',
-    operatorId: 'op-001',
-    origin: 'Ho Chi Minh City',
+    route_id: '1',
+    operator_id: 'op-001',
+    origin: 'Ho Chi Minh',
     destination: 'Da Nang',
-    distanceKm: 850,
-    estimatedMinutes: 720,
-    pickupPoints: [
+    distance_km: 850,
+    estimated_minutes: 720,
+    pickup_points: [
       {
-        pointId: 'p1',
+        point_id: 'p1',
         name: 'Ben Thanh Station',
         address: 'Ben Thanh, District 1',
         time: '06:00',
       },
       {
-        pointId: 'p2',
+        point_id: 'p2',
         name: 'Tan Son Nhat Airport',
         address: 'Tan Binh District',
         time: '06:30',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
-        pointId: 'd1',
+        point_id: 'd1',
         name: 'Da Nang Station',
         address: 'Hai Chau District',
         time: '14:00',
       },
       {
-        pointId: 'd2',
+        point_id: 'd2',
         name: 'Da Nang Airport',
         address: 'Ngu Hanh Son District',
         time: '14:30',
       },
     ],
-    createdAt: '2025-01-15T10:30:00Z',
+    route_stops: [
+      {
+        stop_name: 'Quang Ngai',
+        sequence: 1,
+      },
+      {
+        stop_name: 'Quang Nam',
+        sequence: 2,
+      },
+    ],
+    created_at: '2025-01-15T10:30:00Z',
   },
   {
-    routeId: '2',
-    operatorId: 'op-001',
+    route_id: '2',
+    operator_id: 'op-001',
     origin: 'Hanoi',
     destination: 'Ho Chi Minh City',
-    distanceKm: 1700,
-    estimatedMinutes: 1800,
-    pickupPoints: [
+    distance_km: 1700,
+    estimated_minutes: 1800,
+    pickup_points: [
       {
-        pointId: 'p3',
+        point_id: 'p3',
         name: 'Hanoi Old Quarter',
         address: 'Hoan Kiem District',
         time: '20:00',
       },
       {
-        pointId: 'p4',
+        point_id: 'p4',
         name: 'Noi Bai Airport',
         address: 'Soc Son District',
         time: '20:45',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
-        pointId: 'd3',
+        point_id: 'd3',
         name: 'Ben Thanh Station',
         address: 'Ben Thanh, District 1',
         time: '09:00',
       },
       {
-        pointId: 'd4',
+        point_id: 'd4',
         name: 'Tan Son Nhat Airport',
         address: 'Tan Binh District',
         time: '09:30',
       },
     ],
-    createdAt: '2025-01-16T14:20:00Z',
+    route_stops: [
+      {
+        stop_name: 'Nghe An',
+        sequence: 1,
+      },
+      {
+        stop_name: 'Ha Tinh',
+        sequence: 2,
+      },
+      {
+        stop_name: 'Quang Binh',
+        sequence: 3,
+      },
+    ],
+    created_at: '2025-01-16T14:20:00Z',
   },
 ]
 
@@ -147,11 +171,11 @@ const AdminRouteManagement: React.FC = () => {
     // Distance filter
     let matchesDistance = true
     if (distanceFilter === 'SHORT') {
-      matchesDistance = route.distanceKm <= 300
+      matchesDistance = route.distance_km <= 300
     } else if (distanceFilter === 'MEDIUM') {
-      matchesDistance = route.distanceKm > 300 && route.distanceKm <= 800
+      matchesDistance = route.distance_km > 300 && route.distance_km <= 800
     } else if (distanceFilter === 'LONG') {
-      matchesDistance = route.distanceKm > 800
+      matchesDistance = route.distance_km > 800
     }
 
     return matchesSearch && matchesDistance
@@ -200,11 +224,11 @@ const AdminRouteManagement: React.FC = () => {
   }
 
   const handleSaveRoute = async (
-    routeData: Omit<RouteAdminData, 'routeId' | 'createdAt'>
+    routeData: Omit<RouteAdminData, 'route_id' | 'created_at'>
   ) => {
     try {
-      if (editingRoute?.routeId) {
-        await updateRoute(editingRoute.routeId, routeData)
+      if (editingRoute?.route_id) {
+        await updateRoute(editingRoute.route_id, routeData)
       } else {
         await createRoute(routeData)
       }
@@ -348,7 +372,7 @@ const AdminRouteManagement: React.FC = () => {
                   </thead>
                   <tbody className="bg-card divide-y divide-border">
                     {paginatedRoutes.map((route) => (
-                      <tr key={route.routeId} className="hover:bg-muted/50">
+                      <tr key={route.route_id} className="hover:bg-muted/50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-muted-foreground" />
@@ -362,15 +386,15 @@ const AdminRouteManagement: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                          {route.distanceKm} km
+                          {route.distance_km} km
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                          {Math.floor(route.estimatedMinutes / 60)}h{' '}
-                          {route.estimatedMinutes % 60}m
+                          {Math.floor(route.estimated_minutes / 60)}h{' '}
+                          {route.estimated_minutes % 60}m
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
                           <div className="flex flex-wrap gap-1">
-                            {route.pickupPoints.map((point, idx) => (
+                            {route.pickup_points.map((point, idx) => (
                               <span
                                 key={idx}
                                 className="inline-flex px-2 py-1 text-xs bg-muted rounded"
@@ -383,7 +407,7 @@ const AdminRouteManagement: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
                           <div className="flex flex-wrap gap-1">
-                            {route.dropoffPoints.map((point, idx) => (
+                            {route.dropoff_points.map((point, idx) => (
                               <span
                                 key={idx}
                                 className="inline-flex px-2 py-1 text-xs bg-muted rounded"
@@ -397,7 +421,7 @@ const AdminRouteManagement: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                           <button
                             onClick={() => handleEditRoute(route)}
-                            disabled={actionLoading === route.routeId}
+                            disabled={actionLoading === route.route_id}
                             className="inline-flex items-center text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <Edit className="h-4 w-4" />
@@ -405,14 +429,14 @@ const AdminRouteManagement: React.FC = () => {
                           <button
                             onClick={() =>
                               handleDeleteRoute(
-                                route.routeId!,
+                                route.route_id!,
                                 `${route.origin} → ${route.destination}`
                               )
                             }
-                            disabled={actionLoading === route.routeId}
+                            disabled={actionLoading === route.route_id}
                             className="inline-flex items-center text-destructive hover:text-destructive/80 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            {actionLoading === route.routeId ? (
+                            {actionLoading === route.route_id ? (
                               <Loader className="h-4 w-4 animate-spin" />
                             ) : (
                               <Trash2 className="h-4 w-4" />

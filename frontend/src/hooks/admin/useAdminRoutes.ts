@@ -1,20 +1,14 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
+import { request, getAccessToken } from '../../api/auth'
 import type { RouteAdminData } from '../../types/trip.types'
 
-interface PaginatedResponse<T> {
-  success: boolean
-  data: T[]
-  pagination?: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
+interface StopData {
+  name: string
+  address: string
+  time: string
+  type: 'pickup' | 'dropoff'
 }
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 export function useAdminRoutes() {
   const [routes, setRoutes] = useState<RouteAdminData[]>([])
@@ -34,21 +28,13 @@ export function useAdminRoutes() {
           params.append('search', searchTerm)
         }
 
-        const response = await fetch(`${API_BASE_URL}/admin/routes?${params}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+        const response = await request(`/routes?${params}`, {
+          method: 'GET',
+          token: getAccessToken(),
         })
 
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch routes: ${response.status} ${response.statusText}`
-          )
-        }
-
-        const data: PaginatedResponse<RouteAdminData> = await response.json()
-        setRoutes(data.data)
-        return data.pagination
+        setRoutes(response.data)
+        return response.pagination
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Failed to fetch routes'
@@ -66,27 +52,20 @@ export function useAdminRoutes() {
   )
 
   const createRoute = useCallback(
-    async (routeData: Omit<RouteAdminData, 'routeId' | 'createdAt'>) => {
+    async (routeData: Omit<RouteAdminData, 'route_id' | 'created_at'>) => {
       setIsLoading(true)
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/routes`, {
+        await request('/routes', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-          body: JSON.stringify({
-            operatorId: routeData.operatorId,
+          token: getAccessToken(),
+          body: {
+            operator_id: routeData.operator_id,
             origin: routeData.origin,
             destination: routeData.destination,
-            distanceKm: routeData.distanceKm,
-            estimatedMinutes: routeData.estimatedMinutes,
-          }),
+            distance_km: routeData.distance_km,
+            estimated_minutes: routeData.estimated_minutes,
+          },
         })
-
-        if (!response.ok) {
-          throw new Error('Failed to create route')
-        }
 
         toast({
           title: 'Success',
@@ -113,25 +92,15 @@ export function useAdminRoutes() {
   const updateRoute = useCallback(
     async (
       routeId: string,
-      routeData: Omit<RouteAdminData, 'routeId' | 'createdAt'>
+      routeData: Omit<RouteAdminData, 'route_id' | 'created_at'>
     ) => {
       setIsLoading(true)
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/admin/routes/${routeId}`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify(routeData),
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to update route')
-        }
+        await request(`/routes/${routeId}`, {
+          method: 'PUT',
+          token: getAccessToken(),
+          body: routeData,
+        })
 
         toast({
           title: 'Success',
@@ -159,21 +128,10 @@ export function useAdminRoutes() {
     async (routeId: string) => {
       setIsLoading(true)
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/admin/routes/${routeId}`,
-          {
-            method: 'DELETE',
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error(
-            'Failed to delete route. It may have active trips associated.'
-          )
-        }
+        await request(`/routes/${routeId}`, {
+          method: 'DELETE',
+          token: getAccessToken(),
+        })
 
         toast({
           title: 'Success',
@@ -197,6 +155,38 @@ export function useAdminRoutes() {
     [fetchRoutes, toast]
   )
 
+  const addStop = useCallback(
+    async (routeId: string, stopData: StopData) => {
+      setIsLoading(true)
+      try {
+        await request(`/routes/${routeId}/stops`, {
+          method: 'POST',
+          token: getAccessToken(),
+          body: stopData,
+        })
+
+        toast({
+          title: 'Success',
+          description: 'Stop added successfully',
+        })
+
+        await fetchRoutes()
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to add stop'
+        setError(message)
+        toast({
+          title: 'Error',
+          description: message,
+        })
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [fetchRoutes, toast]
+  )
+
   return {
     routes,
     isLoading,
@@ -205,5 +195,6 @@ export function useAdminRoutes() {
     createRoute,
     updateRoute,
     deleteRoute,
+    addStop,
   }
 }
