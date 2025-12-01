@@ -21,17 +21,17 @@ interface SearchFormData {
   passengers: number | string
 }
 
-// Mock cities as fallback when API is not available
+// Fallback cities list
 const fallbackCities = [
-  'Ho Chi Minh City (HCM)',
-  'Hanoi (HN)',
-  'Da Nang (DN)',
-  'Hai Phong (HP)',
-  'Nha Trang (NT)',
-  'Da Lat (DL)',
-  'Can Tho (CT)',
-  'Hue (HU)',
-  'Vung Tau (VT)',
+  'Ha Noi',
+  'Ho Chi Minh',
+  'Da Nang',
+  'Hai Phong',
+  'Can Tho',
+  'Hue',
+  'Khanh Hoa',
+  'Lam Dong',
+  'Dong Nai',
 ]
 
 export function SearchForm() {
@@ -61,9 +61,15 @@ export function SearchForm() {
       setCitiesLoading(true)
       setCitiesError(null)
 
-      const response = await fetch('/cities')
-      const data = await response.json()
-      setCities(data)
+      // Fetch cities from JSON file
+      const response = await fetch('/cities.json')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = (await response.json()) as Array<{ NameEn: string }>
+      // Extract unique city names from the data
+      const cityNames = data.map((province) => province.NameEn).sort()
+      setCities(cityNames)
     } catch (error) {
       console.error('Failed to load cities:', error)
       setCitiesError('Failed to load cities. Using default list.')
@@ -125,18 +131,15 @@ export function SearchForm() {
       })
     }
 
-    // Simulate API call
-    setTimeout(() => {
-      const searchParams = new URLSearchParams({
-        from: formData.from,
-        to: formData.to,
-        date: formData.date ? formData.date.toISOString().split('T')[0] : '',
-        passengers: passengerCount.toString(),
-      })
+    const searchParams = new URLSearchParams({
+      origin: formData.from,
+      destination: formData.to,
+      date: formData.date ? formData.date.toISOString().split('T')[0] : '',
+      passengers: passengerCount.toString(),
+    })
 
-      navigate(`/trip-search-results?${searchParams.toString()}`)
-      setIsLoading(false)
-    }, 500)
+    navigate(`/trip-search-results?${searchParams.toString()}`)
+    setIsLoading(false)
   }
 
   // Handle repeat search

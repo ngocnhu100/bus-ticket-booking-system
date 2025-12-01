@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Filter, X } from 'lucide-react'
+import { ChevronLeft, Filter, X, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { FilterPanel, type Filters } from '@/components/landing/FilterPanel'
@@ -655,32 +655,38 @@ export function TripSearchResults() {
 
   const searchParams = new URLSearchParams(location.search)
 
-  const from = searchParams.get('from') || 'TPHCM'
-  const to = searchParams.get('to') || 'Vũng Tàu'
-  const date = searchParams.get('date') || '29-11-2025'
+  const origin = searchParams.get('origin') || 'Ho Chi Minh'
+  const destination = searchParams.get('destination') || 'Lam Dong'
+  const date =
+    searchParams.get('date') || new Date().toISOString().split('T')[0]
   const passengers = searchParams.get('passengers') || '1'
 
   // State for trips data
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [trips, _setTrips] = useState<Trip[]>(mockTrips)
+
+  const [trips, setTrips] = useState<Trip[]>(mockTrips)
 
   // TODO: Fetch trips from GET /trips/search API
   useEffect(() => {
     // TODO: Implement API call to GET /trips/search
-    // const fetchTrips = async () => {
-    //   try {
-    //     const response = await fetch(`/api/trips/search?origin=${from}&destination=${to}&date=${date}&passengers=${passengers}`);
-    //     const data = await response.json();
-    //     _setTrips(data.data); // Assuming API response structure
-    //   } catch (error) {
-    //     console.error('Failed to fetch trips:', error);
-    //     // Fallback to mock data
-    //     setTrips(mockTrips);
-    //   }
-    // };
-    // fetchTrips();
-    // For now, using mock data (no API call)
-  }, [from, to, date, passengers])
+    const fetchTrips = async () => {
+      try {
+        const params = new URLSearchParams({
+          origin,
+          destination,
+          date,
+          passengers,
+        })
+        const response = await fetch(`/trips/search?${params.toString()}`)
+        const data = await response.json()
+        if (data.success) setTrips(data.data)
+      } catch (error) {
+        console.error('Failed to fetch trips:', error)
+        // Fallback to mock data
+        setTrips(mockTrips)
+      }
+    }
+    fetchTrips()
+  }, [origin, destination, date, passengers])
 
   // State management
   const [filters, setFilters] = useState<Filters>({
@@ -987,8 +993,8 @@ export function TripSearchResults() {
               searches={searches}
               onSelectSearch={(search) => {
                 const newParams = new URLSearchParams({
-                  from: search.origin,
-                  to: search.destination,
+                  origin: search.origin,
+                  destination: search.destination,
                   date: search.date,
                   passengers: search.passengers.toString(),
                 })
@@ -1017,7 +1023,8 @@ export function TripSearchResults() {
               </Button>
               <div className="truncate">
                 <p className="text-sm md:text-base font-semibold text-foreground truncate">
-                  {from} → {to}
+                  {origin} <ArrowRight className="w-4 h-4 inline mx-1" />{' '}
+                  {destination}
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
                   {date} • {passengers} passenger{passengers !== '1' ? 's' : ''}
