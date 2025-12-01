@@ -1,10 +1,14 @@
 import React, { useState } from 'react'
-import type {
-  Trip,
-  RouteAdminData,
-  BusAdminData,
-  TripFormData,
-} from '../../types/trip.types'
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+} from '@mui/material'
+import { useAdminTripData } from '@/hooks/admin/useAdminTrip'
+import type { Trip, RouteAdminData, BusAdminData } from '../../types/trip.types'
 import '@/styles/admin.css'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
 import { TripFilters } from '@/components/admin/TripFilters'
@@ -15,7 +19,9 @@ import { TripFormDrawer } from '@/components/admin/TripFormDrawer'
 import { CustomDatePicker } from '@/components/ui/custom-datepicker'
 
 // ============================================================================
-// MOCK DATA
+// API CONFIGURATION
+// ============================================================================
+// MOCK DATA (Fallback only)
 // ============================================================================
 
 const initialRoutes: RouteAdminData[] = [
@@ -95,49 +101,49 @@ const initialBuses: BusAdminData[] = [
 // Trips data structure reflecting GET /trips/search response format from API
 const initialTrips: Trip[] = [
   {
-    tripId: 'trp_xyz789',
+    trip_id: 'trp_xyz789',
     route: {
-      routeId: 'r1',
+      route_id: 'r1',
       origin: 'Ho Chi Minh City',
       destination: 'Da Lat',
-      distanceKm: 308,
-      estimatedMinutes: 360,
+      distance_km: 308,
+      estimated_minutes: 360,
     },
     operator: {
-      operatorId: 'opr_futa',
+      operator_id: 'opr_futa',
       name: 'Futa Bus Lines',
       rating: 4.5,
       logo: 'https://cdn.example.com/futa-logo.png',
     },
     bus: {
-      busId: 'b1',
+      bus_id: 'b1',
       model: 'Limousine 20-seat',
-      plateNumber: '51B-12345',
-      seatCapacity: 20,
-      busType: 'limousine',
+      plate_number: '51B-12345',
+      seat_capacity: 20,
+      bus_type: 'limousine',
       amenities: ['wifi', 'ac', 'toilet', 'entertainment'],
     },
     schedule: {
-      departureTime: '2025-11-30T08:00:00Z',
-      arrivalTime: '2025-11-30T12:30:00Z',
+      departure_time: '2025-11-30T08:00:00Z',
+      arrival_time: '2025-11-30T12:30:00Z',
       duration: 270,
     },
     pricing: {
-      basePrice: 350000,
+      base_price: 350000,
       currency: 'VND',
-      serviceFee: 10000,
+      service_fee: 10000,
     },
     availability: {
-      totalSeats: 20,
-      availableSeats: 8,
-      occupancyRate: 60,
+      total_seats: 20,
+      available_seats: 8,
+      occupancy_rate: 60,
     },
     policies: {
-      cancellationPolicy: 'free cancellation up to 24 hours before departure',
-      modificationPolicy: 'modification allowed up to 12 hours before',
-      refundPolicy: '80% refund if cancelled 24h+ before departure',
+      cancellation_policy: 'free cancellation up to 24 hours before departure',
+      modification_policy: 'modification allowed up to 12 hours before',
+      refund_policy: '80% refund if cancelled 24h+ before departure',
     },
-    pickupPoints: [
+    pickup_points: [
       {
         pointId: 'pp_001',
         name: 'Ben Xe Mien Dong',
@@ -145,7 +151,7 @@ const initialTrips: Trip[] = [
         time: '2025-11-30T08:00:00Z',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
         pointId: 'dp_001',
         name: 'Ben Xe My Dinh',
@@ -156,48 +162,48 @@ const initialTrips: Trip[] = [
     status: 'active',
   },
   {
-    tripId: 'trp_abc123',
+    trip_id: 'trp_abc123',
     route: {
-      routeId: 'r1',
+      route_id: 'r1',
       origin: 'Ho Chi Minh City',
       destination: 'Da Lat',
-      distanceKm: 308,
-      estimatedMinutes: 360,
+      distance_km: 308,
+      estimated_minutes: 360,
     },
     operator: {
-      operatorId: 'op-001',
+      operator_id: 'op-001',
       name: 'Futa Bus Lines',
       rating: 4.5,
     },
     bus: {
-      busId: 'b2',
+      bus_id: 'b2',
       model: 'Sleeper 40-seat',
-      plateNumber: '51B-67890',
-      seatCapacity: 40,
-      busType: 'sleeper',
+      plate_number: '51B-67890',
+      seat_capacity: 40,
+      bus_type: 'sleeper',
       amenities: ['wifi', 'ac', 'toilet', 'entertainment', 'bed'],
     },
     schedule: {
-      departureTime: '2025-11-30T14:00:00Z',
-      arrivalTime: '2025-11-30T18:15:00Z',
+      departure_time: '2025-11-30T14:00:00Z',
+      arrival_time: '2025-11-30T18:15:00Z',
       duration: 255,
     },
     pricing: {
-      basePrice: 300000,
+      base_price: 300000,
       currency: 'VND',
-      serviceFee: 10000,
+      service_fee: 10000,
     },
     availability: {
-      totalSeats: 40,
-      availableSeats: 12,
-      occupancyRate: 70,
+      total_seats: 40,
+      available_seats: 12,
+      occupancy_rate: 70,
     },
     policies: {
-      cancellationPolicy: 'free cancellation up to 24 hours before departure',
-      modificationPolicy: 'modification allowed up to 12 hours before',
-      refundPolicy: '80% refund if cancelled 24h+ before departure',
+      cancellation_policy: 'free cancellation up to 24 hours before departure',
+      modification_policy: 'modification allowed up to 12 hours before',
+      refund_policy: '80% refund if cancelled 24h+ before departure',
     },
-    pickupPoints: [
+    pickup_points: [
       {
         pointId: 'pp_002',
         name: 'Ben Xe Mien Dong',
@@ -205,7 +211,7 @@ const initialTrips: Trip[] = [
         time: '2025-11-30T14:00:00Z',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
         pointId: 'dp_002',
         name: 'Ben Xe My Dinh',
@@ -216,53 +222,53 @@ const initialTrips: Trip[] = [
     status: 'active',
   },
   {
-    tripId: 'trp_def456',
+    trip_id: 'trp_def456',
     route: {
-      routeId: 'r2',
+      route_id: 'r2',
       origin: 'Ho Chi Minh City',
       destination: 'Nha Trang',
-      distanceKm: 441,
-      estimatedMinutes: 420,
+      distance_km: 441,
+      estimated_minutes: 420,
     },
     operator: {
-      operatorId: 'opr_futa',
+      operator_id: 'opr_futa',
       name: 'Futa Bus Lines',
       rating: 4.5,
       logo: 'https://cdn.example.com/futa-logo.png',
     },
     bus: {
-      busId: 'b1',
+      bus_id: 'b1',
       model: 'Limousine 20-seat',
-      plateNumber: '51B-12345',
-      seatCapacity: 20,
-      busType: 'limousine',
+      plate_number: '51B-12345',
+      seat_capacity: 20,
+      bus_type: 'limousine',
       amenities: ['wifi', 'ac', 'toilet', 'entertainment'],
     },
     schedule: {
-      departureTime:
+      departure_time:
         new Date(Date.now() + 86400000).toISOString().split('T')[0] +
         'T06:30:00Z',
-      arrivalTime:
+      arrival_time:
         new Date(Date.now() + 86400000).toISOString().split('T')[0] +
         'T11:00:00Z',
       duration: 270,
     },
     pricing: {
-      basePrice: 400000,
+      base_price: 400000,
       currency: 'VND',
-      serviceFee: 10000,
+      service_fee: 10000,
     },
     availability: {
-      totalSeats: 20,
-      availableSeats: 5,
-      occupancyRate: 75,
+      total_seats: 20,
+      available_seats: 5,
+      occupancy_rate: 75,
     },
     policies: {
-      cancellationPolicy: 'free cancellation up to 24 hours before departure',
-      modificationPolicy: 'modification allowed up to 12 hours before',
-      refundPolicy: '80% refund if cancelled 24h+ before departure',
+      cancellation_policy: 'free cancellation up to 24 hours before departure',
+      modification_policy: 'modification allowed up to 12 hours before',
+      refund_policy: '80% refund if cancelled 24h+ before departure',
     },
-    pickupPoints: [
+    pickup_points: [
       {
         pointId: 'pp_003',
         name: 'Ben Xe Mien Dong',
@@ -272,7 +278,7 @@ const initialTrips: Trip[] = [
           'T06:30:00Z',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
         pointId: 'dp_003',
         name: 'Ben Xe My Dinh',
@@ -291,13 +297,15 @@ const initialTrips: Trip[] = [
 // ============================================================================
 
 const AdminTripSchedulingPage: React.FC = () => {
-  const [routes] = useState(initialRoutes)
-  const [buses] = useState(initialBuses)
-  const [trips, setTrips] = useState(initialTrips)
+  const { trips, setTrips, buses, routes, createTrip, updateTrip, deleteTrip } =
+    useAdminTripData(initialTrips, initialBuses, initialRoutes)
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
   const [viewMode, setViewMode] = useState<'CALENDAR' | 'LIST'>('CALENDAR')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null)
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
+  const [dialogMessage, setDialogMessage] = useState('')
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -325,20 +333,20 @@ const AdminTripSchedulingPage: React.FC = () => {
   }
 
   // Validation
-  const validateTripForm = (form: TripFormData): string[] => {
+  const validateTripForm = (form: Trip): string[] => {
     const errors: string[] = []
 
     // Required fields
-    if (!form.routeId) errors.push('Route is required')
-    if (!form.busId) errors.push('Bus is required')
-    if (!form.departureTime) errors.push('Departure time is required')
-    if (!form.arrivalTime) errors.push('Arrival time is required')
-    if (form.basePrice < 0) errors.push('Base price must be positive')
+    if (!form.route.route_id) errors.push('Route is required')
+    if (!form.bus.bus_id) errors.push('Bus is required')
+    if (!form.schedule.departure_time) errors.push('Departure time is required')
+    if (!form.schedule.arrival_time) errors.push('Arrival time is required')
+    if (form.pricing.base_price < 0) errors.push('Base price must be positive')
 
     // Time validation
-    if (form.departureTime && form.arrivalTime) {
-      const depTime = form.departureTime
-      const arrTime = form.arrivalTime
+    if (form.schedule.departure_time && form.schedule.arrival_time) {
+      const depTime = form.schedule.departure_time
+      const arrTime = form.schedule.arrival_time
       if (depTime >= arrTime) {
         errors.push('Arrival time must be after departure time')
       }
@@ -350,14 +358,17 @@ const AdminTripSchedulingPage: React.FC = () => {
   // Filter and get trips for selected date
   const filteredTrips = trips.filter((trip) => {
     if (selectedDate) {
-      const tripDate = new Date(trip.schedule.departureTime)
+      const tripDate = new Date(trip.schedule.departure_time)
       const selected = new Date(selectedDate)
       if (tripDate.toDateString() !== selected.toDateString()) return false
     }
 
-    if (appliedFilters.routeId && trip.route.routeId !== appliedFilters.routeId)
+    if (
+      appliedFilters.routeId &&
+      trip.route.route_id !== appliedFilters.routeId
+    )
       return false
-    if (appliedFilters.busId && trip.bus.busId !== appliedFilters.busId)
+    if (appliedFilters.busId && trip.bus.bus_id !== appliedFilters.busId)
       return false
     if (
       appliedFilters.status &&
@@ -385,128 +396,96 @@ const AdminTripSchedulingPage: React.FC = () => {
     })
   }
 
-  const handleSaveTrip = (values: TripFormData) => {
+  const handleSaveTrip = async (data: {
+    trip: Trip
+    isRecurring: boolean
+    recurrencePattern: string
+    repeatBasedOn: 'departure' | 'arrival'
+    endsOn: 'never' | 'date'
+    endDate: string
+  }) => {
+    const {
+      trip,
+      isRecurring,
+      recurrencePattern,
+      repeatBasedOn,
+      endsOn,
+      endDate,
+    } = data
     // Validate form
-    const validationErrors = validateTripForm(values)
+    const validationErrors = validateTripForm(trip)
     if (validationErrors.length > 0) {
-      alert(`Validation errors:\n${validationErrors.join('\n')}`)
       return
     }
 
-    if (values.tripId) {
-      // Update existing trip
-      setTrips((prev) =>
-        prev.map((t) => {
-          if (t.tripId === values.tripId) {
-            const route = routes.find((r) => r.routeId === values.routeId)
-            const bus = buses.find((b) => b.busId === values.busId)
-            if (!route || !bus) return t
+    if (isRecurring && recurrencePattern) {
+      // Generate and post recurring trips
+      const baseTrip = { ...trip }
+      const baseTime =
+        repeatBasedOn === 'departure'
+          ? baseTrip.schedule.departure_time
+          : baseTrip.schedule.arrival_time
+      const startDate = new Date(baseTime)
+      const endDateObj =
+        endsOn === 'date' && endDate
+          ? new Date(endDate)
+          : new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000) // 1 year if never
 
-            const depParts = values.departureTime.split(':')
-            const arrParts = values.arrivalTime.split(':')
-            const depMinutes =
-              parseInt(depParts[0]) * 60 + parseInt(depParts[1])
-            const arrMinutes =
-              parseInt(arrParts[0]) * 60 + parseInt(arrParts[1])
-            const duration =
-              arrMinutes > depMinutes
-                ? arrMinutes - depMinutes
-                : 1440 + arrMinutes - depMinutes
+      const currentDate = new Date(startDate)
+      while (currentDate <= endDateObj) {
+        const newTrip = { ...baseTrip }
+        newTrip.trip_id = `${baseTrip.trip_id}_${currentDate.toISOString().split('T')[0]}`
+        if (repeatBasedOn === 'departure') {
+          newTrip.schedule.departure_time = currentDate.toISOString()
+          const arrTime = new Date(currentDate)
+          arrTime.setMinutes(arrTime.getMinutes() + baseTrip.schedule.duration)
+          newTrip.schedule.arrival_time = arrTime.toISOString()
+          newTrip.pickup_points = newTrip.pickup_points.map((p) => ({
+            ...p,
+            time: currentDate.toISOString(),
+          }))
+          newTrip.dropoff_points = newTrip.dropoff_points.map((d) => ({
+            ...d,
+            time: arrTime.toISOString(),
+          }))
+        } else {
+          // repeatBasedOn === 'arrival'
+          newTrip.schedule.arrival_time = currentDate.toISOString()
+          const depTime = new Date(currentDate)
+          depTime.setMinutes(depTime.getMinutes() - baseTrip.schedule.duration)
+          newTrip.schedule.departure_time = depTime.toISOString()
+          newTrip.pickup_points = newTrip.pickup_points.map((p) => ({
+            ...p,
+            time: depTime.toISOString(),
+          }))
+          newTrip.dropoff_points = newTrip.dropoff_points.map((d) => ({
+            ...d,
+            time: currentDate.toISOString(),
+          }))
+        }
+        try {
+          await createTrip(newTrip)
+        } catch (error) {
+          console.error('Failed to create recurring trip:', error)
+          // Stop the entire series on the first error
+          break
+        }
 
-            return {
-              ...t,
-              route: {
-                routeId: values.routeId,
-                origin: route.origin,
-                destination: route.destination,
-                distanceKm: route.distanceKm,
-                estimatedMinutes: route.estimatedMinutes,
-              },
-              bus: {
-                busId: values.busId,
-                model: bus.model,
-                plateNumber: bus.plateNumber,
-                seatCapacity: bus.capacity,
-                busType: bus.type,
-                amenities: bus.amenities,
-              },
-              schedule: {
-                departureTime: values.departureTime,
-                arrivalTime: values.arrivalTime,
-                duration: duration,
-              },
-              pricing: {
-                ...t.pricing,
-                basePrice: values.basePrice,
-              },
-              status: values.status,
-            }
-          }
-          return t
-        })
-      )
-    } else {
-      // Create new trip
-      const route = routes.find((r) => r.routeId === values.routeId)
-      const bus = buses.find((b) => b.busId === values.busId)
-      if (!route || !bus) return
-
-      const depParts = values.departureTime.split(':')
-      const arrParts = values.arrivalTime.split(':')
-      const depMinutes = parseInt(depParts[0]) * 60 + parseInt(depParts[1])
-      const arrMinutes = parseInt(arrParts[0]) * 60 + parseInt(arrParts[1])
-      const duration =
-        arrMinutes > depMinutes
-          ? arrMinutes - depMinutes
-          : 1440 + arrMinutes - depMinutes
-
-      const newTrip: Trip = {
-        tripId: crypto.randomUUID(),
-        route: {
-          routeId: values.routeId,
-          origin: route.origin,
-          destination: route.destination,
-          distanceKm: route.distanceKm,
-          estimatedMinutes: route.estimatedMinutes,
-        },
-        operator: {
-          operatorId: 'op-001',
-          name: 'Default Operator',
-          rating: 4.0,
-        },
-        bus: {
-          busId: values.busId,
-          model: bus.model,
-          plateNumber: bus.plateNumber,
-          seatCapacity: bus.capacity,
-          busType: bus.type,
-          amenities: bus.amenities,
-        },
-        schedule: {
-          departureTime: values.departureTime,
-          arrivalTime: values.arrivalTime,
-          duration: duration,
-        },
-        pricing: {
-          basePrice: values.basePrice,
-          currency: 'VND',
-        },
-        availability: {
-          totalSeats: bus.capacity,
-          availableSeats: bus.capacity,
-          occupancyRate: 0,
-        },
-        policies: {
-          cancellationPolicy:
-            'free cancellation up to 24 hours before departure',
-          modificationPolicy: 'modification allowed up to 12 hours before',
-          refundPolicy: '80% refund if cancelled 24h+ before departure',
-        },
-        pickupPoints: [],
-        dropoffPoints: [],
-        status: values.status,
+        // Increment date
+        if (recurrencePattern === 'daily') {
+          currentDate.setDate(currentDate.getDate() + 1)
+        } else if (recurrencePattern === 'weekly') {
+          currentDate.setDate(currentDate.getDate() + 7)
+        }
       }
-      setTrips((prev) => [...prev, newTrip])
+    } else {
+      if (trip.trip_id) {
+        // Update existing trip
+        await updateTrip(trip.trip_id, trip)
+      } else {
+        // Create new trip
+        await createTrip(trip)
+      }
     }
     setDrawerOpen(false)
   }
@@ -522,7 +501,7 @@ const AdminTripSchedulingPage: React.FC = () => {
 
   const handleSelectAllTrips = (selected: boolean) => {
     if (selected) {
-      setSelectedTripIds(filteredTrips.map((trip) => trip.tripId))
+      setSelectedTripIds(filteredTrips.map((trip) => trip.trip_id))
     } else {
       setSelectedTripIds([])
     }
@@ -531,16 +510,23 @@ const AdminTripSchedulingPage: React.FC = () => {
   const handleBulkDelete = () => {
     if (selectedTripIds.length === 0) return
 
-    const confirmDelete = confirm(
+    setDialogMessage(
       `Are you sure you want to delete ${selectedTripIds.length} trip(s)? This action cannot be undone.`
     )
+    setOpenConfirmDialog(true)
+  }
 
-    if (confirmDelete) {
-      setTrips((prev) =>
-        prev.filter((trip) => !selectedTripIds.includes(trip.tripId))
-      )
-      setSelectedTripIds([])
+  const handleConfirmDelete = async () => {
+    for (const tripId of selectedTripIds) {
+      try {
+        await deleteTrip(tripId)
+      } catch (error) {
+        console.error(`Failed to delete trip ${tripId}:`, error)
+        // Continue with next trip
+      }
     }
+    setSelectedTripIds([])
+    setOpenConfirmDialog(false)
   }
 
   const handleBulkStatusUpdate = (newStatus: 'ACTIVE' | 'INACTIVE') => {
@@ -549,7 +535,7 @@ const AdminTripSchedulingPage: React.FC = () => {
     const statusValue = newStatus === 'ACTIVE' ? 'active' : 'inactive'
     setTrips((prev) =>
       prev.map((trip) =>
-        selectedTripIds.includes(trip.tripId)
+        selectedTripIds.includes(trip.trip_id)
           ? { ...trip, status: statusValue }
           : trip
       )
@@ -791,13 +777,37 @@ const AdminTripSchedulingPage: React.FC = () => {
       {drawerOpen && (
         <TripFormDrawer
           open={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
+          onClose={() => {
+            setDrawerOpen(false)
+          }}
           routes={routes}
           buses={buses}
           initialTrip={editingTrip}
           onSave={handleSaveTrip}
         />
       )}
+
+      <Dialog
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
+        <DialogTitle id="confirm-dialog-title">Confirm Deletion</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="confirm-dialog-description">
+            {dialogMessage}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmDialog(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmDelete} color="primary" autoFocus>
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </DashboardLayout>
   )
 }

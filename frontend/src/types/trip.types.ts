@@ -27,6 +27,7 @@ export interface TripAdminData {
   departure_time: string // ISO 8601 format
   arrival_time: string // ISO 8601 format
   base_price: number
+  service_fee?: number
   status: 'active' | 'inactive'
   is_recurring?: boolean
   recurrence_pattern?: 'daily' | 'weekly' | 'monthly'
@@ -323,5 +324,6 @@ export const tripToAdminData = (trip: Trip): TripAdminData => ({
   departure_time: trip.schedule.departure_time,
   arrival_time: trip.schedule.arrival_time,
   base_price: trip.pricing.base_price,
+  service_fee: trip.pricing.service_fee,
   status: trip.status as 'active' | 'inactive',
 })

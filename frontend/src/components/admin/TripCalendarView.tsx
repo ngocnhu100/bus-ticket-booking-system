@@ -378,13 +378,13 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                           {trip.pricing.base_price.toLocaleString('vi-VN')} VND
                         </span>
                         <span
-                          className="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                          className="px-1.5 py-0.5 rounded-full text-[9px] font-medium"
                           style={
                             trip.status === 'active'
                               ? {
                                   backgroundColor:
-                                    'color-mix(in srgb, var(--success) 20%, transparent)',
-                                  color: 'var(--success)',
+                                    'color-mix(in srgb, var(--success) 30%, var(--card))',
+                                  color: 'var(--primary)',
                                 }
                               : {
                                   backgroundColor: 'var(--muted)',

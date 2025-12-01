@@ -187,8 +187,8 @@ export const TripTableView: React.FC<TripTableViewProps> = ({
                     trip.status === 'active'
                       ? {
                           backgroundColor:
-                            'color-mix(in srgb, var(--success) 20%, transparent)',
-                          color: 'var(--success)',
+                            'color-mix(in srgb, var(--success) 30%, var(--card))',
+                          color: 'var(--primary)',
                         }
                       : {
                           backgroundColor: 'var(--muted)',
