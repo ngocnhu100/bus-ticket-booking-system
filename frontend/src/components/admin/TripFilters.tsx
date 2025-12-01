@@ -53,7 +53,7 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
             options={[
               { id: '', label: 'All routes' },
               ...routes.map((r) => ({
-                id: r.routeId || '',
+                id: r.route_id || '',
                 label: (
                   <span className="flex items-center gap-1">
                     {r.origin}

@@ -26,23 +26,23 @@ import { CustomDatePicker } from '@/components/ui/custom-datepicker'
 
 const initialRoutes: RouteAdminData[] = [
   {
-    routeId: 'r1',
-    operatorId: 'op-001',
+    route_id: 'r1',
+    operator_id: 'op-001',
     origin: 'Ho Chi Minh City',
     destination: 'Da Lat',
-    distanceKm: 308,
-    estimatedMinutes: 360,
-    pickupPoints: [
+    distance_km: 308,
+    estimated_minutes: 360,
+    pickup_points: [
       {
-        pointId: 'p1',
+        point_id: 'p1',
         name: 'Ben Thanh Station',
         address: 'Ben Thanh, District 1',
         time: '08:00',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
-        pointId: 'd1',
+        point_id: 'd1',
         name: 'Da Lat Station',
         address: 'District 1',
         time: '14:00',
@@ -50,23 +50,23 @@ const initialRoutes: RouteAdminData[] = [
     ],
   },
   {
-    routeId: 'r2',
-    operatorId: 'op-001',
+    route_id: 'r2',
+    operator_id: 'op-001',
     origin: 'Ho Chi Minh City',
     destination: 'Nha Trang',
-    distanceKm: 450,
-    estimatedMinutes: 480,
-    pickupPoints: [
+    distance_km: 450,
+    estimated_minutes: 480,
+    pickup_points: [
       {
-        pointId: 'p2',
+        point_id: 'p2',
         name: 'Ben Thanh Station',
         address: 'Ben Thanh, District 1',
         time: '06:30',
       },
     ],
-    dropoffPoints: [
+    dropoff_points: [
       {
-        pointId: 'd2',
+        point_id: 'd2',
         name: 'Nha Trang Station',
         address: 'Nha Trang City',
         time: '11:00',
@@ -145,7 +145,7 @@ const initialTrips: Trip[] = [
     },
     pickup_points: [
       {
-        pointId: 'pp_001',
+        point_id: 'pp_001',
         name: 'Ben Xe Mien Dong',
         address: '292 Dinh Bo Linh, Binh Thanh, HCM',
         time: '2025-11-30T08:00:00Z',
@@ -153,7 +153,7 @@ const initialTrips: Trip[] = [
     ],
     dropoff_points: [
       {
-        pointId: 'dp_001',
+        point_id: 'dp_001',
         name: 'Ben Xe My Dinh',
         address: 'Pham Hung, Nam Tu Liem, Hanoi',
         time: '2025-11-30T12:30:00Z',
@@ -205,7 +205,7 @@ const initialTrips: Trip[] = [
     },
     pickup_points: [
       {
-        pointId: 'pp_002',
+        point_id: 'pp_002',
         name: 'Ben Xe Mien Dong',
         address: '292 Dinh Bo Linh, Binh Thanh, HCM',
         time: '2025-11-30T14:00:00Z',
@@ -213,7 +213,7 @@ const initialTrips: Trip[] = [
     ],
     dropoff_points: [
       {
-        pointId: 'dp_002',
+        point_id: 'dp_002',
         name: 'Ben Xe My Dinh',
         address: 'Pham Hung, Nam Tu Liem, Hanoi',
         time: '2025-11-30T18:15:00Z',
@@ -270,7 +270,7 @@ const initialTrips: Trip[] = [
     },
     pickup_points: [
       {
-        pointId: 'pp_003',
+        point_id: 'pp_003',
         name: 'Ben Xe Mien Dong',
         address: '292 Dinh Bo Linh, Binh Thanh, HCM',
         time:
@@ -280,7 +280,7 @@ const initialTrips: Trip[] = [
     ],
     dropoff_points: [
       {
-        pointId: 'dp_003',
+        point_id: 'dp_003',
         name: 'Ben Xe My Dinh',
         address: 'Pham Hung, Nam Tu Liem, Hanoi',
         time:

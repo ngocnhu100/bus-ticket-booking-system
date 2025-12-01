@@ -40,15 +40,16 @@ export interface TripAdminData {
  * Includes pickup and dropoff points for comprehensive route management
  */
 export interface RouteAdminData {
-  routeId?: string
-  operatorId: string
+  route_id?: string
+  operator_id: string
   origin: string
   destination: string
-  distanceKm: number
-  estimatedMinutes: number
-  pickupPoints: PickupPoint[]
-  dropoffPoints: DropoffPoint[]
-  createdAt?: string
+  distance_km: number
+  estimated_minutes: number
+  pickup_points: PickupPoint[]
+  dropoff_points: DropoffPoint[]
+  route_stops: RouteStop[]
+  created_at?: string
 }
 
 /**
@@ -127,7 +128,7 @@ export interface SeatMapData {
  * Part of Trip object from API
  */
 export interface PickupPoint {
-  pointId: string
+  point_id: string
   name: string
   address: string
   time: string // ISO 8601 format
@@ -138,10 +139,23 @@ export interface PickupPoint {
  * Part of Trip object from API
  */
 export interface DropoffPoint {
-  pointId: string
+  point_id: string
   name: string
   address: string
   time: string // ISO 8601 format
+}
+
+/**
+ * RouteStop - Intermediate stops along a route
+ * Matches API: GET /admin/routes/{routeId}/stops + POST/PUT /admin/routes/{routeId}/stops
+ */
+export interface RouteStop {
+  stop_id?: string
+  route_id?: string
+  stop_name: string
+  sequence: number
+  arrival_offset_minutes?: number
+  departure_offset_minutes?: number
 }
 
 /**
@@ -214,7 +228,7 @@ export interface Trip {
   availability: {
     total_seats: number
     available_seats: number
-    occupancy_rate: number
+    occupancy_rate?: number
   }
   policies: Policies
   pickup_points: PickupPoint[]

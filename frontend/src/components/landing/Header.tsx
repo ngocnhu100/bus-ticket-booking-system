@@ -70,7 +70,11 @@ export function Header() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate('/dashboard')}
+                onClick={() =>
+                  user.role === 'admin'
+                    ? navigate('/admin')
+                    : navigate('/dashboard')
+                }
               >
                 Dashboard
               </Button>

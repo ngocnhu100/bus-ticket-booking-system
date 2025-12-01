@@ -280,7 +280,7 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
               </label>
               <CustomDropdown
                 options={routes.map((r) => ({
-                  id: r.routeId || '',
+                  id: r.route_id || '',
                   label: (
                     <div className="flex items-center gap-2">
                       <span>{r.origin}</span>
