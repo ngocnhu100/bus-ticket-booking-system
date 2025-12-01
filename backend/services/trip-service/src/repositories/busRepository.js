@@ -2,33 +2,44 @@
 const pool = require('../database');
 
 class BusRepository {
-  // Tạo xe mới
+  // Tạo xe mới (POST /buses)
   async create(busData) {
-    const { license_plate, bus_model_id, amenities = {} } = busData;
+    const { 
+      operator_id, 
+      bus_model_id, 
+      license_plate, 
+      plate_number, 
+      type = 'standard', 
+      amenities = [], 
+      status = 'active' 
+    } = busData;
+
+    // Xử lý amenities thành JSONB
+    const amenitiesJson = Array.isArray(amenities) || typeof amenities === 'object' 
+      ? JSON.stringify(amenities) 
+      : '[]';
+
     const query = `
-      INSERT INTO buses (license_plate, bus_model_id, amenities)
-      VALUES ($1, $2, $3)
+      INSERT INTO buses (
+        operator_id, bus_model_id, license_plate, plate_number, 
+        type, amenities, status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *;
     `;
-    const result = await pool.query(query, [license_plate, bus_model_id, JSON.stringify(amenities)]);
-    return result.rows[0];
-  }
 
-  // Tìm theo ID
-  async findById(id) {
-    const query = `
-      SELECT 
-        b.*,
-        bm.name as model_name,
-        bm.total_seats,
-        sl.layout_json
-      FROM buses b
-      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-      LEFT JOIN seat_layouts sl ON sl.bus_model_id = bm.bus_model_id
-      WHERE b.bus_id = $1;
-    `;
-    const result = await pool.query(query, [id]);
-    return result.rows[0] || null;
+    const values = [
+      operator_id,
+      bus_model_id,
+      license_plate,
+      plate_number || null,
+      type,
+      amenitiesJson,
+      status
+    ];
+
+    const result = await pool.query(query, values);
+    return result.rows[0];
   }
 
   // Tìm theo biển số (duy nhất)
@@ -38,7 +49,7 @@ class BusRepository {
     return result.rows[0] || null;
   }
 
-  // Lấy tất cả xe
+  // Lấy tất cả xe (GET /buses)
   async findAll({ limit = 50, offset = 0, status } = {}) {
     let query = `
       SELECT 
@@ -63,9 +74,26 @@ class BusRepository {
     return result.rows;
   }
 
-  // Cập nhật thông tin xe
+  // Tìm theo ID (GET /buses/:id)
+  async findById(id) {
+    const query = `
+      SELECT 
+        b.*,
+        bm.name as model_name,
+        bm.total_seats,
+        sl.layout_json
+      FROM buses b
+      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+      LEFT JOIN seat_layouts sl ON sl.bus_model_id = bm.bus_model_id
+      WHERE b.bus_id = $1;
+    `;
+    const result = await pool.query(query, [id]);
+    return result.rows[0] || null;
+  }
+
+  // Cập nhật thông tin xe (PUT /buses/:id)
   async update(id, busData) {
-    const allowedFields = ['license_plate', 'bus_model_id', 'amenities', 'status'];
+    const allowedFields = ['plate_number', 'type', 'amenities', 'status'];
     const fields = [];
     const values = [];
     let index = 1;
@@ -73,8 +101,12 @@ class BusRepository {
     for (const [key, value] of Object.entries(busData)) {
       if (allowedFields.includes(key) && value !== undefined) {
         if (key === 'amenities') {
+          // Xử lý amenities thành JSONB
+          const amenitiesJson = Array.isArray(value) || typeof value === 'object' 
+            ? JSON.stringify(value) 
+            : '[]';
           fields.push(`${key} = $${index++}`);
-          values.push(JSON.stringify(value));
+          values.push(amenitiesJson);
         } else {
           fields.push(`${key} = $${index++}`);
           values.push(value);
@@ -96,7 +128,7 @@ class BusRepository {
     return result.rows[0] || null;
   }
 
-  // Xóa xe (hoặc đổi status thành inactive)
+  // Xóa xe (hoặc đổi status thành inactive) (DELETE /buses/:id)
   async delete(id) {
     const query = `
       UPDATE buses SET status = 'inactive', updated_at = CURRENT_TIMESTAMP

@@ -1,5 +1,7 @@
 // controllers/busController.js
 const busRepository = require('../repositories/busRepository');
+const operatorRepository = require('../repositories/operatorRepository');
+const busModelRepository = require('../repositories/busModelRepository');
 const {
   createBusSchema,
   updateBusSchema
@@ -8,37 +10,54 @@ const {
 class BusController {
   // POST /buses - Tạo xe mới
   async create(req, res) {
-    try {
-      const { error, value } = createBusSchema.validate(req.body);
-      if (error) {
-        return res.status(422).json({
-          success: false,
-          error: { code: 'VAL_001', message: error.details[0].message }
-        });
-      }
-
-      const existingBus = await busRepository.findByLicensePlate(value.license_plate);
-      if (existingBus) {
-        return res.status(409).json({
-          success: false,
-          error: { code: 'BUS_001', message: 'Biển số xe đã tồn tại' }
-        });
-      }
-
-      const bus = await busRepository.create(value);
-      res.status(201).json({
-        success: true,
-        data: bus,
-        message: 'Tạo xe buýt thành công'
-      });
-    } catch (err) {
-      console.error('Create bus error:', err);
-      res.status(500).json({
+  try {
+    const { error, value } = createBusSchema.validate(req.body);
+    if (error) {
+      return res.status(422).json({
         success: false,
-        error: { code: 'SYS_001', message: 'Lỗi hệ thống khi tạo xe' }
+        error: { code: 'VAL_001', message: error.details[0].message }
       });
     }
+
+    // Thêm check FK tồn tại
+    const operator = await operatorRepository.findById(value.operator_id);
+    if (!operator) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'OPERATOR_NOT_FOUND', message: 'Không tìm thấy nhà xe (operator_id không tồn tại)' }
+      });
+    }
+
+    const busModel = await busModelRepository.findById(value.bus_model_id);
+    if (!busModel) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'BUS_MODEL_NOT_FOUND', message: 'Không tìm thấy mẫu xe (bus_model_id không tồn tại)' }
+      });
+    }
+
+    const existingBus = await busRepository.findByLicensePlate(value.license_plate);
+    if (existingBus) {
+      return res.status(409).json({
+        success: false,
+        error: { code: 'BUS_001', message: 'Biển số xe đã tồn tại' }
+      });
+    }
+
+    const bus = await busRepository.create(value);
+    res.status(201).json({
+      success: true,
+      data: bus,
+      message: 'Tạo xe buýt thành công'
+    });
+  } catch (err) {
+    console.error('Create bus error:', err);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SYS_001', message: 'Lỗi hệ thống khi tạo xe' }
+    });
   }
+}
 
   // GET /buses - Lấy danh sách xe
   async getAll(req, res) {
