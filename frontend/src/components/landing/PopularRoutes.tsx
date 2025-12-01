@@ -2,12 +2,20 @@ import { useState, useEffect } from 'react'
 import { RouteCard } from './RouteCard'
 
 interface Route {
-  id: string
-  from: string
-  to: string
-  fromCode: string
-  toCode: string
-  price: number
+  route_id: string
+  origin: string
+  destination: string
+  distance_km: number
+  estimated_minutes: number
+  starting_price: number
+}
+
+// Function to extract initials from city name
+function getCode(cityName: string): string {
+  return cityName
+    .split(' ')
+    .map((word) => word.charAt(0).toUpperCase())
+    .join('')
 }
 
 export function PopularRoutes() {
@@ -20,7 +28,7 @@ export function PopularRoutes() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/api/routes/popular')
+      const response = await fetch('/routes')
       const data = await response.json()
       setRoutes(data)
     } catch (error) {
@@ -30,68 +38,68 @@ export function PopularRoutes() {
       // Fallback to static data with realistic pricing
       const fallbackRoutes: Route[] = [
         {
-          id: '1',
-          from: 'Ho Chi Minh City',
-          to: 'Hanoi',
-          fromCode: 'HCM',
-          toCode: 'HN',
-          price: 350000,
+          route_id: '1',
+          origin: 'Ho Chi Minh',
+          destination: 'Ha Noi',
+          distance_km: 1700,
+          estimated_minutes: 1800,
+          starting_price: 350000,
         },
         {
-          id: '2',
-          from: 'Ho Chi Minh City',
-          to: 'Da Lat',
-          fromCode: 'HCM',
-          toCode: 'DL',
-          price: 180000,
+          route_id: '2',
+          origin: 'Ho Chi Minh',
+          destination: 'Da Nang',
+          distance_km: 300,
+          estimated_minutes: 360,
+          starting_price: 180000,
         },
         {
-          id: '3',
-          from: 'Hanoi',
-          to: 'Hai Phong',
-          fromCode: 'HN',
-          toCode: 'HP',
-          price: 120000,
+          route_id: '3',
+          origin: 'Ha Noi',
+          destination: 'Hai Phong',
+          distance_km: 100,
+          estimated_minutes: 120,
+          starting_price: 120000,
         },
         {
-          id: '4',
-          from: 'Da Nang',
-          to: 'Nha Trang',
-          fromCode: 'DN',
-          toCode: 'NT',
-          price: 150000,
+          route_id: '4',
+          origin: 'Da Nang',
+          destination: 'Hue',
+          distance_km: 500,
+          estimated_minutes: 600,
+          starting_price: 150000,
         },
         {
-          id: '5',
-          from: 'Ho Chi Minh City',
-          to: 'Nha Trang',
-          fromCode: 'HCM',
-          toCode: 'NT',
-          price: 200000,
+          route_id: '5',
+          origin: 'Ho Chi Minh',
+          destination: 'Dak Lak',
+          distance_km: 400,
+          estimated_minutes: 480,
+          starting_price: 200000,
         },
         {
-          id: '6',
-          from: 'Hanoi',
-          to: 'Hue',
-          fromCode: 'HN',
-          toCode: 'HUE',
-          price: 280000,
+          route_id: '6',
+          origin: 'Ha Noi',
+          destination: 'Hue',
+          distance_km: 600,
+          estimated_minutes: 720,
+          starting_price: 280000,
         },
         {
-          id: '7',
-          from: 'Da Lat',
-          to: 'Nha Trang',
-          fromCode: 'DL',
-          toCode: 'NT',
-          price: 160000,
+          route_id: '7',
+          origin: 'Phu Tho',
+          destination: 'Bac Lieu',
+          distance_km: 200,
+          estimated_minutes: 240,
+          starting_price: 160000,
         },
         {
-          id: '8',
-          from: 'Ho Chi Minh City',
-          to: 'Phu Quoc',
-          fromCode: 'HCM',
-          toCode: 'PQ',
-          price: 220000,
+          route_id: '8',
+          origin: 'Ho Chi Minh',
+          destination: 'Vinh Phuc',
+          distance_km: 200,
+          estimated_minutes: 240,
+          starting_price: 220000,
         },
       ]
       setRoutes(fallbackRoutes)
@@ -156,17 +164,17 @@ export function PopularRoutes() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {routes.map((route) => (
               <RouteCard
-                key={route.id}
-                from={route.from}
-                to={route.to}
-                fromCode={route.fromCode}
-                toCode={route.toCode}
-                price={route.price}
+                key={route.route_id}
+                origin={route.origin}
+                destination={route.destination}
+                originCode={getCode(route.origin)}
+                destinationCode={getCode(route.destination)}
+                price={route.starting_price}
                 onClick={() => {
                   // Trigger search with these parameters
                   const searchParams = new URLSearchParams({
-                    from: `${route.from} (${route.fromCode})`,
-                    to: `${route.to} (${route.toCode})`,
+                    origin: `${route.origin}`,
+                    destination: `${route.destination}`,
                     date: new Date().toISOString().split('T')[0],
                     passengers: '1',
                   })
@@ -195,17 +203,17 @@ export function PopularRoutes() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {routes.map((route) => (
             <RouteCard
-              key={route.id}
-              from={route.from}
-              to={route.to}
-              fromCode={route.fromCode}
-              toCode={route.toCode}
-              price={route.price}
+              key={route.route_id}
+              origin={route.origin}
+              destination={route.destination}
+              originCode={getCode(route.origin)}
+              destinationCode={getCode(route.destination)}
+              price={route.starting_price}
               onClick={() => {
                 // Trigger search with these parameters
                 const searchParams = new URLSearchParams({
-                  from: `${route.from} (${route.fromCode})`,
-                  to: `${route.to} (${route.toCode})`,
+                  origin: `${route.origin}`,
+                  destination: `${route.destination}`,
                   date: new Date().toISOString().split('T')[0],
                   passengers: '1',
                 })
