@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { Trip } from '../../types/trip.types'
+import { type Trip } from '../../types/trip.types'
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 
 interface TripCalendarViewProps {
@@ -20,7 +20,7 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
   // Group trips by date
   const tripsByDate = trips.reduce(
     (acc, trip) => {
-      const dateKey = trip.schedule.departureTime.split('T')[0]
+      const dateKey = trip.schedule.departure_time.split('T')[0]
       if (!acc[dateKey]) acc[dateKey] = []
       acc[dateKey].push(trip)
       return acc
@@ -311,7 +311,7 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                   .slice(0, calendarView === 'WEEK' ? 6 : 4)
                   .map((trip) => (
                     <div
-                      key={trip.tripId}
+                      key={trip.trip_id}
                       className="text-xs rounded px-2 py-1.5 transition-colors cursor-pointer space-y-1"
                       style={{
                         backgroundColor: 'var(--card)',
@@ -351,13 +351,15 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                           className="font-medium"
                           style={{ color: 'var(--foreground)' }}
                         >
-                          {trip.schedule.departureTime
+                          {trip.schedule.departure_time
                             .split('T')[1]
                             ?.slice(0, 5)}
                         </span>
                         <ArrowRight className="w-3 h-3" />
                         <span>
-                          {trip.schedule.arrivalTime.split('T')[1]?.slice(0, 5)}
+                          {trip.schedule.arrival_time
+                            .split('T')[1]
+                            ?.slice(0, 5)}
                         </span>
                       </div>
                       {/* Bus */}
@@ -373,7 +375,7 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                           className="font-medium"
                           style={{ color: 'var(--foreground)' }}
                         >
-                          {trip.pricing.basePrice.toLocaleString('vi-VN')} VND
+                          {trip.pricing.base_price.toLocaleString('vi-VN')} VND
                         </span>
                         <span
                           className="px-1.5 py-0.5 rounded text-[9px] font-medium"

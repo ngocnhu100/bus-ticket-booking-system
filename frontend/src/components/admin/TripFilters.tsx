@@ -1,5 +1,6 @@
 import type { RouteAdminData, BusAdminData } from '../../types/trip.types'
 import { CustomDropdown } from '../ui/custom-dropdown'
+import { ArrowRight } from 'lucide-react'
 
 export interface TripFiltersData {
   routeId: string
@@ -53,7 +54,13 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
               { id: '', label: 'All routes' },
               ...routes.map((r) => ({
                 id: r.routeId || '',
-                label: `${r.origin} → ${r.destination}`,
+                label: (
+                  <span className="flex items-center gap-1">
+                    {r.origin}
+                    <ArrowRight className="w-4 h-4" />
+                    {r.destination}
+                  </span>
+                ),
               })),
             ]}
             value={filters.routeId}

@@ -22,6 +22,10 @@ export const TripList: React.FC<TripListProps> = ({
   const someSelected =
     selectedTripIds.length > 0 && selectedTripIds.length < trips.length
 
+  const handleEditClick = (trip: Trip) => {
+    onEditTrip(trip)
+  }
+
   return (
     <div
       className="rounded-2xl p-6 shadow-sm"
@@ -81,7 +85,7 @@ export const TripList: React.FC<TripListProps> = ({
         <div className="space-y-3">
           {trips.map((trip) => (
             <div
-              key={trip.tripId}
+              key={trip.trip_id}
               className="flex items-center justify-between rounded-xl p-4 shadow-sm transition"
               style={{
                 border: '1px solid var(--border)',
@@ -101,8 +105,8 @@ export const TripList: React.FC<TripListProps> = ({
               <div className="flex items-center gap-3 flex-1">
                 <input
                   type="checkbox"
-                  checked={selectedTripIds.includes(trip.tripId)}
-                  onChange={(e) => onSelectTrip(trip.tripId, e.target.checked)}
+                  checked={selectedTripIds.includes(trip.trip_id)}
+                  onChange={(e) => onSelectTrip(trip.trip_id, e.target.checked)}
                   className="h-4 w-4 rounded transition-colors cursor-pointer"
                   style={{
                     border: '2px solid var(--border)',
@@ -132,19 +136,19 @@ export const TripList: React.FC<TripListProps> = ({
                     className="text-xs mb-2"
                     style={{ color: 'var(--muted-foreground)' }}
                   >
-                    {trip.schedule.departureTime.split('T')[1]?.slice(0, 5)}{' '}
+                    {trip.schedule.departure_time.split('T')[1]?.slice(0, 5)}{' '}
                     <ArrowRight
                       className="w-3 h-3 inline mx-1"
                       style={{ color: 'var(--muted-foreground)' }}
                     />{' '}
-                    {trip.schedule.arrivalTime.split('T')[1]?.slice(0, 5)} ·{' '}
+                    {trip.schedule.arrival_time.split('T')[1]?.slice(0, 5)} ·{' '}
                     {trip.bus.model}
                   </p>
                   <p
                     className="text-xs font-medium"
                     style={{ color: 'var(--foreground)' }}
                   >
-                    {trip.pricing.basePrice.toLocaleString('vi-VN')} đ
+                    {trip.pricing.base_price.toLocaleString('vi-VN')} đ
                   </p>
                 </div>
               </div>
@@ -155,12 +159,11 @@ export const TripList: React.FC<TripListProps> = ({
                     trip.status === 'active'
                       ? {
                           backgroundColor:
-                            'color-mix(in srgb, var(--success) 20%, transparent)',
-                          color: 'var(--success)',
+                            'color-mix(in srgb, var(--primary) 10%, var(--card))',
+                          color: 'var(--primary)',
                         }
                       : {
-                          backgroundColor:
-                            'color-mix(in srgb, var(--muted) 20%, transparent)',
+                          backgroundColor: 'var(--muted)',
                           color: 'var(--muted-foreground)',
                         }
                   }
@@ -170,7 +173,7 @@ export const TripList: React.FC<TripListProps> = ({
                 <button
                   className="text-sm font-medium focus:outline-none rounded px-2 py-1"
                   style={{ color: 'var(--primary)' }}
-                  onClick={() => onEditTrip(trip)}
+                  onClick={() => handleEditClick(trip)}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.textDecoration = 'underline'
                   }}

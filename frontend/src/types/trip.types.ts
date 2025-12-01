@@ -11,6 +11,29 @@
 // ============================================================================
 
 /**
+ * TripAdminData - Admin trip creation/editing form data
+ * Flattened structure (no nested objects)
+ * Matches API: POST /admin/trips request body + PUT /admin/trips/{tripId}
+ *
+ * Use this for:
+ * - Form inputs in TripFormDrawer
+ * - Creating trips via useAdminTrips.createTrip()
+ * - Editing trips via useAdminTrips.updateTrip()
+ */
+export interface TripAdminData {
+  trip_id?: string
+  route_id: string
+  bus_id: string
+  departure_time: string // ISO 8601 format
+  arrival_time: string // ISO 8601 format
+  base_price: number
+  status: 'active' | 'inactive'
+  is_recurring?: boolean
+  recurrence_pattern?: 'daily' | 'weekly' | 'monthly'
+  created_at?: string
+}
+
+/**
  * RouteAdminData - Route information for admin management
  * Matches API: POST /admin/routes response + GET /admin/routes
  * Includes pickup and dropoff points for comprehensive route management
@@ -125,9 +148,9 @@ export interface DropoffPoint {
  * Part of Trip object from API
  */
 export interface Policies {
-  cancellationPolicy: string
-  modificationPolicy: string
-  refundPolicy: string
+  cancellation_policy: string
+  modification_policy: string
+  refund_policy: string
 }
 
 /**
@@ -137,73 +160,65 @@ export interface Policies {
  * IMPORTANT STRUCTURE:
  * - Use this for DISPLAYING trips to passengers
  * - Contains nested objects (route, operator, bus, schedule, pricing, etc.)
- * - DO NOT use for admin forms - use TripFormData instead
+ * - DO NOT use for admin forms - use TripAdminData instead
  */
+/* export interface Trip {
+  origin: string
+  destination: string
+  date: string // ISO 8601 format
+  price_min: number
+  price_max: number
+  departure_start: string // ISO 8601 format
+  departure_end: string // ISO 8601 format
+  bus_model: string
+  min_seats: number
+  limit?: number
+  offset?: number
+  sort?: string
+} */
+
 export interface Trip {
-  tripId: string
+  trip_id: string
   route: {
-    routeId: string
+    route_id: string
     origin: string
     destination: string
-    distanceKm: number
-    estimatedMinutes: number
+    distance_km: number
+    estimated_minutes: number
   }
   operator: {
-    operatorId: string
+    operator_id: string
     name: string
     rating: number
     logo?: string
   }
   bus: {
-    busId: string
+    bus_id: string
     model: string
-    plateNumber: string
-    seatCapacity: number
-    busType: 'standard' | 'limousine' | 'sleeper'
+    plate_number: string
+    seat_capacity: number
+    bus_type: 'standard' | 'limousine' | 'sleeper'
     amenities: string[]
   }
   schedule: {
-    departureTime: string // ISO 8601 format
-    arrivalTime: string // ISO 8601 format
+    departure_time: string // ISO 8601 format
+    arrival_time: string // ISO 8601 format
     duration: number // in minutes
   }
   pricing: {
-    basePrice: number
+    base_price: number
     currency: string
-    serviceFee?: number
+    service_fee?: number
   }
   availability: {
-    totalSeats: number
-    availableSeats: number
-    occupancyRate: number
+    total_seats: number
+    available_seats: number
+    occupancy_rate: number
   }
   policies: Policies
-  pickupPoints: PickupPoint[]
-  dropoffPoints: DropoffPoint[]
+  pickup_points: PickupPoint[]
+  dropoff_points: DropoffPoint[]
   status: 'active' | 'inactive'
-}
-
-/**
- * TripFormData - Admin trip creation/editing form data
- * Flattened structure (no nested objects)
- * Matches API: POST /admin/trips request body + PUT /admin/trips/{tripId}
- *
- * Use this for:
- * - Form inputs in TripFormDrawer
- * - Creating trips via useAdminTrips.createTrip()
- * - Editing trips via useAdminTrips.updateTrip()
- */
-export interface TripFormData {
-  tripId?: string
-  routeId: string
-  busId: string
-  departureTime: string // ISO 8601 format
-  arrivalTime: string // ISO 8601 format
-  basePrice: number
-  status: 'active' | 'inactive'
-  isRecurring?: boolean
-  recurrencePattern?: 'daily' | 'weekly' | 'monthly'
-  createdAt?: string
 }
 
 // ============================================================================
@@ -285,3 +300,28 @@ export const WEEKDAYS = [
   'SAT',
   'SUN',
 ] as const
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Converts a Trip object to TripAdminData for edit operations
+ * Extracts nested properties into flat structure for form handling
+ *
+ * @param trip - The Trip object to convert
+ * @returns TripAdminData ready for editing
+ *
+ * @example
+ * const adminData = tripToAdminData(trip);
+ * onEditTrip(adminData);
+ */
+export const tripToAdminData = (trip: Trip): TripAdminData => ({
+  trip_id: trip.trip_id,
+  route_id: trip.route.route_id,
+  bus_id: trip.bus.bus_id,
+  departure_time: trip.schedule.departure_time,
+  arrival_time: trip.schedule.arrival_time,
+  base_price: trip.pricing.base_price,
+  status: trip.status as 'active' | 'inactive',
+})
