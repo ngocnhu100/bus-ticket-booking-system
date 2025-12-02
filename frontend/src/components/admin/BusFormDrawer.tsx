@@ -3,7 +3,8 @@ import type { BusAdminData } from '@/types/trip.types'
 import { CustomDropdown } from '../ui/custom-dropdown'
 import { Loader } from 'lucide-react'
 
-const emptyForm: Omit<BusAdminData, 'busId' | 'createdAt'> = {
+const emptyForm: Omit<BusAdminData, 'bus_id' | 'created_at'> = {
+  operator_id: '',
   name: '',
   model: '',
   plate_number: '',
@@ -17,16 +18,22 @@ interface BusFormDrawerProps {
   open: boolean
   onClose: () => void
   initialBus: BusAdminData | null
-  onSave: (values: Omit<BusAdminData, 'busId' | 'createdAt'>) => void
+  onSave: (values: Omit<BusAdminData, 'bus_id' | 'created_at'>) => void
+  operators: Array<{ id: string; label: string }>
 }
 
 const AMENITIES_OPTIONS = [
-  { id: 'WiFi', label: 'WiFi' },
-  { id: 'AC', label: 'Air Conditioning' },
-  { id: 'Toilet', label: 'Toilet' },
-  { id: 'Entertainment', label: 'Entertainment System' },
-  { id: 'Sleeping Beds', label: 'Sleeping Beds' },
-  { id: 'Catering', label: 'Catering' },
+  { id: 'wifi', label: 'WiFi' },
+  { id: 'ac', label: 'Air Conditioning' },
+  { id: 'toilet', label: 'Toilet' },
+  { id: 'tv', label: 'TV' },
+  { id: 'entertainment', label: 'Entertainment System' },
+  { id: 'blanket', label: 'Blanket' },
+  { id: 'water', label: 'Water' },
+  { id: 'usb', label: 'USB Charging' },
+  { id: 'reading_light', label: 'Reading Light' },
+  { id: 'massage', label: 'Massage' },
+  { id: 'pillow', label: 'Pillow' },
 ]
 
 export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
@@ -34,14 +41,16 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
   onClose,
   initialBus,
   onSave,
+  operators,
 }) => {
   const [form, setForm] =
-    useState<Omit<BusAdminData, 'busId' | 'createdAt'>>(emptyForm)
+    useState<Omit<BusAdminData, 'bus_id' | 'createdAt'>>(emptyForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (initialBus) {
       setForm({
+        operator_id: initialBus.operator_id,
         name: initialBus.name,
         model: initialBus.model,
         plate_number: initialBus.plate_number,
@@ -204,6 +213,21 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 value={form.plate_number}
                 onChange={(e) => handleChange('plate_number', e.target.value)}
                 placeholder="e.g., 51B-12345"
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-xs font-medium"
+                style={{ color: 'var(--foreground)' }}
+              >
+                Operator *
+              </label>
+              <CustomDropdown
+                options={operators}
+                value={form.operator_id || ''}
+                onChange={(value) => handleChange('operator_id', value)}
+                placeholder="Select operator"
               />
             </div>
           </div>

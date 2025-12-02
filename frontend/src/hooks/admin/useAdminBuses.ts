@@ -1,20 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
 import type { BusAdminData } from '../../types/trip.types'
-
-interface PaginatedResponse<T> {
-  success: boolean
-  data: T[]
-  pagination?: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
-}
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+import { request } from '../../api/auth'
 
 export function useAdminBuses() {
   const [buses, setBuses] = useState<BusAdminData[]>([])
@@ -34,21 +21,13 @@ export function useAdminBuses() {
           params.append('search', searchTerm)
         }
 
-        const response = await fetch(`${API_BASE_URL}/admin/buses?${params}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
+        const data = await request(`/trips/buses?${params.toString()}`, {
+          method: 'GET',
         })
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch buses')
-        }
-
-        const data: PaginatedResponse<BusAdminData> = await response.json()
         setBuses(data.data)
-        return data.data
-      } catch {
-        const message = 'Failed to upload image'
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to fetch buses'
         setError(message)
         toast({
           title: 'Error',
@@ -62,30 +41,26 @@ export function useAdminBuses() {
   )
 
   const createBus = useCallback(
-    async (busData: Omit<BusAdminData, 'busId' | 'createdAt'>) => {
+    async (busData: Partial<BusAdminData>) => {
       setIsLoading(true)
+      setError(null)
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/buses`, {
+        const response = await request('/trips/buses', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-          body: JSON.stringify(busData),
+          body: busData,
         })
 
-        if (!response.ok) {
-          throw new Error('Failed to create bus')
-        }
-
+        // Use response data if available, otherwise use sent data
+        const createdBus = response.data || busData
+        setBuses((prev) => [...prev, createdBus])
         toast({
           title: 'Success',
           description: 'Bus created successfully',
         })
-
-        await fetchBuses()
-      } catch {
-        const message = 'Failed to create bus'
+        return createdBus
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to create bus'
         setError(message)
         toast({
           title: 'Error',
@@ -95,28 +70,47 @@ export function useAdminBuses() {
         setIsLoading(false)
       }
     },
-    [fetchBuses, toast]
+    [toast]
+  )
+  const deleteBus = useCallback(
+    async (busId: string) => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        await request(`/trips/buses/${busId}`, {
+          method: 'DELETE',
+        })
+        setBuses((prev) => prev.filter((bus) => bus.bus_id !== busId))
+        toast({
+          title: 'Success',
+          description: 'Bus deleted successfully',
+        })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to delete bus'
+        setError(message)
+        toast({
+          title: 'Error',
+          description: message,
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [toast]
   )
 
   const updateBus = useCallback(
     async (
       busId: string,
-      busData: Omit<BusAdminData, 'busId' | 'createdAt'>
+      busData: Omit<BusAdminData, 'bus_id' | 'created_at'>
     ) => {
       setIsLoading(true)
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/buses/${busId}`, {
+        await request(`/trips/buses/${busId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-          body: JSON.stringify(busData),
+          body: busData,
         })
-
-        if (!response.ok) {
-          throw new Error('Failed to update bus')
-        }
 
         toast({
           title: 'Success',
@@ -124,8 +118,9 @@ export function useAdminBuses() {
         })
 
         await fetchBuses()
-      } catch {
-        const message = 'Failed to update bus'
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to update bus'
         setError(message)
         toast({
           title: 'Error',
@@ -138,22 +133,27 @@ export function useAdminBuses() {
     [fetchBuses, toast]
   )
 
+  return {
+    buses,
+    isLoading,
+    error,
+    fetchBuses,
+    createBus,
+    updateBus,
+    deleteBus,
+    //deactivateBus,
+    //uploadBusImage,
+  }
+}
+/* 
   const deactivateBus = useCallback(
     async (busId: string) => {
       setIsLoading(true)
       try {
-        const response = await fetch(`${API_BASE_URL}/admin/buses/${busId}`, {
+        await request(`/admin/buses/${busId}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
           body: JSON.stringify({ status: 'INACTIVE' }),
         })
-
-        if (!response.ok) {
-          throw new Error('Failed to deactivate bus')
-        }
 
         toast({
           title: 'Success',
@@ -161,8 +161,9 @@ export function useAdminBuses() {
         })
 
         await fetchBuses()
-      } catch {
-        const message = 'Failed to deactivate bus'
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to deactivate bus'
         setError(message)
         toast({
           title: 'Error',
@@ -187,7 +188,7 @@ export function useAdminBuses() {
           {
             method: 'POST',
             headers: {
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+              Authorization: `Bearer ${getAccessToken()}`,
             },
             body: formData,
           }
@@ -216,15 +217,4 @@ export function useAdminBuses() {
     },
     [fetchBuses, toast]
   )
-
-  return {
-    buses,
-    isLoading,
-    error,
-    fetchBuses,
-    createBus,
-    updateBus,
-    deactivateBus,
-    uploadBusImage,
-  }
-}
+ */
