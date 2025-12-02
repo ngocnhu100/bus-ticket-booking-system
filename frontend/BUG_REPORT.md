@@ -186,9 +186,9 @@ if (authData) {
 
 **Test Adjustments Made**:
 
-- Tests simplified to verify critical paths (API calls, success/error messages)
-- Removed strict assertions on `authLogin` mock calls (context mock issues)
-- Focus on user-visible behavior rather than internal implementation details
+- Tests verify critical paths (API calls, success/error messages)
+- **Updated Google Sign-In test**: Verify `mockAuthLogin` called with auth data (more reliable than checking `storeTokens`)
+- Focus on user-visible behavior and AuthContext integration rather than internal implementation details
 
 ### Notes
 

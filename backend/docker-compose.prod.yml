@@ -44,6 +44,31 @@ services:
       - ./services/notification-service:/app
       - /app/node_modules
 
+  # Trip Service
+  trip-service:
+    build:
+      context: ./services/trip-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-trip-service-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - SERVICE_NAME=trip-service
+      - REDIS_URL=${REDIS_URL}
+      - CACHE_TTL=${CACHE_TTL:-600}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_POOL_MIN=${DB_POOL_MIN:-2}
+      - DB_POOL_MAX=${DB_POOL_MAX:-10}
+    networks:
+      - bus-ticket-network-prod
+    volumes:
+      - ./services/trip-service:/app
+      - /app/node_modules
+
   # API Gateway
   api-gateway:
     build:
@@ -54,6 +79,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
+      - TRIP_SERVICE_URL=http://trip-service:3005
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}

@@ -36,7 +36,7 @@ Complete test coverage for Login component with **17 test cases** - **ALL PASSIN
 
 **Google Sign-In Tests (4)** ✅
 
-- ✓ Calls requestGoogleIdToken and handles credential
+- ✓ Calls requestGoogleIdToken and handles credential (verifies AuthContext.login called)
 - ✓ Disables Google button during sign-in
 - ✓ Displays error when Google sign-in fails
 - ✓ Handles Google API error after credential received
@@ -49,9 +49,10 @@ Complete test coverage for Login component with **17 test cases** - **ALL PASSIN
 **Key Updates**:
 
 - ✅ Tests adapted to work with **production code as-is**
-- ✅ Verify critical user paths: API calls, error handling, UI feedback
+- ✅ Verify critical user paths: API calls, AuthContext integration, UI feedback
 - ✅ Pragmatic approach: tests match working code behavior
 - ✅ Proper mock cleanup with `mockReset()` in `beforeEach`
+- ✅ Google sign-in test verifies `mockAuthLogin` instead of `storeTokens` (more reliable)
 
 ---
 
@@ -237,10 +238,11 @@ npm run test:ui
 
 ### Test Adjustments Made
 
-1. **Simplified Google Sign-In success test**:
-   - Verify API calls (`requestGoogleIdToken`, `loginWithGoogle`, `storeTokens`)
+1. **Updated Google Sign-In success test**:
+   - Verify API calls (`requestGoogleIdToken`, `loginWithGoogle`)
+   - **Verify `mockAuthLogin` (AuthContext) called with auth data** (instead of `storeTokens`)
    - Verify success message appears
-   - Removed strict `authLogin` mock verification (context mock limitations)
+   - More reliable: tests what AuthContext receives rather than direct storage calls
 
 2. **Relaxed Google Sign-In error test**:
    - Focus on error message display

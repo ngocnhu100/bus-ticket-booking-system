@@ -1,13 +1,8 @@
 import { useState } from 'react'
+import type { FormEvent, ChangeEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import GoogleIcon from '@/components/GoogleIcon'
@@ -16,7 +11,28 @@ import { hasErrors, validateRegister } from '@/lib/validation'
 import { loginWithGoogle, registerAccount, storeTokens } from '@/api/auth'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
-const initialState = {
+interface FormState {
+  email: string
+  phone: string
+  password: string
+  fullName: string
+  role: string
+}
+
+interface ErrorState {
+  email: string
+  phone: string
+  password: string
+  fullName: string
+  role: string
+}
+
+interface StatusState {
+  type: 'idle' | 'success' | 'error'
+  message: string
+}
+
+const initialState: FormState = {
   email: '',
   phone: '+84',
   password: '',
@@ -26,32 +42,35 @@ const initialState = {
 
 export default function Register() {
   const navigate = useNavigate()
-  const [form, setForm] = useState(initialState)
-  const [errors, setErrors] = useState({
+  const [form, setForm] = useState<FormState>(initialState)
+  const [errors, setErrors] = useState<ErrorState>({
     email: '',
     phone: '',
     password: '',
     fullName: '',
     role: '',
   })
-  const [status, setStatus] = useState({ type: 'idle', message: '' })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [status, setStatus] = useState<StatusState>({
+    type: 'idle',
+    message: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
 
-  const handleChange = (event) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) {
+    if (errors[name as keyof ErrorState]) {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const validation = validateRegister(form)
 
     if (hasErrors(validation)) {
-      setErrors(validation)
+      setErrors(validation as unknown as ErrorState)
       return
     }
 
@@ -68,7 +87,7 @@ export default function Register() {
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error.message || 'Unable to create your account.',
+        message: (error as Error).message || 'Unable to create your account.',
       })
     } finally {
       setIsSubmitting(false)
@@ -94,7 +113,7 @@ export default function Register() {
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error?.message || 'Google sign-in failed.',
+        message: (error as Error)?.message || 'Google sign-in failed.',
       })
     } finally {
       setIsGoogleLoading(false)

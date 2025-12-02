@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormEvent, ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,25 +15,38 @@ import { resetPassword } from '@/api/auth'
 import { strongPasswordPattern } from '@/lib/validation'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
-const initialForm = { password: '', confirmPassword: '' }
+interface FormState {
+  password: string
+  confirmPassword: string
+}
+
+interface StatusState {
+  type: 'idle' | 'success' | 'error'
+  message: string
+}
+
+const initialForm: FormState = { password: '', confirmPassword: '' }
 
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [form, setForm] = useState(initialForm)
-  const [error, setError] = useState('')
-  const [status, setStatus] = useState({ type: 'idle', message: '' })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [form, setForm] = useState<FormState>(initialForm)
+  const [error, setError] = useState<string>('')
+  const [status, setStatus] = useState<StatusState>({
+    type: 'idle',
+    message: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
   const token = searchParams.get('token') ?? ''
 
-  const handleChange = (event) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
     if (error) setError('')
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!token) {
@@ -70,7 +84,8 @@ export default function ResetPassword() {
     } catch (err) {
       setStatus({
         type: 'error',
-        message: err.message || 'Unable to reset password right now.',
+        message:
+          (err as Error).message || 'Unable to reset password right now.',
       })
     } finally {
       setIsSubmitting(false)

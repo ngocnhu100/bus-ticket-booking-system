@@ -15,6 +15,7 @@ import History from './pages/users/History'
 import Profile from './pages/users/Profile'
 import Payments from './pages/users/Payments'
 import Notifications from './pages/users/Notifications'
+import TripSearch from './pages/users/TripSearch'
 import { AuthProvider } from '@/context/AuthContext'
 import { PassengerRoute, AdminRoute } from '@/components/ProtectedRoute'
 import AdminDashboard from '@/pages/admin/Dashboard'
@@ -83,6 +84,7 @@ const App = () => (
                   path="/dashboard/notifications"
                   element={<Notifications />}
                 />
+                <Route path="/trips/search" element={<TripSearch />} />
               </Route>
 
               {/* Admin routes - protected */}

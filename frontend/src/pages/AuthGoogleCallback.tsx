@@ -2,15 +2,25 @@ import { useEffect, useState } from 'react'
 import { GOOGLE_OAUTH_MESSAGE_TYPE } from '@/lib/googleAuth'
 
 export default function AuthGoogleCallback() {
-  const [message, setMessage] = useState('Completing Google sign-in…')
+  const params = new URLSearchParams(window.location.search)
+  const code = params.get('code')
+  const state = params.get('state')
+  const error = params.get('error')
+  const errorDescription = params.get('error_description')
+
+  const getInitialMessage = () => {
+    if (error) {
+      return `Unable to complete Google sign-in: ${errorDescription || error}`
+    } else if (!code) {
+      return 'Google did not provide an authorization code. You can close this tab.'
+    } else {
+      return 'Unable to reach the original window. Please return and try again.'
+    }
+  }
+
+  const [message, setMessage] = useState<string>('Completing Google sign-in…')
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    const state = params.get('state')
-    const error = params.get('error')
-    const errorDescription = params.get('error_description')
-
     const payload = {
       type: GOOGLE_OAUTH_MESSAGE_TYPE,
       state: state ?? undefined,
@@ -27,19 +37,9 @@ export default function AuthGoogleCallback() {
       return
     }
 
-    if (error) {
-      setMessage(
-        `Unable to complete Google sign-in: ${errorDescription || error}`
-      )
-    } else if (!code) {
-      setMessage(
-        'Google did not provide an authorization code. You can close this tab.'
-      )
-    } else {
-      setMessage(
-        'Unable to reach the original window. Please return and try again.'
-      )
-    }
+    // Update message after checking window.opener
+    setMessage(getInitialMessage())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (
