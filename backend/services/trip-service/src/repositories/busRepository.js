@@ -4,42 +4,57 @@ const pool = require('../database');
 class BusRepository {
   // Tạo xe mới (POST /buses)
  async create(busData) {
-    const { 
-      operator_id, 
-      bus_model_id, 
-      license_plate, 
-      plate_number, 
-      type = 'standard', 
-      amenities = [], 
-      status = 'active',
-      image_url 
-    } = busData;
+  const {
+    operator_id,
+    name,           
+    model,          
+    plate_number,   
+    type = 'standard',
+    capacity,       
+    amenities = [],
+    status = 'active',
+    image_url
+  } = busData;
 
-    const amenitiesJson = Array.isArray(amenities) ? JSON.stringify(amenities) : '[]';
-
-    const query = `
-      INSERT INTO buses (
-        operator_id, bus_model_id, license_plate, plate_number, 
-        type, amenities, status, image_url
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *;
-    `;
-
-    const values = [
-      operator_id,
-      bus_model_id,
-      license_plate,
-      plate_number || null,
-      type,
-      amenitiesJson,
-      status,
-      image_url || null 
-    ];
-
-    const result = await pool.query(query, values);
-    return result.rows[0];
+  const modelResult = await pool.query(
+    'SELECT bus_model_id, total_seats FROM bus_models WHERE name ILIKE $1',
+    [model.trim()]
+  );
+  if (modelResult.rows.length === 0) {
+    throw new Error('BUS_MODEL_NOT_FOUND');
   }
+  const busModelRow = modelResult.rows[0];
+
+  // // Kiểm tra capacity có khớp với model không (tùy chọn, có thể bỏ nếu không cần)
+  // if (Number(capacity) !== Number(busModelRow.total_seats)) {
+  //   throw new Error('CAPACITY_MISMATCH');
+  // }
+
+  const amenitiesJson = Array.isArray(amenities) ? JSON.stringify(amenities) : '[]';
+
+  const query = `
+    INSERT INTO buses (
+      operator_id, bus_model_id, license_plate, plate_number,
+      type, amenities, status, image_url
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING *;
+  `;
+
+  const values = [
+    operator_id,
+    busModelRow.bus_model_id,
+    plate_number,           
+    plate_number,
+    type,
+    amenitiesJson,
+    status,
+    image_url || null
+  ];
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
 
   // Tìm theo biển số (duy nhất)
   async findByLicensePlate(license_plate) {
@@ -50,45 +65,55 @@ class BusRepository {
 
   // Lấy tất cả xe (GET /buses)
   async findAll({ limit = 50, offset = 0, status } = {}) {
-    let query = `
-      SELECT 
-        b.*,
-        bm.name as model_name,
-        bm.total_seats
-      FROM buses b
-      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-    `;
-    const values = [];
-    let index = 1;
+  let query = `
+    SELECT 
+      b.bus_id,
+      b.operator_id,           -- THÊM DÒNG NÀY (rất quan trọng)
+      b.license_plate,
+      b.plate_number,
+      b.type,
+      b.amenities,
+      b.status,
+      b.image_url,
+      b.created_at,
+      bm.name as model_name,
+      bm.total_seats
+    FROM buses b
+    JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+  `;
 
-    if (status) {
-      query += ` WHERE b.status = $${index++}`;
-      values.push(status);
-    }
+  const values = [];
+  let index = 1;
 
-    query += ` ORDER BY b.created_at DESC LIMIT $${index++} OFFSET $${index};`;
-    values.push(limit, offset);
-
-    const result = await pool.query(query, values);
-    return result.rows;
+  if (status) {
+    query += ` WHERE b.status = $${index++}`;
+    values.push(status);
   }
+
+  query += ` ORDER BY b.created_at DESC LIMIT $${index++} OFFSET $${index}`;
+  values.push(limit, offset);
+
+  const result = await pool.query(query, values);
+  return result.rows; 
+}
 
   // Tìm theo ID (GET /buses/:id)
   async findById(id) {
-    const query = `
-      SELECT 
-        b.*,
-        bm.name as model_name,
-        bm.total_seats,
-        sl.layout_json
-      FROM buses b
-      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-      LEFT JOIN seat_layouts sl ON sl.bus_model_id = bm.bus_model_id
-      WHERE b.bus_id = $1;
-    `;
-    const result = await pool.query(query, [id]);
-    return result.rows[0] || null;
-  }
+  const query = `
+    SELECT 
+      b.*,
+      b.operator_id,           -- thêm lại cho chắc
+      bm.name as model_name,
+      bm.total_seats,
+      sl.layout_json
+    FROM buses b
+    JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+    LEFT JOIN seat_layouts sl ON sl.bus_model_id = bm.bus_model_id
+    WHERE b.bus_id = $1
+  `;
+  const result = await pool.query(query, [id]);
+  return result.rows[0] || null;
+}
 
   // Cập nhật thông tin xe (PUT /buses/:id)
   async update(id, busData) {

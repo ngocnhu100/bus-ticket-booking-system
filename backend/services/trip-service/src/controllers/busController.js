@@ -4,58 +4,73 @@ const operatorRepository = require('../repositories/operatorRepository');
 const busModelRepository = require('../repositories/busModelRepository');
 const { createBusSchema, updateBusSchema } = require('../validators/busValidators');
 const { mapToBusAdminData } = require('../utils/mappers'); // New import
-
+const pool = require('../database');
 class BusController {
   // POST /buses - Tạo xe mới
   async create(req, res) {
-  try {
-    const { error, value } = createBusSchema.validate(req.body);
-    if (error) {
-      return res.status(422).json({
+    try {
+      const { error, value } = createBusSchema.validate(req.body);
+      if (error) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: error.details[0].message }
+        });
+      }
+
+      // Kiểm tra operator tồn tại
+      const operator = await operatorRepository.findById(value.operator_id);
+      if (!operator) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'OPERATOR_NOT_FOUND', message: 'Không tìm thấy nhà xe' }
+        });
+      }
+
+      // Kiểm tra biển số trùng
+      const existingBus = await busRepository.findByLicensePlate(value.plate_number);
+      if (existingBus) {
+        return res.status(409).json({
+          success: false,
+          error: { code: 'BUS_001', message: 'Biển số xe đã tồn tại' }
+        });
+      }
+
+      // Tạo xe (repository sẽ tự tìm bus_model_id từ tên model)
+      let bus;
+      try {
+        bus = await busRepository.create(value);
+      } catch (err) {
+        if (err.message === 'BUS_MODEL_NOT_FOUND') {
+          return res.status(404).json({
+            success: false,
+            error: { code: 'BUS_MODEL_NOT_FOUND', message: 'Không tìm thấy mẫu xe với tên đã nhập' }
+          });
+        }
+        if (err.message === 'CAPACITY_MISMATCH') {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'CAPACITY_MISMATCH', message: 'Sức chứa không khớp với mẫu xe' }
+          });
+        }
+        throw err;
+      }
+
+      // Lấy đầy đủ thông tin (model_name, total_seats…) để mapper
+      const fullBus = await busRepository.findById(bus.bus_id);
+
+      res.status(201).json({
+        success: true,
+        data: mapToBusAdminData(fullBus),
+        message: 'Tạo xe buýt thành công'
+      });
+    } catch (err) {
+      console.error('Create bus error:', err);
+      res.status(500).json({
         success: false,
-        error: { code: 'VAL_001', message: error.details[0].message }
+        error: { code: 'SYS_001', message: 'Lỗi hệ thống khi tạo xe' }
       });
     }
-
-    // Thêm check FK tồn tại
-    const operator = await operatorRepository.findById(value.operator_id);
-    if (!operator) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'OPERATOR_NOT_FOUND', message: 'Không tìm thấy nhà xe (operator_id không tồn tại)' }
-      });
-    }
-
-    const busModel = await busModelRepository.findById(value.bus_model_id);
-    if (!busModel) {
-      return res.status(404).json({
-        success: false,
-        error: { code: 'BUS_MODEL_NOT_FOUND', message: 'Không tìm thấy mẫu xe (bus_model_id không tồn tại)' }
-      });
-    }
-
-    const existingBus = await busRepository.findByLicensePlate(value.license_plate);
-    if (existingBus) {
-      return res.status(409).json({
-        success: false,
-        error: { code: 'BUS_001', message: 'Biển số xe đã tồn tại' }
-      });
-    }
-
-    const bus = await busRepository.create(value);
-    res.status(201).json({
-      success: true,
-      data: mapToBusAdminData(bus),
-      message: 'Tạo xe buýt thành công'
-    });
-  } catch (err) {
-    console.error('Create bus error:', err);
-    res.status(500).json({
-      success: false,
-      error: { code: 'SYS_001', message: 'Lỗi hệ thống khi tạo xe' }
-    });
   }
-}
 
   // GET /buses - Lấy danh sách xe
   async getAll(req, res) {
@@ -110,31 +125,63 @@ class BusController {
         });
       }
 
-      // Kiểm tra biển số trùng (trừ xe hiện tại)
-      if (value.license_plate) {
-        const existing = await busRepository.findByLicensePlate(value.license_plate);
-        if (existing && existing.bus_id !== parseInt(req.params.id)) {
-          return res.status(409).json({
+      let updatedBus;
+      if (value.model || value.capacity !== undefined) {
+        // Nếu thay model → cần lấy lại bus_model_id và kiểm tra capacity
+        const modelResult = await pool.query(
+          'SELECT bus_model_id, total_seats FROM bus_models WHERE name ILIKE $1',
+          [value.model || (await busRepository.findById(req.params.id)).model_name]
+        );
+        if (modelResult.rows.length === 0) {
+          return res.status(404).json({
             success: false,
-            error: { code: 'BUS_001', message: 'Biển số đã được sử dụng bởi xe khác' }
+            error: { code: 'BUS_MODEL_NOT_FOUND', message: 'Mẫu xe không tồn tại' }
           });
         }
+        const modelRow = modelResult.rows[0];
+        if (value.capacity && Number(value.capacity) !== Number(modelRow.total_seats)) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'CAPACITY_MISMATCH', message: 'Sức chứa phải khớp với mẫu xe' }
+          });
+        }
+
+        // Cập nhật bus_model_id + các field khác
+        await pool.query(
+          `UPDATE buses SET bus_model_id = $1, updated_at = CURRENT_TIMESTAMP WHERE bus_id = $2`,
+          [modelRow.bus_model_id, req.params.id]
+        );
+        delete value.model; // không để vào update thông thường
       }
 
-      const bus = await busRepository.update(req.params.id, value);
-      if (!bus) {
+      // Cập nhật các field còn lại
+      if (Object.keys(value).length > 0) {
+        // plate_number → license_plate
+        if (value.plate_number) {
+          value.license_plate = value.plate_number;
+          delete value.plate_number;
+        }
+        updatedBus = await busRepository.update(req.params.id, value);
+      } else {
+        updatedBus = await busRepository.findById(req.params.id);
+      }
+
+      if (!updatedBus) {
         return res.status(404).json({
           success: false,
           error: { code: 'BUS_002', message: 'Không tìm thấy xe' }
         });
       }
 
+      const fullBus = await busRepository.findById(req.params.id);
+
       res.json({
         success: true,
-        data: mapToBusAdminData(bus),
+        data: mapToBusAdminData(fullBus),
         message: 'Cập nhật xe thành công'
       });
     } catch (err) {
+      console.error(err);
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Lỗi khi cập nhật xe' }
