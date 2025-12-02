@@ -314,6 +314,16 @@ class AuthController {
         });
       }
 
+      // Get user role from database
+      const user = await userRepository.findById(decoded.userId);
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          error: { code: 'AUTH_002', message: 'User not found' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
       // Blacklist the old access token
       const authHeader = req.headers.authorization;
       if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -321,7 +331,7 @@ class AuthController {
         await authService.blacklistAccessToken(oldAccessToken);
       }
 
-      const newAccessToken = authService.generateAccessToken({ userId: decoded.userId, role: decoded.role });
+      const newAccessToken = authService.generateAccessToken({ userId: decoded.userId, role: user.role });
 
       res.json({
         success: true,

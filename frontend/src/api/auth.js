@@ -40,7 +40,7 @@ export async function request(
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      headers: buildHeaders(headers, token),
+      headers: buildHeaders(headers, token || getAccessToken()),
       ...(body && method !== 'GET' ? { body: JSON.stringify(body) } : {}),
       ...options,
     })
@@ -59,6 +59,27 @@ export async function request(
 
   const isError = !response.ok || (data && data.success === false)
   if (isError) {
+    // If unauthorized and we have a refresh token, try to refresh
+    if (response.status === 401 && getRefreshToken() && !token) {
+      try {
+        await refreshAccessToken()
+        // Retry the request with the new token
+        return request(path, {
+          body,
+          token: getAccessToken(),
+          method,
+          headers,
+          ...options,
+        })
+      } catch (refreshError) {
+        // Refresh failed, clear tokens
+        clearTokens()
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+        throw refreshError
+      }
+    }
+
     const message =
       data?.error?.message ||
       'Unable to complete the request. Please try again.'
@@ -129,4 +150,18 @@ export function storeTokens({ accessToken, refreshToken }) {
   }
 }
 
-export { API_BASE_URL }
+export async function refreshAccessToken() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) {
+    throw new Error('No refresh token available')
+  }
+
+  const response = await request('/auth/refresh', {
+    body: { refreshToken },
+    method: 'POST',
+  })
+
+  const { accessToken } = response.data
+  setAccessToken(accessToken)
+  return accessToken
+}
