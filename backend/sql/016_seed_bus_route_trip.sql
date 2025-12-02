@@ -105,14 +105,14 @@ INSERT INTO buses (operator_id, bus_model_id, license_plate, plate_number, ameni
 ON CONFLICT (license_plate) DO NOTHING;
 
 -- 4. routes (city names in English)
-INSERT INTO routes (origin, destination, distance_km, estimated_minutes) VALUES
-('Ho Chi Minh City', 'Da Lat', 300, 420),
-('Ho Chi Minh City', 'Nha Trang', 450, 540),
-('Ho Chi Minh City', 'Can Tho', 170, 240),
-('Hanoi', 'Sapa', 320, 360),
-('Ho Chi Minh City', 'Bao Loc', 200, 270),
-('Da Nang', 'Hue', 100, 120),
-('Hanoi', 'Ha Long', 170, 210)
+INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_minutes) VALUES
+((SELECT operator_id FROM operators WHERE name = 'GreenLine Express'), 'Ho Chi Minh City', 'Da Lat', 300, 420),
+((SELECT operator_id FROM operators WHERE name = 'Future Travel Bus Co'), 'Ho Chi Minh City', 'Nha Trang', 450, 540),
+((SELECT operator_id FROM operators WHERE name = 'Kumho Samco Buslines'), 'Ho Chi Minh City', 'Can Tho', 170, 240),
+((SELECT operator_id FROM operators WHERE name = 'Sunrise Coaches'), 'Hanoi', 'Sapa', 320, 360),
+((SELECT operator_id FROM operators WHERE name = 'GreenLine Express'), 'Ho Chi Minh City', 'Bao Loc', 200, 270),
+((SELECT operator_id FROM operators WHERE name = 'Future Travel Bus Co'), 'Da Nang', 'Hue', 100, 120),
+((SELECT operator_id FROM operators WHERE name = 'Kumho Samco Buslines'), 'Hanoi', 'Ha Long', 170, 210)
 ON CONFLICT DO NOTHING;
 
 -- 5. route_stops (sample for Ho Chi Minh City -> Da Lat)
@@ -154,27 +154,27 @@ INSERT INTO trips (route_id, bus_id, departure_time, arrival_time, base_price, p
 -- HCMC -> Da Lat daytime
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat'),
  (SELECT bus_id FROM buses WHERE license_plate = '51G-123.45'),
- '2026-01-10 08:00:00', '2026-01-10 15:00:00', 350000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+ '2025-12-02 08:00:00', '2025-12-02 15:00:00', 350000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
 
 -- HCMC -> Da Lat night sleeper
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat'),
  (SELECT bus_id FROM buses WHERE license_plate = '51F-999.99'),
- '2026-01-10 22:00:00', '2026-01-11 05:30:00', 520000.00, '{"cancellation_policy": "48h partial", "modification_policy": "Limited", "refund_policy": "Partial"}'::jsonb, 'active'),
+ '2025-12-02 22:00:00', '2025-12-03 05:30:00', 520000.00, '{"cancellation_policy": "48h partial", "modification_policy": "Limited", "refund_policy": "Partial"}'::jsonb, 'active'),
 
 -- HCMC -> Nha Trang
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Nha Trang'),
  (SELECT bus_id FROM buses WHERE license_plate = '51K-777.77'),
- '2026-01-11 20:30:00', '2026-01-12 05:00:00', 480000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+ '2025-12-03 20:30:00', '2025-12-04 05:00:00', 480000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
 
 -- HCMC -> Can Tho
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Can Tho'),
  (SELECT bus_id FROM buses WHERE license_plate = '51S-555.55'),
- '2026-01-12 07:00:00', '2026-01-12 11:00:00', 180000.00, '{"cancellation_policy": "12h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+ '2025-12-04 07:00:00', '2025-12-04 11:00:00', 180000.00, '{"cancellation_policy": "12h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
 
 -- Da Nang -> Hue
 ((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Hue'),
  (SELECT bus_id FROM buses WHERE license_plate = '51G-050.50'),
- '2026-01-15 09:00:00', '2026-01-15 11:00:00', 120000.00, '{"cancellation_policy": "6h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active')
+ '2025-12-07 09:00:00', '2025-12-07 11:00:00', 120000.00, '{"cancellation_policy": "6h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active')
 ON CONFLICT DO NOTHING;
 
 -- =========================================================
@@ -185,7 +185,7 @@ VALUES
 (
   (SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ha Long'),
   (SELECT bus_id FROM buses WHERE license_plate = '51G-050.50' LIMIT 1),
-  '2026-02-01 07:00:00', '2026-02-01 11:00:00', 200000.00,
+  '2025-12-05 07:00:00', '2025-12-05 11:00:00', 200000.00,
   '{"cancellation_policy":"24h free","modification_policy":"Flexible","refund_policy":"Full"}'::jsonb,
   'active'
 ),
@@ -193,7 +193,7 @@ VALUES
 (
   (SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Sapa'),
   (SELECT bus_id FROM buses WHERE license_plate = '51F-999.99' LIMIT 1),
-  '2026-02-02 20:00:00', '2026-02-03 04:00:00', 300000.00,
+  '2025-12-06 20:00:00', '2025-12-07 04:00:00', 300000.00,
   '{"cancellation_policy":"48h partial","modification_policy":"Limited","refund_policy":"Partial"}'::jsonb,
   'active'
 ),
@@ -201,7 +201,7 @@ VALUES
 (
   (SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Bao Loc'),
   (SELECT bus_id FROM buses WHERE license_plate = '51G-123.45' LIMIT 1),
-  '2026-02-05 08:00:00', '2026-02-05 12:30:00', 250000.00,
+  '2025-12-08 08:00:00', '2025-12-08 12:30:00', 250000.00,
   '{"cancellation_policy":"24h free","modification_policy":"Flexible","refund_policy":"Full"}'::jsonb,
   'active'
 )

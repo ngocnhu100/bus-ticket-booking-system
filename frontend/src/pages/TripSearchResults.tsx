@@ -70,7 +70,7 @@ export function TripSearchResults() {
 
   const [trips, setTrips] = useState<Trip[]>(mockTrips)
   const hasAddedSearchRef = useRef(false)
-  const hasFetchedTripsRef = useRef(false)
+  const hasFetchedTripsRef = useRef<string | false>(false)
 
   // TODO: Fetch trips from GET /trips/search API
   useEffect(() => {
