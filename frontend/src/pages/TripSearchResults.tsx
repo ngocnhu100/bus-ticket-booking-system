@@ -616,23 +616,36 @@ export function TripSearchResults() {
                       </div>
                     )}
 
+                {/* End of list message for load more mode and pagination mode */}
+                {((useLoadMore && !hasMoreResults) ||
+                  (!useLoadMore && currentPage === totalPages)) &&
+                  paginatedTrips.length > 0 && (
+                    <div className="mt-8 flex justify-center">
+                      <p className="text-sm text-muted-foreground">
+                        You've reached the end of the results
+                      </p>
+                    </div>
+                  )}
+
                 {/* Toggle between Load More and Pagination */}
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setUseLoadMore(!useLoadMore)
-                      setCurrentPage(1)
-                      setLoadedItemsCount(10)
-                    }}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    {useLoadMore
-                      ? 'Switch to pagination'
-                      : 'Switch to load more'}
-                  </Button>
-                </div>
+                {(hasMoreResults || (!useLoadMore && totalPages > 1)) && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setUseLoadMore(!useLoadMore)
+                        setCurrentPage(1)
+                        setLoadedItemsCount(10)
+                      }}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      {useLoadMore
+                        ? 'Switch to pagination'
+                        : 'Switch to load more'}
+                    </Button>
+                  </div>
+                )}
               </>
             ) : (
               <Card className="p-12 text-center">

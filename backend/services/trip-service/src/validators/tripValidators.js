@@ -33,7 +33,8 @@ const update_trip_schema = Joi.object({
 const search_trip_schema = Joi.object({
   origin: Joi.string().optional(),
   destination: Joi.string().optional(),
-  date: Joi.date().iso().optional(),
+  date: Joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  passengers: Joi.number().integer().min(1).default(1),
   price_min: Joi.number().min(0).optional(),
   price_max: Joi.number().min(0).optional(),
   departure_start: Joi.date().iso().optional(),

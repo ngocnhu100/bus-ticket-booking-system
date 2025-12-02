@@ -1,6 +1,17 @@
-import { Wifi, AirVent, Usb, MapPin, Bath, Clock, Tv, Bed } from 'lucide-react'
+import {
+  Wifi,
+  AirVent,
+  Usb,
+  MapPin,
+  Bath,
+  Clock,
+  Tv,
+  Bed,
+  Utensils,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { format } from 'date-fns'
 import type { Trip } from '@/types/trip.types'
 
 interface TripDetailsProps {
@@ -9,6 +20,16 @@ interface TripDetailsProps {
 }
 
 export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
+  // Helper function to format time
+  const formatTime = (timeString: string) => {
+    try {
+      const date = new Date(timeString)
+      return format(date, 'HH:mm (MMM d)')
+    } catch {
+      return timeString // Fallback to original string if parsing fails
+    }
+  }
+
   const getAmenityIcon = (amenityId: string) => {
     const amenityMap: Record<string, { icon: React.ReactNode; name: string }> =
       {
@@ -20,9 +41,17 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
           icon: <Tv className="w-4 h-4" />,
           name: 'Entertainment',
         },
+        tv: {
+          icon: <Tv className="w-4 h-4" />,
+          name: 'Entertainment',
+        },
         blanket: {
           icon: <Bed className="w-4 h-4" />,
           name: 'Blanket & Pillow',
+        },
+        snack: {
+          icon: <Utensils className="w-4 h-4" />,
+          name: 'Snacks & Beverages',
         },
       }
     return amenityMap[amenityId] || null
@@ -86,7 +115,7 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
                           {point.time && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                               <Clock className="w-3 h-3" />
-                              {point.time}
+                              {formatTime(point.time)}
                             </p>
                           )}
                         </div>
@@ -122,7 +151,7 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
                           {point.time && (
                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                               <Clock className="w-3 h-3" />
-                              {point.time}
+                              {formatTime(point.time)}
                             </p>
                           )}
                         </div>

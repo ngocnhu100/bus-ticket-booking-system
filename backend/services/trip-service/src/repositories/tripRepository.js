@@ -38,7 +38,7 @@ class TripRepository {
     const query = `
       SELECT 
         stop_id as point_id, stop_name as name, address, 
-        ($1::timestamp + INTERVAL '1 minute' * departure_offset_minutes) AS time
+        ($1::timestamptz + INTERVAL '1 minute' * departure_offset_minutes) AS time
       FROM route_stops 
       WHERE route_id = $2
       ORDER BY sequence
