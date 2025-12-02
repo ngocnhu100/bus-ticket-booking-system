@@ -9,6 +9,7 @@ import { AlertCircle, Calendar, ArrowLeftRight } from 'lucide-react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
 import '@/styles/datepicker.css'
+import { format } from 'date-fns'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
 import type { SearchHistoryItem } from '@/types/searchHistory.types'
 import { SearchHistoryPanel } from './SearchHistoryPanel'
@@ -23,15 +24,15 @@ interface SearchFormData {
 
 // Fallback cities list
 const fallbackCities = [
-  'Ha Noi',
-  'Ho Chi Minh',
+  'Hanoi',
+  'Ho Chi Minh City',
   'Da Nang',
   'Hai Phong',
   'Can Tho',
   'Hue',
-  'Khanh Hoa',
-  'Lam Dong',
-  'Dong Nai',
+  'Nha Trang',
+  'Da Lat',
+  'Sapa',
 ]
 
 export function SearchForm() {
@@ -67,8 +68,34 @@ export function SearchForm() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = (await response.json()) as Array<{ NameEn: string }>
-      // Extract unique city names from the data
-      const cityNames = data.map((province) => province.NameEn).sort()
+      // Extract unique city names from the data and map to our database names
+      const cityNames = data
+        .map((province) => {
+          const name = province.NameEn
+          switch (name) {
+            case 'Ha Noi':
+              return 'Hanoi'
+            case 'Ho Chi Minh':
+              return 'Ho Chi Minh City'
+            case 'Da Nang':
+              return 'Da Nang'
+            case 'Hai Phong':
+              return 'Hai Phong'
+            case 'Can Tho':
+              return 'Can Tho'
+            case 'Thua Thien Hue':
+              return 'Hue'
+            case 'Khanh Hoa':
+              return 'Nha Trang'
+            case 'Lam Dong':
+              return 'Da Lat'
+            case 'Lao Cai':
+              return 'Sapa'
+            default:
+              return name
+          }
+        })
+        .sort()
       setCities(cityNames)
     } catch (error) {
       console.error('Failed to load cities:', error)
@@ -126,7 +153,7 @@ export function SearchForm() {
       addSearch({
         origin: formData.from,
         destination: formData.to,
-        date: formData.date ? formData.date.toISOString().split('T')[0] : '',
+        date: formData.date ? format(formData.date, 'yyyy-MM-dd') : '',
         passengers: passengerCount,
       })
     }
@@ -134,7 +161,7 @@ export function SearchForm() {
     const searchParams = new URLSearchParams({
       origin: formData.from,
       destination: formData.to,
-      date: formData.date ? formData.date.toISOString().split('T')[0] : '',
+      date: formData.date ? format(formData.date, 'yyyy-MM-dd') : '',
       passengers: passengerCount.toString(),
     })
 

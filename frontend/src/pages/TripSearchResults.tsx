@@ -26,7 +26,21 @@ import {
 } from '@/constants/filterConstants'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
 import { useAuth } from '@/context/AuthContext'
-import '@/styles/admin.css'
+
+// API functions
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+
+async function searchTrips(params) {
+  const urlParams = new URLSearchParams(params)
+  const response = await fetch(
+    `${API_BASE_URL}/trips/search?${urlParams.toString()}`
+  )
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`)
+  }
+  const data = await response.json()
+  return data
+}
 
 // Convert legacy mock data to Trip format
 const mockTrips: Trip[] = legacyMockTripsData.map(legacyTripToTripFormat)
@@ -61,14 +75,12 @@ export function TripSearchResults() {
     // TODO: Implement API call to GET /trips/search
     const fetchTrips = async () => {
       try {
-        const params = new URLSearchParams({
+        const data = await searchTrips({
           origin,
           destination,
           date,
           passengers,
         })
-        const response = await fetch(`/trips/search?${params.toString()}`)
-        const data = await response.json()
         if (data.success) setTrips(data.data)
       } catch (error) {
         console.error('Failed to fetch trips:', error)
