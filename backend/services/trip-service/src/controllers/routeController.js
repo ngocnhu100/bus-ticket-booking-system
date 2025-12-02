@@ -1,11 +1,12 @@
 // controllers/routeController.js
 const routeService = require('../services/routeService');
+const { mapToRouteStop } = require('../utils/mappers');
 const {
   createRouteSchema,
   updateRouteSchema,
   addStopSchema
 } = require('../validators/routeValidators');
-
+const routeStopRepository = require('../repositories/routeStopRepository');
 class RouteController {
   async create(req, res) {
     try {
@@ -17,10 +18,10 @@ class RouteController {
         });
       }
 
-      const route = await routeService.createRoute(value);
+      const stop = await routeStopRepository.create(routeId, value);
       res.status(201).json({
         success: true,
-        data: route,
+        data: mapToRouteStop(stop),
         message: 'Route created successfully'
       });
     } catch (err) {

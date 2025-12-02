@@ -44,11 +44,9 @@ class RouteStopRepository {
         arrival_offset_minutes,
         departure_offset_minutes,
         address,
-        is_pickup,
-        is_dropoff,
         created_at,
         updated_at
-      FROM route_stops
+      FROM route_stops  // Removed is_pickup, is_dropoff (not needed in response)
       WHERE route_id = $1
       ORDER BY sequence ASC;
     `;

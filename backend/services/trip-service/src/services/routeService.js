@@ -1,6 +1,6 @@
 // services/routeService.js
 const routeRepository = require('../repositories/routeRepository');
-
+const { mapToRouteAdminData, mapToRouteStop } = require('../utils/mappers');
 class RouteService {
   async getRouteWithStops(id) {
     const route = await routeRepository.findById(id);
@@ -8,34 +8,19 @@ class RouteService {
 
     const stops = await routeRepository.getStopsWithTypes(id) || [];
 
-    const pickup_points = stops.filter(s => s.is_pickup);
-    const dropoff_points = stops.filter(s => s.is_dropoff);
-
-    const sortedStops = [...stops].sort((a, b) => a.sequence - b.sequence);
-    const origin = sortedStops[0]?.stop_name || route.origin;
-    const destination = sortedStops[sortedStops.length - 1]?.stop_name || route.destination;
-
-    return {
-      route_id: route.route_id,
-      operator_id: route.operator_id,
-      origin,
-      destination,
-      distance_km: route.distance_km,
-      estimated_minutes: route.estimated_minutes,
-      pickup_points,
-      dropoff_points,
-      route_stops: stops,
-      created_at: route.created_at,
-      updated_at: route.updated_at
-    };
+    return mapToRouteAdminData(route, stops);
   }
 
   async createRoute(routeData) {
-    return await routeRepository.create(routeData);
+    const newRoute = await routeRepository.create(routeData);
+    return mapToRouteAdminData(newRoute);
   }
 
   async updateRoute(id, routeData) {
-    return await routeRepository.update(id, routeData);
+    const updatedRoute = await routeRepository.update(id, routeData);
+    if (!updatedRoute) return null;
+    const stops = await routeRepository.getStopsWithTypes(id) || [];
+    return mapToRouteAdminData(updatedRoute, stops);
   }
 
   async deleteRoute(id) {
@@ -47,39 +32,28 @@ class RouteService {
 
     await routeRepository.updateOriginDestinationFromStops(routeId);
 
-    return newStop;
+    return mapToRouteStop(newStop);
   }
 
   async getAllRoutes() {
     const routes = await routeRepository.findAll();
-    return routes.map(r => ({
-      route_id: r.route_id,
-      operator_id: r.operator_id,
-      origin: r.origin,
-      destination: r.destination,
-      distance_km: r.distance_km,
-      estimated_minutes: r.estimated_minutes,
-      total_stops: 0, 
-      created_at: r.created_at
-    }));
+    const fullRoutes = [];
+    for (const r of routes) {
+      const stops = await routeRepository.getStopsWithTypes(r.route_id) || [];
+      fullRoutes.push(mapToRouteAdminData(r, stops));
+    }
+    return fullRoutes;
   }
 
   async getPopularRoutes(limit = 10) {
-  const routes = await routeRepository.getPopularRoutes(limit);
-
-  return routes.map(route => ({
-    route_id: route.route_id,
-    operator_id: route.operator_id,
-    origin: route.origin,
-    destination: route.destination,
-    distance_km: Number(route.distance_km),
-    estimated_minutes: Number(route.estimated_minutes),
-    total_trips: Number(route.total_trips || 0),
-    starting_price: route.starting_price ? Number(route.starting_price) : null, // có thể null nếu chưa có chuyến
-    created_at: route.created_at,
-    updated_at: route.updated_at
-  }));
-}
+    const routes = await routeRepository.getPopularRoutes(limit);
+    const fullRoutes = [];
+    for (const r of routes) {
+      const stops = await routeRepository.getStopsWithTypes(r.route_id) || [];
+      fullRoutes.push(mapToRouteAdminData(r, stops)); // Omit total_trips/starting_price
+    }
+    return fullRoutes;
+  }
 }
 
 module.exports = new RouteService();

@@ -1,7 +1,7 @@
 // controllers/routeStopController.js
 const routeStopRepository = require('../repositories/routeStopRepository');
 const routeRepository = require('../repositories/routeRepository');
-
+const { mapToRouteStop } = require('../utils/mappers');
 const { addStopSchema, updateStopSchema } = require('../validators/routeValidators');
 
 class RouteStopController {
@@ -33,11 +33,11 @@ class RouteStopController {
       }
 
       const stop = await routeStopRepository.create(routeId, value);
-      return res.status(201).json({
-        success: true,
-        data: stop,
-        message: 'Thêm điểm dừng thành công',
-      });
+    return res.status(201).json({
+      success: true,
+      data: mapToRouteStop(stop), // Use mapper
+      message: 'Thêm điểm dừng thành công',
+    });
     } catch (err) {
       console.error('Error creating route stop:', err);
       return res.status(500).json({
@@ -50,7 +50,8 @@ class RouteStopController {
   async getByRouteId(req, res) {
     try {
       const stops = await routeStopRepository.findByRouteId(req.params.id);
-      return res.json({ success: true, data: stops });
+      const mappedStops = stops.map(mapToRouteStop); // Map each
+      return res.json({ success: true, data: mappedStops });
     } catch (err) {
       console.error('Error fetching stops:', err);
       return res.status(500).json({
@@ -92,7 +93,7 @@ class RouteStopController {
 
       return res.json({
         success: true,
-        data: stop,
+        data: mapToRouteStop(stop),
         message: 'Cập nhật điểm dừng thành công',
       });
     } catch (err) {
