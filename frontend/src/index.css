@@ -87,6 +87,8 @@ button:focus-visible {
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -121,6 +123,8 @@ button:focus-visible {
   --accent: oklch(0.279 0.041 260.031);
   --accent-foreground: oklch(0.984 0.003 247.858);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.647 0.173 142.495);
+  --success-foreground: oklch(0.208 0.042 265.755);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.551 0.027 264.364);
@@ -147,4 +151,55 @@ button:focus-visible {
   #root {
     min-height: 100vh;
   }
+}
+
+/* Dual Range Slider Styles */
+.slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+}
+
+.slider-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #000;
+  cursor: pointer;
+  border: none;
+  box-shadow: none;
+  margin-top: -9px;
+}
+
+.slider-thumb::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #000;
+  cursor: pointer;
+  border: none;
+  box-shadow: none;
+  margin-top: -9px;
+}
+
+.dark .slider-thumb::-webkit-slider-thumb {
+  background: #fff;
+}
+
+.dark .slider-thumb::-moz-range-thumb {
+  background: #fff;
+}
+
+.slider-thumb::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 2px;
+  border: none;
+}
+
+.slider-thumb::-moz-range-track {
+  background: transparent;
+  height: 2px;
+  border: none;
 }

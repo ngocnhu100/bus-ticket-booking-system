@@ -4,8 +4,6 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Dashboard from './pages/users/Dashboard'
-// import { DashboardLayout } from '@/components/users/DashboardLayout'
-// import Dashboard from './pages/users/Dashboard'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -20,7 +18,13 @@ import Notifications from './pages/users/Notifications'
 import { AuthProvider } from '@/context/AuthContext'
 import { PassengerRoute, AdminRoute } from '@/components/ProtectedRoute'
 import AdminDashboard from '@/pages/admin/Dashboard'
-import HomePage from './pages/HomePage'
+import AdminTripScheduling from '@/pages/admin/AdminTripScheduling'
+import AdminRouteManagement from '@/pages/admin/AdminRouteManagement'
+import AdminBusManagement from '@/pages/admin/AdminBusManagement'
+import AdminSeatMapManagement from '@/pages/admin/AdminSeatMapManagement'
+import AdminOperatorManagement from '@/pages/admin/AdminOperatorManagement'
+import Landing from './pages/Landing'
+import TripSearchResults from './pages/TripSearchResults'
 
 const queryClient = new QueryClient()
 
@@ -32,7 +36,7 @@ function ThemeProviderWithSuppress({
   return (
     <ThemeProvider
       attribute="class"
-      defaultTheme="system" // mặc định theo hệ thống
+      defaultTheme="system" // default to system theme
       enableSystem // bật hệ thống
       disableTransitionOnChange // cái này loại bỏ animation flash cực mượt
     >
@@ -53,7 +57,11 @@ const App = () => (
             <Sonner />
             <Routes>
               {/* Public routes */}
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<Landing />} />
+              <Route
+                path="/trip-search-results"
+                element={<TripSearchResults />}
+              />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -81,7 +89,31 @@ const App = () => (
               <Route element={<AdminRoute />}>
                 <Route path="/admin" element={<AdminDashboard />} />{' '}
                 {/* Admin Dashboard */}
-                {/* Add thêm admin sub-routes nếu có, e.g. /admin/users, /admin/bookings */}
+                <Route
+                  path="/admin/trips"
+                  element={<AdminTripScheduling />}
+                />{' '}
+                {/* Trip Scheduling */}
+                <Route
+                  path="/admin/routes"
+                  element={<AdminRouteManagement />}
+                />{' '}
+                {/* Route Management */}
+                <Route
+                  path="/admin/buses"
+                  element={<AdminBusManagement />}
+                />{' '}
+                {/* Bus Management */}
+                <Route
+                  path="/admin/seat-maps"
+                  element={<AdminSeatMapManagement />}
+                />{' '}
+                {/* Seat Map Management */}
+                <Route
+                  path="/admin/operators"
+                  element={<AdminOperatorManagement />}
+                />{' '}
+                {/* Operator Management */}
               </Route>
 
               <Route path="*" element={<Navigate to="/login" replace />} />

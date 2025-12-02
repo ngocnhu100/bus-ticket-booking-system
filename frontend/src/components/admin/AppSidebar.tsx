@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   MapPin,
+  Grid3X3,
 } from 'lucide-react'
 import { NavLink } from '@/components/NavLink'
 import { useLocation } from 'react-router-dom'
@@ -25,15 +26,16 @@ import {
 } from '@/components/ui/sidebar'
 
 const menuItems = [
-  { title: 'Overview', url: '/', icon: LayoutDashboard },
-  { title: 'Routes', url: '/routes', icon: Route },
-  { title: 'Trips', url: '/trips', icon: MapPin },
-  { title: 'Buses', url: '/buses', icon: Bus },
-  { title: 'Operators', url: '/operators', icon: Briefcase },
-  { title: 'Users', url: '/users', icon: Users },
-  { title: 'Analytics', url: '/analytics', icon: BarChart3 },
-  { title: 'Reports', url: '/reports', icon: FileText },
-  { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Overview', url: '/admin', icon: LayoutDashboard },
+  { title: 'Routes', url: '/admin/routes', icon: Route },
+  { title: 'Buses', url: '/admin/buses', icon: Bus },
+  { title: 'Seat Maps', url: '/admin/seat-maps', icon: Grid3X3 },
+  { title: 'Trips', url: '/admin/trips', icon: MapPin },
+  { title: 'Operators', url: '/admin/operators', icon: Briefcase },
+  { title: 'Users', url: '/admin/users', icon: Users },
+  { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
+  { title: 'Reports', url: '/admin/reports', icon: FileText },
+  { title: 'Settings', url: '/admin/settings', icon: Settings },
 ]
 
 export function AppSidebar() {
@@ -41,8 +43,8 @@ export function AppSidebar() {
   const location = useLocation()
 
   const isActive = (path: string) => {
-    if (path === '/') {
-      return location.pathname === '/'
+    if (path === '/admin') {
+      return location.pathname === '/admin'
     }
     return location.pathname.startsWith(path)
   }
@@ -81,7 +83,7 @@ export function AppSidebar() {
                     isActive={isActive(item.url)}
                     className="hover:bg-sidebar-accent"
                   >
-                    <NavLink to={item.url} end={item.url === '/'}>
+                    <NavLink to={item.url} end={item.url === '/admin'}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </NavLink>

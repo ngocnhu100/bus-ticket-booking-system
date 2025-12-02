@@ -23,7 +23,16 @@ function buildHeaders(extraHeaders = {}, token) {
   }
 }
 
-async function request(
+/**
+ * @param {string} path
+ * @param {object} [options={}]
+ * @param {any} [options.body]
+ * @param {string} [options.token]
+ * @param {string} [options.method='POST']
+ * @param {object} [options.headers]
+ * @param {object} [options...]
+ */
+export async function request(
   path,
   { body, token, method = 'POST', headers, ...options } = {}
 ) {
