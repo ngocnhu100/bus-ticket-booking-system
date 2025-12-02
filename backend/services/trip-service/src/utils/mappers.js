@@ -36,4 +36,18 @@ const mapToRouteStop = (stopData) => ({
   address: stopData.address || undefined, 
 });
 
-module.exports = { mapToRouteAdminData, mapToRouteStop };
+const mapToBusAdminData = (busData) => ({
+  operator_id: busData.operator_id ? busData.operator_id.toString() : null,
+  bus_id: busData.bus_id ? busData.bus_id.toString() : undefined, // UUID to string, optional
+  name: busData.model_name ? `${busData.model_name} (${busData.license_plate})` : busData.license_plate, // Derive: model + plate
+  model: busData.model_name || '',
+  plate_number: busData.license_plate || busData.plate_number || '',
+  type: busData.type || 'standard', // Ensure enum
+  capacity: Number(busData.total_seats || 0),
+  amenities: busData.amenities ? (Array.isArray(busData.amenities) ? busData.amenities : []) : [],
+  status: busData.status === 'active' ? 'active' : 'inactive', // Map DB statuses to interface
+  image_url: busData.image_url || null,
+  created_at: busData.created_at ? busData.created_at.toISOString() : undefined, // Optional, ISO string
+});
+
+module.exports = { mapToRouteAdminData, mapToRouteStop, mapToBusAdminData };

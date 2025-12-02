@@ -3,7 +3,7 @@ const pool = require('../database');
 
 class BusRepository {
   // Tạo xe mới (POST /buses)
-  async create(busData) {
+ async create(busData) {
     const { 
       operator_id, 
       bus_model_id, 
@@ -11,20 +11,18 @@ class BusRepository {
       plate_number, 
       type = 'standard', 
       amenities = [], 
-      status = 'active' 
+      status = 'active',
+      image_url 
     } = busData;
 
-    // Xử lý amenities thành JSONB
-    const amenitiesJson = Array.isArray(amenities) || typeof amenities === 'object' 
-      ? JSON.stringify(amenities) 
-      : '[]';
+    const amenitiesJson = Array.isArray(amenities) ? JSON.stringify(amenities) : '[]';
 
     const query = `
       INSERT INTO buses (
         operator_id, bus_model_id, license_plate, plate_number, 
-        type, amenities, status
+        type, amenities, status, image_url
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *;
     `;
 
@@ -35,7 +33,8 @@ class BusRepository {
       plate_number || null,
       type,
       amenitiesJson,
-      status
+      status,
+      image_url || null 
     ];
 
     const result = await pool.query(query, values);
@@ -93,7 +92,7 @@ class BusRepository {
 
   // Cập nhật thông tin xe (PUT /buses/:id)
   async update(id, busData) {
-    const allowedFields = ['plate_number', 'type', 'amenities', 'status'];
+    const allowedFields = ['plate_number', 'type', 'amenities', 'status', 'image_url']; // Added image_url
     const fields = [];
     const values = [];
     let index = 1;
@@ -101,10 +100,7 @@ class BusRepository {
     for (const [key, value] of Object.entries(busData)) {
       if (allowedFields.includes(key) && value !== undefined) {
         if (key === 'amenities') {
-          // Xử lý amenities thành JSONB
-          const amenitiesJson = Array.isArray(value) || typeof value === 'object' 
-            ? JSON.stringify(value) 
-            : '[]';
+          const amenitiesJson = Array.isArray(value) ? JSON.stringify(value) : '[]';
           fields.push(`${key} = $${index++}`);
           values.push(amenitiesJson);
         } else {

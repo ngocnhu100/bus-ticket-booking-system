@@ -8,10 +8,10 @@ CREATE TABLE IF NOT EXISTS buses (
     amenities JSONB DEFAULT '[]'::jsonb,         -- ["wifi", "toilet", "charging", ...]
     type VARCHAR(20) DEFAULT 'standard' CHECK (type IN ('standard', 'limousine', 'sleeper')),
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'maintenance', 'retired')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    image_url VARCHAR(255) DEFAULT NULL,         -- New: for imageUrl
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-ALTER TABLE buses
-ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
 CREATE INDEX IF NOT EXISTS idx_buses_operator_id ON buses(operator_id);
 CREATE INDEX IF NOT EXISTS idx_buses_model_id ON buses(bus_model_id);

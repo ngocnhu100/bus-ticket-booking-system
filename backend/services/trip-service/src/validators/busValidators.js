@@ -29,33 +29,29 @@ const createBusSchema = Joi.object({
     .valid('standard', 'limousine', 'sleeper')
     .default('standard'),
 
-  // Amenities: Chấp nhận Array string hoặc Object
-  amenities: Joi.alternatives().try(
-    Joi.array().items(Joi.string().valid(...VALID_AMENITIES)),
-    Joi.object()
-  ).default([]),
+  amenities: Joi.array().items(Joi.string().valid(...VALID_AMENITIES)).default([]),
 
   status: Joi.string()
     .valid('active', 'maintenance', 'retired')
-    .default('active')
+    .default('active'),
+
+  image_url: Joi.string().uri().max(255).optional().allow(null, '') // New: validate as URL
 });
 
 const updateBusSchema = Joi.object({
-  // Các trường được phép update
   type: Joi.string()
     .valid('standard', 'limousine', 'sleeper')
     .optional(),
 
-  amenities: Joi.alternatives().try(
-    Joi.array().items(Joi.string().valid(...VALID_AMENITIES)),
-    Joi.object()
-  ).optional(),
+  amenities: Joi.array().items(Joi.string().valid(...VALID_AMENITIES)).optional(),
 
   status: Joi.string()
     .valid('active', 'maintenance', 'retired')
     .optional(),
 
   plate_number: Joi.string().max(20).optional().allow(null, ''),
+
+  image_url: Joi.string().uri().max(255).optional().allow(null, ''),
   
   // Cấm update các trường định danh
   operator_id: Joi.forbidden(),

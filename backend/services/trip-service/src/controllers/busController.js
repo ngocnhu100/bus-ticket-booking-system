@@ -2,10 +2,8 @@
 const busRepository = require('../repositories/busRepository');
 const operatorRepository = require('../repositories/operatorRepository');
 const busModelRepository = require('../repositories/busModelRepository');
-const {
-  createBusSchema,
-  updateBusSchema
-} = require('../validators/busValidators');
+const { createBusSchema, updateBusSchema } = require('../validators/busValidators');
+const { mapToBusAdminData } = require('../utils/mappers'); // New import
 
 class BusController {
   // POST /buses - Tạo xe mới
@@ -47,7 +45,7 @@ class BusController {
     const bus = await busRepository.create(value);
     res.status(201).json({
       success: true,
-      data: bus,
+      data: mapToBusAdminData(bus),
       message: 'Tạo xe buýt thành công'
     });
   } catch (err) {
@@ -68,9 +66,10 @@ class BusController {
         offset: parseInt(offset),
         status
       });
+      const mappedBuses = buses.map(mapToBusAdminData);
       res.json({
         success: true,
-        data: buses,
+        data: mappedBuses,
         pagination: { limit: parseInt(limit), offset: parseInt(offset) }
       });
     } catch (err) {
@@ -91,7 +90,7 @@ class BusController {
           error: { code: 'BUS_002', message: 'Không tìm thấy xe' }
         });
       }
-      res.json({ success: true, data: bus });
+      res.json({ success: true, data: mapToBusAdminData(bus) });
     } catch (err) {
       res.status(500).json({
         success: false,
@@ -132,7 +131,7 @@ class BusController {
 
       res.json({
         success: true,
-        data: bus,
+        data: mapToBusAdminData(bus),
         message: 'Cập nhật xe thành công'
       });
     } catch (err) {
@@ -156,7 +155,7 @@ class BusController {
       res.json({
         success: true,
         message: 'Đã vô hiệu hóa xe thành công',
-        data: bus
+        data: mapToBusAdminData(bus)
       });
     } catch (err) {
       res.status(500).json({
