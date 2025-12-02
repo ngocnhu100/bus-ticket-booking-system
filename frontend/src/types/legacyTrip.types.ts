@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { Trip } from '@/types/trip.types'
+//import type { Trip } from '@/types/trip.types'
 
 // Legacy Trip interface for display components
 // This interface is flattened for easier display in UI components
