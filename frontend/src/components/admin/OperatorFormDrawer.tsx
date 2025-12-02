@@ -5,7 +5,7 @@ interface OperatorFormDrawerProps {
   open: boolean
   onClose: () => void
   operator: OperatorAdminData | null
-  onSubmit: (operatorId: string, newStatus: string) => void
+  onSubmit: (operator_id: string, newStatus: string) => void
   isLoading?: boolean
 }
 
@@ -32,7 +32,7 @@ export const OperatorFormDrawer: React.FC<OperatorFormDrawerProps> = ({
   }
 
   const handleSubmit = () => {
-    onSubmit(operator.operatorId, status)
+    onSubmit(operator.operator_id, status)
     setStatus('')
   }
 
@@ -178,7 +178,7 @@ export const OperatorFormDrawer: React.FC<OperatorFormDrawerProps> = ({
                   Total Routes:
                 </span>
                 <span style={{ color: 'var(--foreground)' }}>
-                  {operator.totalRoutes}
+                  {operator.total_routes}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -186,7 +186,7 @@ export const OperatorFormDrawer: React.FC<OperatorFormDrawerProps> = ({
                   Total Buses:
                 </span>
                 <span style={{ color: 'var(--foreground)' }}>
-                  {operator.totalBuses}
+                  {operator.total_buses}
                 </span>
               </div>
               <div className="flex justify-between">

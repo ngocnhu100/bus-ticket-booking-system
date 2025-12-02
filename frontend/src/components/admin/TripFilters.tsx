@@ -3,8 +3,8 @@ import { CustomDropdown } from '../ui/custom-dropdown'
 import { ArrowRight } from 'lucide-react'
 
 export interface TripFiltersData {
-  routeId: string
-  busId: string
+  route_id: string
+  bus_id: string
   status: string
 }
 
@@ -63,8 +63,8 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
                 ),
               })),
             ]}
-            value={filters.routeId}
-            onChange={(value) => handleFilterChange('routeId', value)}
+            value={filters.route_id}
+            onChange={(value) => handleFilterChange('route_id', value)}
             placeholder="All routes"
           />
         </div>
@@ -77,12 +77,12 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
             options={[
               { id: '', label: 'All buses' },
               ...buses.map((b) => ({
-                id: b.busId || '',
+                id: b.bus_id || '',
                 label: b.name,
               })),
             ]}
-            value={filters.busId}
-            onChange={(value) => handleFilterChange('busId', value)}
+            value={filters.bus_id}
+            onChange={(value) => handleFilterChange('bus_id', value)}
             placeholder="All buses"
           />
         </div>

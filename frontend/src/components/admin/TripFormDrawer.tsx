@@ -317,7 +317,7 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
               </label>
               <CustomDropdown
                 options={buses.map((b) => ({
-                  id: b.busId || '',
+                  id: b.bus_id || '',
                   label: `${b.name} · ${b.type} · ${b.capacity} seats`,
                   displayLabel: `${b.name} · ${b.type} · ${b.capacity} seats`,
                 }))}

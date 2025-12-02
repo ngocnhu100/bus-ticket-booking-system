@@ -7,20 +7,20 @@ import type { BusAdminData } from '@/types/trip.types'
 // Mock data - replace with API calls
 const initialBuses: BusAdminData[] = [
   {
-    busId: '1',
+    bus_id: '1',
     name: 'Sapaco Tourist 001',
     model: 'Mercedes-Benz Sprinter',
-    plateNumber: '51A-12345',
+    plate_number: '51A-12345',
     type: 'standard',
     capacity: 45,
     amenities: ['WiFi', 'AC', 'Toilet'],
     status: 'active',
   },
   {
-    busId: '2',
+    bus_id: '2',
     name: 'The Sinh Tourist VIP',
     model: 'Hyundai Universe',
-    plateNumber: '30A-67890',
+    plate_number: '30A-67890',
     type: 'limousine',
     capacity: 40,
     amenities: ['WiFi', 'AC', 'Toilet', 'Entertainment'],
@@ -37,7 +37,7 @@ const AdminBusManagement: React.FC = () => {
   const filteredBuses = buses.filter(
     (bus) =>
       bus.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bus.plateNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bus.plate_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bus.model.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -51,27 +51,27 @@ const AdminBusManagement: React.FC = () => {
     setShowForm(true)
   }
 
-  const handleDeleteBus = (busId: string | undefined) => {
+  const handleDeleteBus = (bus_id: string | undefined) => {
     if (
       confirm(
         'Are you sure you want to delete this bus? This action cannot be undone.'
       )
     ) {
-      setBuses(buses.filter((b) => b.busId !== busId))
+      setBuses(buses.filter((b) => b.bus_id !== bus_id))
     }
   }
 
-  const handleSaveBus = (busData: Omit<BusAdminData, 'busId'>) => {
+  const handleSaveBus = (busData: Omit<BusAdminData, 'bus_id'>) => {
     if (editingBus) {
       setBuses(
         buses.map((b) =>
-          b.busId === editingBus.busId
-            ? { ...busData, busId: editingBus.busId }
+          b.bus_id === editingBus.bus_id
+            ? { ...busData, bus_id: editingBus.bus_id }
             : b
         )
       )
     } else {
-      setBuses([...buses, { ...busData, busId: crypto.randomUUID() }])
+      setBuses([...buses, { ...busData, bus_id: crypto.randomUUID() }])
     }
     setShowForm(false)
   }
@@ -138,7 +138,7 @@ const AdminBusManagement: React.FC = () => {
               </thead>
               <tbody className="bg-card divide-y divide-border">
                 {filteredBuses.map((bus) => (
-                  <tr key={bus.busId} className="hover:bg-muted/50">
+                  <tr key={bus.bus_id} className="hover:bg-muted/50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <BusIcon className="h-8 w-8 text-muted-foreground mr-3" />
@@ -147,7 +147,7 @@ const AdminBusManagement: React.FC = () => {
                             {bus.name}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {bus.model} • {bus.plateNumber}
+                            {bus.model} • {bus.plate_number}
                           </div>
                         </div>
                       </div>
@@ -212,7 +212,7 @@ const AdminBusManagement: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteBus(bus.busId)}
+                        onClick={() => handleDeleteBus(bus.bus_id)}
                         className="text-destructive hover:text-destructive/80"
                       >
                         <Trash2 className="h-4 w-4" />

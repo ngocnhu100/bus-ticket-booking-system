@@ -6,47 +6,47 @@ import type { SeatMapData, Seat } from '@/types/trip.types'
 // Mock data - replace with API calls
 const initialSeatMaps: SeatMapData[] = [
   {
-    tripId: '1',
+    trip_id: '1',
     layout: '2-2',
     rows: 12,
     columns: 4,
     seats: [
       {
-        seatId: '1-1',
-        seatCode: 'A1',
+        seat_id: '1-1',
+        seat_code: 'A1',
         row: 1,
         column: 1,
-        seatType: 'standard',
+        seat_type: 'standard',
         position: 'window',
         price: 0,
         status: 'available',
       },
       {
-        seatId: '1-2',
-        seatCode: 'A2',
+        seat_id: '1-2',
+        seat_code: 'A2',
         row: 1,
         column: 2,
-        seatType: 'standard',
+        seat_type: 'standard',
         position: 'aisle',
         price: 0,
         status: 'available',
       },
       {
-        seatId: '1-3',
-        seatCode: 'A3',
+        seat_id: '1-3',
+        seat_code: 'A3',
         row: 1,
         column: 3,
-        seatType: 'standard',
+        seat_type: 'standard',
         position: 'aisle',
         price: 0,
         status: 'available',
       },
       {
-        seatId: '1-4',
-        seatCode: 'A4',
+        seat_id: '1-4',
+        seat_code: 'A4',
         row: 1,
         column: 4,
-        seatType: 'standard',
+        seat_type: 'standard',
         position: 'window',
         price: 0,
         status: 'available',
@@ -70,29 +70,29 @@ const AdminSeatMapManagement: React.FC = () => {
     setShowEditor(true)
   }
 
-  const handleDeleteSeatMap = (tripId: string) => {
+  const handleDeleteSeatMap = (trip_id: string) => {
     if (
       confirm(
         'Are you sure you want to delete this seat map? This action cannot be undone.'
       )
     ) {
-      setSeatMaps(seatMaps.filter((sm) => sm.tripId !== tripId))
+      setSeatMaps(seatMaps.filter((sm) => sm.trip_id !== trip_id))
     }
   }
 
-  const handleSaveSeatMap = (seatMapData: Omit<SeatMapData, 'tripId'>) => {
+  const handleSaveSeatMap = (seatMapData: Omit<SeatMapData, 'trip_id'>) => {
     if (editingSeatMap) {
       setSeatMaps(
         seatMaps.map((sm) =>
-          sm.tripId === editingSeatMap.tripId
-            ? { ...seatMapData, tripId: editingSeatMap.tripId }
+          sm.trip_id === editingSeatMap.trip_id
+            ? { ...seatMapData, trip_id: editingSeatMap.trip_id }
             : sm
         )
       )
     } else {
       setSeatMaps([
         ...seatMaps,
-        { ...seatMapData, tripId: crypto.randomUUID() },
+        { ...seatMapData, trip_id: crypto.randomUUID() },
       ])
     }
     setShowEditor(false)
@@ -145,12 +145,12 @@ const AdminSeatMapManagement: React.FC = () => {
               </thead>
               <tbody className="bg-card divide-y divide-border">
                 {seatMaps.map((seatMap) => (
-                  <tr key={seatMap.tripId} className="hover:bg-muted/50">
+                  <tr key={seatMap.trip_id} className="hover:bg-muted/50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <Grid3X3 className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium text-foreground">
-                          {seatMap.tripId}
+                          {seatMap.trip_id}
                         </span>
                       </div>
                     </td>
@@ -171,7 +171,7 @@ const AdminSeatMapManagement: React.FC = () => {
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteSeatMap(seatMap.tripId)}
+                        onClick={() => handleDeleteSeatMap(seatMap.trip_id)}
                         className="inline-flex items-center text-destructive hover:text-destructive/80"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -200,7 +200,7 @@ const AdminSeatMapManagement: React.FC = () => {
 // Seat Map Editor Component
 interface SeatMapEditorProps {
   seatMap?: SeatMapData | null
-  onSave: (seatMap: Omit<SeatMapData, 'tripId'>) => void
+  onSave: (seatMap: Omit<SeatMapData, 'trip_id'>) => void
   onClose: () => void
 }
 
@@ -240,22 +240,22 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
 
   const generateSeats = (rows: number, columns: number): Seat[] => {
     const seats: Seat[] = []
-    const seatTypes = ['standard', 'vip', 'window', 'aisle'] as const
+    const seat_types = ['standard', 'vip', 'window', 'aisle'] as const
 
     for (let row = 1; row <= rows; row++) {
       for (let col = 1; col <= columns; col++) {
-        const seatCode = `${String.fromCharCode(64 + row)}${col}`
+        const seat_code = `${String.fromCharCode(64 + row)}${col}`
         const position = col === 1 || col === columns ? 'window' : 'aisle'
-        const seatType = seatTypes[(Math.random() * 2) | 0] // Random between standard and vip
+        const seat_type = seat_types[(Math.random() * 2) | 0] // Random between standard and vip
 
         seats.push({
-          seatId: `${row}-${col}`,
-          seatCode,
+          seat_id: `${row}-${col}`,
+          seat_code,
           row,
           column: col,
-          seatType,
+          seat_type,
           position,
-          price: seatType === 'vip' ? 50000 : 30000,
+          price: seat_type === 'vip' ? 50000 : 30000,
           status: 'available',
         })
       }

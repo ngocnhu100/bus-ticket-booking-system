@@ -72,22 +72,22 @@ const initialRoutes: RouteAdminData[] = [
 
 const initialBuses: BusAdminData[] = [
   {
-    busId: 'b1',
+    bus_id: 'b1',
     name: 'Limousine 20-seat',
     type: 'limousine',
     capacity: 20,
     model: 'Hyundai Universe Limousine',
-    plateNumber: '51B-12345',
+    plate_number: '51B-12345',
     amenities: ['WiFi', 'AC', 'Toilet', 'Entertainment'],
     status: 'active',
   },
   {
-    busId: 'b2',
+    bus_id: 'b2',
     name: 'Sleeper 40-seat',
     type: 'sleeper',
     capacity: 40,
     model: 'Thaco Universe Sleeper',
-    plateNumber: '51B-12346',
+    plate_number: '51B-12346',
     amenities: ['WiFi', 'AC', 'Sleeping Beds', 'Toilet'],
     status: 'active',
   },
@@ -292,7 +292,7 @@ const initialTrips: Trip[] = [
 // ============================================================================
 
 const AdminTripSchedulingPage: React.FC = () => {
-  const { trips, buses, routes, createTrip, updateTrip, deleteTrip } =
+  const { trips, buses, routes, createTrip, updateTrip, deleteTrip, refetch } =
     useAdminTripData(initialTrips, initialBuses, initialRoutes)
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
@@ -304,18 +304,23 @@ const AdminTripSchedulingPage: React.FC = () => {
 
   // Filter state
   const [filters, setFilters] = useState({
-    routeId: '',
-    busId: '',
+    route_id: '',
+    bus_id: '',
     status: '',
   })
   const [appliedFilters, setAppliedFilters] = useState({
-    routeId: '',
-    busId: '',
+    route_id: '',
+    bus_id: '',
     status: '',
   })
 
   // Bulk operations state
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([])
+
+  // Fetch data on mount
+  React.useEffect(() => {
+    refetch()
+  }, [refetch])
 
   const handleCreateClick = () => {
     setEditingTrip(null)
@@ -359,11 +364,11 @@ const AdminTripSchedulingPage: React.FC = () => {
     }
 
     if (
-      appliedFilters.routeId &&
-      trip.route.route_id !== appliedFilters.routeId
+      appliedFilters.route_id &&
+      trip.route.route_id !== appliedFilters.route_id
     )
       return false
-    if (appliedFilters.busId && trip.bus.bus_id !== appliedFilters.busId)
+    if (appliedFilters.bus_id && trip.bus.bus_id !== appliedFilters.bus_id)
       return false
     if (
       appliedFilters.status &&
@@ -380,13 +385,13 @@ const AdminTripSchedulingPage: React.FC = () => {
 
   const handleClearFilters = () => {
     setFilters({
-      routeId: '',
-      busId: '',
+      route_id: '',
+      bus_id: '',
       status: '',
     })
     setAppliedFilters({
-      routeId: '',
-      busId: '',
+      route_id: '',
+      bus_id: '',
       status: '',
     })
   }

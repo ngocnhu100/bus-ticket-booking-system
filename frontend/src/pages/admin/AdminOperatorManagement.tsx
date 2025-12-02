@@ -45,48 +45,48 @@ const AdminOperatorManagement: React.FC = () => {
   const filteredOperators = operators.filter((operator) => {
     const matchesSearch =
       operator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      operator.contactEmail.toLowerCase().includes(searchTerm.toLowerCase())
+      operator.contact_email.toLowerCase().includes(searchTerm.toLowerCase())
     return matchesSearch
   })
 
-  const handleApproveOperator = async (operatorId: string) => {
+  const handleApproveOperator = async (operator_id: string) => {
     const notes = prompt('Add notes (optional):')
     if (notes !== null) {
-      setActionLoading(operatorId)
+      setActionLoading(operator_id)
       try {
-        await approveOperator(operatorId, notes || undefined)
+        await approveOperator(operator_id, notes || undefined)
       } finally {
         setActionLoading(null)
       }
     }
   }
 
-  const handleRejectOperator = async (operatorId: string) => {
+  const handleRejectOperator = async (operator_id: string) => {
     const reason = prompt('Please provide a reason for rejection:')
     if (reason) {
-      setActionLoading(operatorId)
+      setActionLoading(operator_id)
       try {
-        await rejectOperator(operatorId, reason)
+        await rejectOperator(operator_id, reason)
       } finally {
         setActionLoading(null)
       }
     }
   }
 
-  const handleStatusChange = async (operatorId: string, newStatus: string) => {
-    const operator = operators.find((op) => op.operatorId === operatorId)
+  const handleStatusChange = async (operator_id: string, newStatus: string) => {
+    const operator = operators.find((op) => op.operator_id === operator_id)
     if (!operator) return
 
-    setActionLoading(operatorId)
+    setActionLoading(operator_id)
     try {
       if (newStatus === 'approved' && operator.status !== 'approved') {
-        await approveOperator(operatorId, 'Status updated via admin panel')
+        await approveOperator(operator_id, 'Status updated via admin panel')
       } else if (newStatus === 'rejected' && operator.status !== 'rejected') {
-        await rejectOperator(operatorId, 'Status updated via admin panel')
+        await rejectOperator(operator_id, 'Status updated via admin panel')
       } else if (newStatus === 'suspended' && operator.status !== 'suspended') {
-        await suspendOperator(operatorId, 'Status updated via admin panel')
+        await suspendOperator(operator_id, 'Status updated via admin panel')
       } else if (newStatus === 'pending' && operator.status !== 'pending') {
-        await activateOperator(operatorId)
+        await activateOperator(operator_id)
       }
       setShowFormDrawer(false)
       setEditingOperator(null)
@@ -95,22 +95,22 @@ const AdminOperatorManagement: React.FC = () => {
     }
   }
 
-  const handleSuspendOperator = async (operatorId: string) => {
+  const handleSuspendOperator = async (operator_id: string) => {
     const reason = prompt('Please provide a reason for suspension:')
     if (reason) {
-      setActionLoading(operatorId)
+      setActionLoading(operator_id)
       try {
-        await suspendOperator(operatorId, reason)
+        await suspendOperator(operator_id, reason)
       } finally {
         setActionLoading(null)
       }
     }
   }
 
-  const handleActivateOperator = async (operatorId: string) => {
-    setActionLoading(operatorId)
+  const handleActivateOperator = async (operator_id: string) => {
+    setActionLoading(operator_id)
     try {
-      await activateOperator(operatorId)
+      await activateOperator(operator_id)
     } finally {
       setActionLoading(null)
     }
@@ -210,23 +210,23 @@ const AdminOperatorManagement: React.FC = () => {
               </thead>
               <tbody className="bg-card divide-y divide-border">
                 {filteredOperators.map((operator) => (
-                  <tr key={operator.operatorId} className="hover:bg-muted/50">
+                  <tr key={operator.operator_id} className="hover:bg-muted/50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-foreground">
                           {operator.name}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          ID: {operator.operatorId}
+                          ID: {operator.operator_id}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-muted-foreground">
-                        {operator.contactEmail}
+                        {operator.contact_email}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {operator.contactPhone}
+                        {operator.contact_phone}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -242,27 +242,27 @@ const AdminOperatorManagement: React.FC = () => {
                         <div className="text-sm">
                           <div>⭐ {operator.rating.toFixed(1)}</div>
                           <div className="text-muted-foreground">
-                            {operator.totalRoutes} routes
+                            {operator.total_routes} routes
                           </div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {new Date(operator.createdAt || '').toLocaleDateString()}
+                      {new Date(operator.created_at || '').toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() =>
                             setShowDetails(
-                              showDetails === operator.operatorId
+                              showDetails === operator.operator_id
                                 ? null
-                                : operator.operatorId
+                                : operator.operator_id
                             )
                           }
                           className="text-primary hover:text-primary/80 disabled:opacity-50"
                           title="View Details"
-                          disabled={actionLoading === operator.operatorId}
+                          disabled={actionLoading === operator.operator_id}
                         >
                           <Eye className="h-4 w-4" />
                         </button>
@@ -271,13 +271,13 @@ const AdminOperatorManagement: React.FC = () => {
                           <>
                             <button
                               onClick={() =>
-                                handleApproveOperator(operator.operatorId)
+                                handleApproveOperator(operator.operator_id)
                               }
                               className="text-green-600 hover:text-green-800 disabled:opacity-50"
                               title="Approve"
-                              disabled={actionLoading === operator.operatorId}
+                              disabled={actionLoading === operator.operator_id}
                             >
-                              {actionLoading === operator.operatorId ? (
+                              {actionLoading === operator.operator_id ? (
                                 <Loader className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Check className="h-4 w-4" />
@@ -285,13 +285,13 @@ const AdminOperatorManagement: React.FC = () => {
                             </button>
                             <button
                               onClick={() =>
-                                handleRejectOperator(operator.operatorId)
+                                handleRejectOperator(operator.operator_id)
                               }
                               className="text-red-600 hover:text-red-800 disabled:opacity-50"
                               title="Reject"
-                              disabled={actionLoading === operator.operatorId}
+                              disabled={actionLoading === operator.operator_id}
                             >
-                              {actionLoading === operator.operatorId ? (
+                              {actionLoading === operator.operator_id ? (
                                 <Loader className="h-4 w-4 animate-spin" />
                               ) : (
                                 <X className="h-4 w-4" />
@@ -303,13 +303,13 @@ const AdminOperatorManagement: React.FC = () => {
                         {operator.status === 'approved' && (
                           <button
                             onClick={() =>
-                              handleSuspendOperator(operator.operatorId)
+                              handleSuspendOperator(operator.operator_id)
                             }
                             className="text-orange-600 hover:text-orange-800 disabled:opacity-50"
                             title="Suspend"
-                            disabled={actionLoading === operator.operatorId}
+                            disabled={actionLoading === operator.operator_id}
                           >
-                            {actionLoading === operator.operatorId ? (
+                            {actionLoading === operator.operator_id ? (
                               <Loader className="h-4 w-4 animate-spin" />
                             ) : (
                               <UserX className="h-4 w-4" />
@@ -320,13 +320,13 @@ const AdminOperatorManagement: React.FC = () => {
                         {operator.status === 'suspended' && (
                           <button
                             onClick={() =>
-                              handleActivateOperator(operator.operatorId)
+                              handleActivateOperator(operator.operator_id)
                             }
                             className="text-green-600 hover:text-green-800 disabled:opacity-50"
                             title="Activate"
-                            disabled={actionLoading === operator.operatorId}
+                            disabled={actionLoading === operator.operator_id}
                           >
-                            {actionLoading === operator.operatorId ? (
+                            {actionLoading === operator.operator_id ? (
                               <Loader className="h-4 w-4 animate-spin" />
                             ) : (
                               <UserCheck className="h-4 w-4" />
@@ -353,7 +353,7 @@ const AdminOperatorManagement: React.FC = () => {
           open={showDetails !== null}
           onClose={() => setShowDetails(null)}
           operator={
-            operators.find((op) => op.operatorId === showDetails) || null
+            operators.find((op) => op.operator_id === showDetails) || null
           }
         />
 
@@ -366,7 +366,7 @@ const AdminOperatorManagement: React.FC = () => {
           }}
           operator={editingOperator}
           onSubmit={handleStatusChange}
-          isLoading={actionLoading === editingOperator?.operatorId}
+          isLoading={actionLoading === editingOperator?.operator_id}
         />
       </div>
     </DashboardLayout>

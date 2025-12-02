@@ -6,7 +6,7 @@ import { Loader } from 'lucide-react'
 const emptyForm: Omit<BusAdminData, 'busId' | 'createdAt'> = {
   name: '',
   model: '',
-  plateNumber: '',
+  plate_number: '',
   type: 'standard',
   capacity: 20,
   amenities: [],
@@ -44,7 +44,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
       setForm({
         name: initialBus.name,
         model: initialBus.model,
-        plateNumber: initialBus.plateNumber,
+        plate_number: initialBus.plate_number,
         type: initialBus.type,
         capacity: initialBus.capacity,
         amenities: initialBus.amenities,
@@ -201,8 +201,8 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                   backgroundColor: 'var(--card)',
                   color: 'var(--foreground)',
                 }}
-                value={form.plateNumber}
-                onChange={(e) => handleChange('plateNumber', e.target.value)}
+                value={form.plate_number}
+                onChange={(e) => handleChange('plate_number', e.target.value)}
                 placeholder="e.g., 51B-12345"
               />
             </div>

@@ -27,11 +27,11 @@ interface SeatMapApiResponse {
     rows: number
     columns: number
     seats: Array<{
-      seatId: string
-      seatCode: string
+      seat_id: string
+      seat_code: string
       row: number
       column: number
-      seatType: 'standard' | 'vip' | 'window' | 'aisle'
+      seat_type: 'standard' | 'vip' | 'window' | 'aisle'
       position: 'window' | 'aisle'
       price: number
       status: 'available' | 'occupied' | 'locked' | 'disabled'
@@ -41,11 +41,11 @@ interface SeatMapApiResponse {
   rows?: number
   columns?: number
   seats?: Array<{
-    seatId: string
-    seatCode: string
+    seat_id: string
+    seat_code: string
     row: number
     column: number
-    seatType: 'standard' | 'vip' | 'window' | 'aisle'
+    seat_type: 'standard' | 'vip' | 'window' | 'aisle'
     position: 'window' | 'aisle'
     price: number
     status: 'available' | 'occupied' | 'locked' | 'disabled'
@@ -60,7 +60,7 @@ function transformSeatMapResponse(
 ): SeatMapData {
   const seatMapData = apiResponse.seatMap || apiResponse
   return {
-    tripId: apiResponse.tripId,
+    trip_id: apiResponse.tripId,
     layout: seatMapData.layout || '',
     rows: seatMapData.rows || 0,
     columns: seatMapData.columns || 0,

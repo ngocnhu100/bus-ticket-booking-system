@@ -137,7 +137,7 @@ export const OperatorDetailsDrawer: React.FC<OperatorDetailsDrawerProps> = ({
                 className="text-sm mt-1"
                 style={{ color: 'var(--foreground)' }}
               >
-                {operator.contactEmail}
+                {operator.contact_email}
               </p>
             </div>
 
@@ -152,7 +152,7 @@ export const OperatorDetailsDrawer: React.FC<OperatorDetailsDrawerProps> = ({
                 className="text-sm mt-1"
                 style={{ color: 'var(--foreground)' }}
               >
-                {operator.contactPhone}
+                {operator.contact_phone}
               </p>
             </div>
           </div>
@@ -177,11 +177,11 @@ export const OperatorDetailsDrawer: React.FC<OperatorDetailsDrawerProps> = ({
                 className="text-sm mt-1"
                 style={{ color: 'var(--foreground)' }}
               >
-                {new Date(operator.createdAt).toLocaleDateString()}
+                {new Date(operator.created_at).toLocaleDateString()}
               </p>
             </div>
 
-            {operator.approvedAt && (
+            {operator.approved_at && (
               <div>
                 <p
                   className="text-xs font-medium"
@@ -193,7 +193,7 @@ export const OperatorDetailsDrawer: React.FC<OperatorDetailsDrawerProps> = ({
                   className="text-sm mt-1"
                   style={{ color: 'var(--foreground)' }}
                 >
-                  {new Date(operator.approvedAt).toLocaleDateString()}
+                  {new Date(operator.approved_at).toLocaleDateString()}
                 </p>
               </div>
             )}
@@ -220,7 +220,7 @@ export const OperatorDetailsDrawer: React.FC<OperatorDetailsDrawerProps> = ({
                   className="text-2xl font-bold"
                   style={{ color: 'var(--primary)' }}
                 >
-                  {operator.totalRoutes}
+                  {operator.total_routes}
                 </p>
                 <p
                   className="text-xs mt-1"
@@ -262,7 +262,7 @@ export const OperatorDetailsDrawer: React.FC<OperatorDetailsDrawerProps> = ({
                   className="text-2xl font-bold"
                   style={{ color: 'var(--primary)' }}
                 >
-                  {operator.totalBuses}
+                  {operator.total_buses}
                 </p>
                 <p
                   className="text-xs mt-1"
