@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormEvent, ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,20 +15,32 @@ import { requestPasswordReset } from '@/api/auth'
 import { emailPattern } from '@/lib/validation'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
-const initialState = { email: '' }
+interface FormState {
+  email: string
+}
+
+interface StatusState {
+  type: 'idle' | 'success' | 'error'
+  message: string
+}
+
+const initialState: FormState = { email: '' }
 
 export default function ForgotPassword() {
-  const [form, setForm] = useState(initialState)
-  const [error, setError] = useState('')
-  const [status, setStatus] = useState({ type: 'idle', message: '' })
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [form, setForm] = useState<FormState>(initialState)
+  const [error, setError] = useState<string>('')
+  const [status, setStatus] = useState<StatusState>({
+    type: 'idle',
+    message: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  const handleChange = (event) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setForm({ email: event.target.value })
     if (error) setError('')
   }
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     if (!emailPattern.test(form.email)) {
@@ -48,7 +61,8 @@ export default function ForgotPassword() {
     } catch (err) {
       setStatus({
         type: 'error',
-        message: err.message || 'Unable to send reset link right now.',
+        message:
+          (err as Error).message || 'Unable to send reset link right now.',
       })
     } finally {
       setIsSubmitting(false)

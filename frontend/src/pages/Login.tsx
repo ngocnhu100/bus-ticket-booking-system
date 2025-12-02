@@ -1,46 +1,65 @@
 import { useState } from 'react'
+import type { FormEvent, ChangeEvent, MouseEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import GoogleIcon from '@/components/GoogleIcon'
 import { requestGoogleIdToken } from '@/lib/googleAuth'
-import { login, loginWithGoogle, storeTokens } from '@/api/auth'
+import { login, loginWithGoogle } from '@/api/auth'
 import { hasErrors, validateLogin } from '@/lib/validation'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuth } from '@/context/AuthContext'
 
-const initialState = { identifier: '', password: '' }
+interface FormState {
+  identifier: string
+  password: string
+}
+
+interface ErrorState {
+  identifier: string
+  password: string
+}
+
+interface StatusState {
+  type: 'idle' | 'success' | 'error'
+  message: string
+}
+
+const initialState: FormState = {
+  identifier: '',
+  password: '',
+}
 
 export default function Login() {
   const navigate = useNavigate()
-  const [form, setForm] = useState(initialState)
-  const [errors, setErrors] = useState({ identifier: '', password: '' })
-  const [status, setStatus] = useState({ type: 'idle', message: '' })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [form, setForm] = useState<FormState>(initialState)
+  const [errors, setErrors] = useState<ErrorState>({
+    identifier: '',
+    password: '',
+  })
+  const [status, setStatus] = useState<StatusState>({
+    type: 'idle',
+    message: '',
+  })
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false)
 
-  const handleChange = (event) => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target
     setForm((prev) => ({ ...prev, [name]: value }))
-    if (errors[name]) {
+    if (errors[name as keyof ErrorState]) {
       setErrors((prev) => ({ ...prev, [name]: '' }))
     }
   }
   const { login: authLogin } = useAuth()
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const validation = validateLogin(form)
 
     if (hasErrors(validation)) {
-      setErrors(validation)
+      setErrors(validation as unknown as ErrorState)
       return
     }
 
@@ -57,14 +76,14 @@ export default function Login() {
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error.message || 'Unable to sign in right now.',
+        message: (error as Error).message || 'Unable to sign in right now.',
       })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const goToForgotPassword = (event) => {
+  const goToForgotPassword = (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     navigate('/forgot-password')
   }
@@ -86,7 +105,10 @@ export default function Login() {
     } catch (error) {
       setStatus({
         type: 'error',
-        message: error.message || 'Google sign-in failed. Please try again.',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Google sign-in failed. Please try again.',
       })
     } finally {
       setIsGoogleLoading(false)

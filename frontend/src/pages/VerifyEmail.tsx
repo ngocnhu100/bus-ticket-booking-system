@@ -11,29 +11,36 @@ import {
 import { verifyEmail } from '@/api/auth'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
-const initialStatus = { state: 'idle', message: '' }
+interface StatusState {
+  state: 'idle' | 'loading' | 'success' | 'error'
+  message: string
+}
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState(initialStatus)
-
   const token = searchParams.get('token') ?? ''
+
+  const getInitialStatus = (): StatusState => {
+    if (!token) {
+      return {
+        state: 'error',
+        message: 'Verification link is missing or expired.',
+      }
+    }
+    return { state: 'loading', message: 'Confirming your email…' }
+  }
+
+  const [status, setStatus] = useState<StatusState>(getInitialStatus())
 
   useEffect(() => {
     let isMounted = true
 
     if (!token) {
-      setStatus({
-        state: 'error',
-        message: 'Verification link is missing or expired.',
-      })
       return () => {
         isMounted = false
       }
     }
-
-    setStatus({ state: 'loading', message: 'Confirming your email…' })
 
     const runVerification = async () => {
       try {
@@ -48,7 +55,7 @@ export default function VerifyEmail() {
         setStatus({
           state: 'error',
           message:
-            error?.message ||
+            (error as Error)?.message ||
             'Unable to verify your email right now. Please try again later.',
         })
       }

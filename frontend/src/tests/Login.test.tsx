@@ -246,7 +246,13 @@ describe('Login Component', () => {
 
     it('should disable submit button during submission', async () => {
       // Create a promise that never resolves during the test
-      let resolveLogin
+      let resolveLogin:
+        | ((value: {
+            accessToken: string
+            refreshToken: string
+            user: Record<string, unknown>
+          }) => void)
+        | undefined
       vi.mocked(authApi.login).mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -272,7 +278,11 @@ describe('Login Component', () => {
 
       // Clean up: resolve the promise to avoid hanging (wrapped in act)
       await act(async () => {
-        resolveLogin?.({ accessToken: 'test', refreshToken: 'test', user: {} })
+        resolveLogin?.({
+          accessToken: 'test',
+          refreshToken: 'test',
+          user: {},
+        })
       })
     })
   })
@@ -369,7 +379,7 @@ describe('Login Component', () => {
         })
       })
 
-      // Verify AuthContext login was called
+      // Verify context login was called with auth data
       await waitFor(() => {
         expect(mockAuthLogin).toHaveBeenCalledWith(mockAuthData)
       })

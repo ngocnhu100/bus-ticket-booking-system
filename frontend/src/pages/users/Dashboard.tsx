@@ -1,6 +1,5 @@
 import { TripCard } from '@/components/users/TripCard'
-import { Button } from '@/components/ui/button'
-import { Search } from 'lucide-react'
+import { TripSearchForm } from '@/components/users/TripSearchForm'
 import { useToast } from '../../hooks/use-toast'
 import '@/styles/admin.css'
 import { DashboardLayout } from '@/components/users/DashboardLayout'
@@ -51,10 +50,22 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div className="max-w-4xl">
+        {/* Search Form Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Upcoming Trips
+            Search Bus Tickets
           </h1>
+          <p className="text-muted-foreground mb-6">
+            Find and book your next trip
+          </p>
+          <TripSearchForm />
+        </div>
+
+        {/* Upcoming Trips Section */}
+        <div className="mb-8 mt-12">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
+            Upcoming Trips
+          </h2>
           <p className="text-muted-foreground">
             Manage your upcoming travel bookings
           </p>
@@ -77,13 +88,6 @@ const Dashboard = () => {
           <p className="text-muted-foreground mb-6 text-sm uppercase tracking-wide">
             No more upcoming trips
           </p>
-          <Button
-            size="lg"
-            className="gap-2 bg-blue-500 text-white hover:bg-blue-600"
-          >
-            <Search className="w-5 h-5" />
-            Search New Trip
-          </Button>
         </div>
       </div>
     </DashboardLayout>
