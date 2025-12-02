@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
-import { request, getAccessToken } from '../../api/auth'
+import { request } from '../../api/auth'
 import type { RouteAdminData } from '../../types/trip.types'
 
 interface StopData {
@@ -28,9 +28,8 @@ export function useAdminRoutes() {
           params.append('search', searchTerm)
         }
 
-        const response = await request(`/routes?${params}`, {
+        const response = await request(`/trips/routes?${params}`, {
           method: 'GET',
-          token: getAccessToken(),
         })
 
         setRoutes(response.data)
@@ -55,9 +54,8 @@ export function useAdminRoutes() {
     async (routeData: Omit<RouteAdminData, 'route_id' | 'created_at'>) => {
       setIsLoading(true)
       try {
-        await request('/routes', {
+        await request('/trips/routes', {
           method: 'POST',
-          token: getAccessToken(),
           body: {
             operator_id: routeData.operator_id,
             origin: routeData.origin,
@@ -96,9 +94,8 @@ export function useAdminRoutes() {
     ) => {
       setIsLoading(true)
       try {
-        await request(`/routes/${routeId}`, {
+        await request(`/trips/routes/${routeId}`, {
           method: 'PUT',
-          token: getAccessToken(),
           body: routeData,
         })
 
@@ -128,9 +125,8 @@ export function useAdminRoutes() {
     async (routeId: string) => {
       setIsLoading(true)
       try {
-        await request(`/routes/${routeId}`, {
+        await request(`/trips/routes/${routeId}`, {
           method: 'DELETE',
-          token: getAccessToken(),
         })
 
         toast({
@@ -161,7 +157,6 @@ export function useAdminRoutes() {
       try {
         await request(`/routes/${routeId}/stops`, {
           method: 'POST',
-          token: getAccessToken(),
           body: stopData,
         })
 

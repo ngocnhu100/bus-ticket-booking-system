@@ -9,9 +9,11 @@ import type { BusAdminData } from '@/types/trip.types'
 const AdminBusManagement: React.FC = () => {
   const {
     buses,
+    busModels,
     isLoading,
     error,
     fetchBuses,
+    fetchBusModels,
     createBus,
     updateBus,
     deleteBus,
@@ -27,7 +29,8 @@ const AdminBusManagement: React.FC = () => {
   useEffect(() => {
     fetchBuses()
     fetchOperators('approved') // Only fetch approved operators
-  }, [fetchBuses, fetchOperators])
+    fetchBusModels() // Fetch bus models for dropdown
+  }, [fetchBuses, fetchOperators, fetchBusModels])
 
   // Prepare operators for dropdown
   const operatorOptions = operators
@@ -263,6 +266,7 @@ const AdminBusManagement: React.FC = () => {
           initialBus={editingBus}
           onSave={handleSaveBus}
           operators={operatorOptions}
+          busModels={busModels}
         />
       </div>
     </DashboardLayout>

@@ -1,20 +1,22 @@
 import { useState, useCallback } from 'react'
 import { useToast } from '../use-toast'
+import { request } from '../../api/auth'
 import type { OperatorAdminData } from '../../types/trip.types'
 
-interface PaginatedResponse<T> {
-  success: boolean
-  data: T[]
-  pagination?: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
+// Backend operator response type
+interface BackendOperatorData {
+  operatorId: string
+  name: string
+  contactEmail: string
+  contactPhone: string
+  status: string
+  rating?: number
+  logoUrl?: string
+  approvedAt?: string
+  createdAt: string
+  totalRoutes: number
+  totalBuses: number
 }
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 export function useAdminOperators() {
   const [operators, setOperators] = useState<OperatorAdminData[]>([])
@@ -34,21 +36,27 @@ export function useAdminOperators() {
         params.append('page', page.toString())
         params.append('limit', limit.toString())
 
-        const response = await fetch(
-          `${API_BASE_URL}/admin/operators?${params}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-          }
+        const data = await request(`/trips/admin/operators?${params}`, {
+          method: 'GET',
+        })
+
+        // Transform backend data to match frontend interface
+        const transformedOperators = data.data.map(
+          (op: BackendOperatorData) => ({
+            operator_id: op.operatorId,
+            name: op.name,
+            contact_email: op.contactEmail,
+            contact_phone: op.contactPhone,
+            status: op.status as OperatorAdminData['status'],
+            total_routes: op.totalRoutes || 0,
+            total_buses: op.totalBuses || 0,
+            rating: op.rating || 0,
+            approved_at: op.approvedAt,
+            created_at: op.createdAt,
+          })
         )
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch operators')
-        }
-
-        const data: PaginatedResponse<OperatorAdminData> = await response.json()
-        setOperators(data.data)
+        setOperators(transformedOperators)
         return data.pagination
       } catch {
         const message = 'Failed to fetch operators'
@@ -68,24 +76,13 @@ export function useAdminOperators() {
     async (operatorId: string, notes?: string) => {
       setIsLoading(true)
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/admin/operators/${operatorId}/approve`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify({
-              approved: true,
-              notes: notes || '',
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to approve operator')
-        }
+        await request(`/trips/admin/operators/${operatorId}/approve`, {
+          method: 'PUT',
+          body: {
+            approved: true,
+            notes: notes || '',
+          },
+        })
 
         toast({
           title: 'Success',
@@ -112,24 +109,12 @@ export function useAdminOperators() {
     async (operatorId: string, reason: string) => {
       setIsLoading(true)
       try {
-        // API endpoint for reject - assuming it follows similar pattern
-        const response = await fetch(
-          `${API_BASE_URL}/admin/operators/${operatorId}/reject`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify({
-              reason: reason,
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to reject operator')
-        }
+        await request(`/trips/admin/operators/${operatorId}/reject`, {
+          method: 'PUT',
+          body: {
+            reason: reason,
+          },
+        })
 
         toast({
           title: 'Success',
@@ -155,23 +140,12 @@ export function useAdminOperators() {
     async (operatorId: string, reason: string) => {
       setIsLoading(true)
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/admin/operators/${operatorId}/suspend`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify({
-              reason: reason,
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to suspend operator')
-        }
+        await request(`/trips/admin/operators/${operatorId}/suspend`, {
+          method: 'PUT',
+          body: {
+            reason: reason,
+          },
+        })
 
         toast({
           title: 'Success',
@@ -197,23 +171,12 @@ export function useAdminOperators() {
     async (operatorId: string) => {
       setIsLoading(true)
       try {
-        const response = await fetch(
-          `${API_BASE_URL}/admin/operators/${operatorId}/activate`,
-          {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-            },
-            body: JSON.stringify({
-              status: 'approved',
-            }),
-          }
-        )
-
-        if (!response.ok) {
-          throw new Error('Failed to activate operator')
-        }
+        await request(`/trips/admin/operators/${operatorId}/activate`, {
+          method: 'PUT',
+          body: {
+            status: 'approved',
+          },
+        })
 
         toast({
           title: 'Success',

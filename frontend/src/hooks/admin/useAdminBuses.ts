@@ -3,8 +3,14 @@ import { useToast } from '../use-toast'
 import type { BusAdminData } from '../../types/trip.types'
 import { request } from '../../api/auth'
 
+interface BusModel {
+  bus_model_id: string
+  name: string
+}
+
 export function useAdminBuses() {
   const [buses, setBuses] = useState<BusAdminData[]>([])
+  const [busModels, setBusModels] = useState<BusModel[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -39,6 +45,26 @@ export function useAdminBuses() {
     },
     [toast]
   )
+
+  const fetchBusModels = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const data = await request('/trips/bus-models', {
+        method: 'GET',
+      })
+      setBusModels(data.data || [])
+    } catch {
+      const message = 'Failed to fetch bus models'
+      setError(message)
+      toast({
+        title: 'Error',
+        description: message,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }, [toast])
 
   const createBus = useCallback(
     async (busData: Partial<BusAdminData>) => {
@@ -139,9 +165,11 @@ export function useAdminBuses() {
 
   return {
     buses,
+    busModels,
     isLoading,
     error,
     fetchBuses,
+    fetchBusModels,
     createBus,
     updateBus,
     deleteBus,

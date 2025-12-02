@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { request, getAccessToken } from '../../api/auth'
+import { useState, useCallback } from 'react'
+import { request } from '../../api/auth'
 import type { Trip, RouteAdminData, BusAdminData } from '../../types/trip.types'
 
 export const useAdminTripData = (
@@ -13,15 +13,15 @@ export const useAdminTripData = (
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
 
     try {
       const [tripsData, busesData, routesData] = await Promise.all([
-        request('/search', { method: 'GET', token: getAccessToken() }),
-        request('/buses', { method: 'GET', token: getAccessToken() }),
-        request('/routes', { method: 'GET', token: getAccessToken() }),
+        request('/trips/search', { method: 'GET' }),
+        request('/trips/buses', { method: 'GET' }),
+        request('/trips/routes', { method: 'GET' }),
       ])
 
       setTrips(tripsData.data)
@@ -33,7 +33,7 @@ export const useAdminTripData = (
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const createTrip = async (tripData: Partial<Trip>) => {
     setLoading(true)
@@ -41,7 +41,6 @@ export const useAdminTripData = (
     try {
       const response = await request('/trips', {
         method: 'POST',
-        token: getAccessToken(),
         body: tripData,
       })
       // Use response data if available, otherwise use sent data
@@ -63,7 +62,6 @@ export const useAdminTripData = (
     try {
       const response = await request(`/trips/${tripId}`, {
         method: 'PUT',
-        token: getAccessToken(),
         body: tripData,
       })
       // Update the trip in state - use response data if available, otherwise use sent data
@@ -89,7 +87,6 @@ export const useAdminTripData = (
     try {
       await request(`/trips/${tripId}`, {
         method: 'DELETE',
-        token: getAccessToken(),
       })
       // Remove the trip from state
       setTrips((prev) => prev.filter((trip) => trip.trip_id !== tripId))

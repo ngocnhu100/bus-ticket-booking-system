@@ -3,6 +3,11 @@ import type { BusAdminData } from '@/types/trip.types'
 import { CustomDropdown } from '../ui/custom-dropdown'
 import { Loader } from 'lucide-react'
 
+interface BusModel {
+  bus_model_id: string
+  name: string
+}
+
 const emptyForm: Omit<BusAdminData, 'bus_id' | 'created_at'> = {
   operator_id: '',
   name: '',
@@ -20,6 +25,7 @@ interface BusFormDrawerProps {
   initialBus: BusAdminData | null
   onSave: (values: Omit<BusAdminData, 'bus_id' | 'created_at'>) => void
   operators: Array<{ id: string; label: string }>
+  busModels?: BusModel[]
 }
 
 const AMENITIES_OPTIONS = [
@@ -42,6 +48,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
   initialBus,
   onSave,
   operators,
+  busModels = [],
 }) => {
   const [form, setForm] =
     useState<Omit<BusAdminData, 'bus_id' | 'createdAt'>>(emptyForm)
@@ -179,18 +186,15 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
               >
                 Model *
               </label>
-              <input
-                type="text"
-                required
-                className="mt-1 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  border: '1px solid var(--border)',
-                  backgroundColor: 'var(--card)',
-                  color: 'var(--foreground)',
-                }}
+              <CustomDropdown
+                options={busModels.map((model) => ({
+                  id: model.name,
+                  label: model.name,
+                }))}
                 value={form.model}
-                onChange={(e) => handleChange('model', e.target.value)}
-                placeholder="e.g., Hyundai Universe"
+                onChange={(value) => handleChange('model', value)}
+                placeholder="Select a bus model"
+                required
               />
             </div>
 
