@@ -4,7 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 // Always load .env file for development and Docker environments
 require('dotenv').config();
-
+const authService = require('./authService');
 const authController = require('./authController');
 const { authenticate } = require('./authMiddleware');
 
@@ -43,6 +43,46 @@ app.post('/verify-otp', authController.verifyOTP);
 app.post('/logout', authenticate, authController.logout);
 app.post('/change-password', authenticate, authController.changePassword);
 
+// POST /auth/verify - Để verify token và lấy thông tin user
+app.post('/auth/verify', (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VAL_001', message: 'Token is required' },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  const decoded = authService.verifyAccessToken(token);
+  if (!decoded) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'AUTH_002', message: 'Token expired or invalid' },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  res.json({
+    success: true,
+    user: decoded
+  });
+});
+
+// POST /auth/blacklist-check - Để check token có bị blacklist không
+app.post('/auth/blacklist-check', async (req, res) => {
+  const { token } = req.body;
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VAL_001', message: 'Token is required' },
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  const isBlacklisted = await authService.isTokenBlacklisted(token);
+  res.json({ isBlacklisted });
+});
 // Error handling
 app.use((err, req, res) => {
   console.error('⚠️', err.stack);

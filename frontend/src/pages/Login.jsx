@@ -70,28 +70,28 @@ export default function Login() {
   }
 
   const handleGoogleSignIn = async () => {
-  setIsGoogleLoading(true)
-  setStatus({ type: 'idle', message: '' })
+    setIsGoogleLoading(true)
+    setStatus({ type: 'idle', message: '' })
 
-  try {
-    const idToken = await requestGoogleIdToken()
-    const authData = await loginWithGoogle({ idToken })
+    try {
+      const idToken = await requestGoogleIdToken()
+      const authData = await loginWithGoogle({ idToken })
 
-    authLogin(authData)
+      authLogin(authData)
 
-    setStatus({
-      type: 'success',
-      message: 'Google sign-in successful. Redirecting...',
-    })
-  } catch (error) {
-    setStatus({
-      type: 'error',
-      message: error.message || 'Google sign-in failed. Please try again.',
-    })
-  } finally {
-    setIsGoogleLoading(false)
+      setStatus({
+        type: 'success',
+        message: 'Google sign-in successful. Redirecting...',
+      })
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: error.message || 'Google sign-in failed. Please try again.',
+      })
+    } finally {
+      setIsGoogleLoading(false)
+    }
   }
-}
 
   return (
     <>

@@ -58,8 +58,12 @@ describe('Register Component', () => {
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
 
       // Check buttons
-      expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /continue with google/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /create account/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /continue with google/i })
+      ).toBeInTheDocument()
 
       // Check login link
       expect(screen.getByText(/sign in/i)).toBeInTheDocument()
@@ -69,15 +73,21 @@ describe('Register Component', () => {
       renderRegister()
 
       expect(screen.getByPlaceholderText(/nguyen van a/i)).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/you@example.com/i)).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText(/you@example.com/i)
+      ).toBeInTheDocument()
       expect(screen.getByPlaceholderText(/\+84/i)).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/create a strong password/i)).toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText(/create a strong password/i)
+      ).toBeInTheDocument()
     })
 
     it('should render Google sign-in button', () => {
       renderRegister()
 
-      const googleButton = screen.getByRole('button', { name: /continue with google/i })
+      const googleButton = screen.getByRole('button', {
+        name: /continue with google/i,
+      })
       expect(googleButton).toBeInTheDocument()
     })
   })
@@ -86,7 +96,9 @@ describe('Register Component', () => {
     it('should show error when full name is empty', async () => {
       renderRegister()
 
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
       const passwordInput = screen.getByLabelText(/password/i)
@@ -99,7 +111,9 @@ describe('Register Component', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/full name must be between/i)).toBeInTheDocument()
+        expect(
+          screen.getByText(/full name must be between/i)
+        ).toBeInTheDocument()
       })
 
       expect(authApi.registerAccount).not.toHaveBeenCalled()
@@ -108,7 +122,9 @@ describe('Register Component', () => {
     it('should show error when email is invalid', async () => {
       renderRegister()
 
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
       const fullNameInput = screen.getByLabelText(/full name/i)
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
@@ -131,7 +147,9 @@ describe('Register Component', () => {
     it('should show error when phone is invalid', async () => {
       renderRegister()
 
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
       const fullNameInput = screen.getByLabelText(/full name/i)
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
@@ -154,7 +172,9 @@ describe('Register Component', () => {
     it('should show error when password is weak', async () => {
       renderRegister()
 
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
       const fullNameInput = screen.getByLabelText(/full name/i)
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
@@ -177,11 +197,15 @@ describe('Register Component', () => {
     it('should show multiple errors when multiple fields are invalid', async () => {
       renderRegister()
 
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/full name must be between/i)).toBeInTheDocument()
+        expect(
+          screen.getByText(/full name must be between/i)
+        ).toBeInTheDocument()
         expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument()
         expect(screen.getByText(/phone must follow/i)).toBeInTheDocument()
         expect(screen.getByText(/password must include/i)).toBeInTheDocument()
@@ -193,21 +217,27 @@ describe('Register Component', () => {
     it('should clear error when user starts typing', async () => {
       renderRegister()
 
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
       const fullNameInput = screen.getByLabelText(/full name/i)
 
       // Trigger validation error
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/full name must be between/i)).toBeInTheDocument()
+        expect(
+          screen.getByText(/full name must be between/i)
+        ).toBeInTheDocument()
       })
 
       // Start typing
       fireEvent.change(fullNameInput, { target: { value: 'J' } })
 
       await waitFor(() => {
-        expect(screen.queryByText(/full name must be between/i)).not.toBeInTheDocument()
+        expect(
+          screen.queryByText(/full name must be between/i)
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -227,7 +257,9 @@ describe('Register Component', () => {
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
       const passwordInput = screen.getByLabelText(/password/i)
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
 
       // Fill form
       fireEvent.change(fullNameInput, { target: { value: 'John Doe' } })
@@ -265,7 +297,8 @@ describe('Register Component', () => {
 
     it('should disable submit button during submission', async () => {
       vi.mocked(authApi.registerAccount).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ user: {} }), 100))
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve({ user: {} }), 100))
       )
 
       renderRegister()
@@ -274,7 +307,9 @@ describe('Register Component', () => {
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
       const passwordInput = screen.getByLabelText(/password/i)
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
 
       fireEvent.change(fullNameInput, { target: { value: 'John Doe' } })
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
@@ -293,7 +328,9 @@ describe('Register Component', () => {
   describe('Error Registration Flow', () => {
     it('should display error message when registration fails', async () => {
       const errorMessage = 'Email already exists'
-      vi.mocked(authApi.registerAccount).mockRejectedValue(new Error(errorMessage))
+      vi.mocked(authApi.registerAccount).mockRejectedValue(
+        new Error(errorMessage)
+      )
 
       renderRegister()
 
@@ -301,10 +338,14 @@ describe('Register Component', () => {
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
       const passwordInput = screen.getByLabelText(/password/i)
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
 
       fireEvent.change(fullNameInput, { target: { value: 'John Doe' } })
-      fireEvent.change(emailInput, { target: { value: 'existing@example.com' } })
+      fireEvent.change(emailInput, {
+        target: { value: 'existing@example.com' },
+      })
       fireEvent.change(phoneInput, { target: { value: '+84901234567' } })
       fireEvent.change(passwordInput, { target: { value: 'Password123!' } })
       fireEvent.click(submitButton)
@@ -326,7 +367,9 @@ describe('Register Component', () => {
       const emailInput = screen.getByLabelText(/email/i)
       const phoneInput = screen.getByLabelText(/phone/i)
       const passwordInput = screen.getByLabelText(/password/i)
-      const submitButton = screen.getByRole('button', { name: /create account/i })
+      const submitButton = screen.getByRole('button', {
+        name: /create account/i,
+      })
 
       fireEvent.change(fullNameInput, { target: { value: 'John Doe' } })
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
@@ -335,7 +378,9 @@ describe('Register Component', () => {
       fireEvent.click(submitButton)
 
       await waitFor(() => {
-        expect(screen.getByText(/unable to create your account/i)).toBeInTheDocument()
+        expect(
+          screen.getByText(/unable to create your account/i)
+        ).toBeInTheDocument()
       })
     })
   })
@@ -349,12 +394,16 @@ describe('Register Component', () => {
         user: { id: 1, email: 'google@example.com' },
       }
 
-      vi.mocked(googleAuthLib.requestGoogleIdToken).mockResolvedValue(mockIdToken)
+      vi.mocked(googleAuthLib.requestGoogleIdToken).mockResolvedValue(
+        mockIdToken
+      )
       vi.mocked(authApi.loginWithGoogle).mockResolvedValue(mockAuthData)
 
       renderRegister()
 
-      const googleButton = screen.getByRole('button', { name: /continue with google/i })
+      const googleButton = screen.getByRole('button', {
+        name: /continue with google/i,
+      })
       fireEvent.click(googleButton)
 
       // Wait for requestGoogleIdToken
@@ -364,7 +413,9 @@ describe('Register Component', () => {
 
       // Verify loginWithGoogle was called with the ID token
       await waitFor(() => {
-        expect(authApi.loginWithGoogle).toHaveBeenCalledWith({ idToken: mockIdToken })
+        expect(authApi.loginWithGoogle).toHaveBeenCalledWith({
+          idToken: mockIdToken,
+        })
       })
 
       // Verify storeTokens was called
@@ -372,13 +423,17 @@ describe('Register Component', () => {
 
       // Verify success message
       await waitFor(() => {
-        expect(screen.getByText(/google sign-in successful/i)).toBeInTheDocument()
+        expect(
+          screen.getByText(/google sign-in successful/i)
+        ).toBeInTheDocument()
       })
 
       // Verify navigation
       await waitFor(
         () => {
-          expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true })
+          expect(mockNavigate).toHaveBeenCalledWith('/dashboard', {
+            replace: true,
+          })
         },
         { timeout: 700 }
       )
@@ -386,12 +441,14 @@ describe('Register Component', () => {
 
     it('should disable Google button during sign-in', async () => {
       vi.mocked(googleAuthLib.requestGoogleIdToken).mockImplementation(
-        () => new Promise(resolve => setTimeout(resolve, 100))
+        () => new Promise((resolve) => setTimeout(resolve, 100))
       )
 
       renderRegister()
 
-      const googleButton = screen.getByRole('button', { name: /continue with google/i })
+      const googleButton = screen.getByRole('button', {
+        name: /continue with google/i,
+      })
       fireEvent.click(googleButton)
 
       // Button should be disabled
@@ -403,11 +460,15 @@ describe('Register Component', () => {
 
     it('should display error when Google sign-in fails', async () => {
       const errorMessage = 'Google sign-in was cancelled.'
-      vi.mocked(googleAuthLib.requestGoogleIdToken).mockRejectedValueOnce(new Error(errorMessage))
+      vi.mocked(googleAuthLib.requestGoogleIdToken).mockRejectedValueOnce(
+        new Error(errorMessage)
+      )
 
       renderRegister()
 
-      const googleButton = screen.getByRole('button', { name: /continue with google/i })
+      const googleButton = screen.getByRole('button', {
+        name: /continue with google/i,
+      })
       fireEvent.click(googleButton)
 
       await waitFor(() => {
@@ -423,12 +484,18 @@ describe('Register Component', () => {
       const mockIdToken = 'mock-google-id-token'
       const errorMessage = 'Failed to create account'
 
-      vi.mocked(googleAuthLib.requestGoogleIdToken).mockResolvedValue(mockIdToken)
-      vi.mocked(authApi.loginWithGoogle).mockRejectedValue(new Error(errorMessage))
+      vi.mocked(googleAuthLib.requestGoogleIdToken).mockResolvedValue(
+        mockIdToken
+      )
+      vi.mocked(authApi.loginWithGoogle).mockRejectedValue(
+        new Error(errorMessage)
+      )
 
       renderRegister()
 
-      const googleButton = screen.getByRole('button', { name: /continue with google/i })
+      const googleButton = screen.getByRole('button', {
+        name: /continue with google/i,
+      })
       fireEvent.click(googleButton)
 
       await waitFor(() => {

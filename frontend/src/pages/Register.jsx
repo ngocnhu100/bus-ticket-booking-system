@@ -82,7 +82,7 @@ export default function Register() {
     try {
       const idToken = await requestGoogleIdToken()
       const authData = await loginWithGoogle({ idToken })
-      
+
       if (authData) {
         storeTokens(authData)
         setStatus({

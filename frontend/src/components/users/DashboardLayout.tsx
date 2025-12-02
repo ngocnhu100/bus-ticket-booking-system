@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { NavLink } from './NavLink'
+import { NavLink } from '@/components/NavLink'
 import { Button } from '@/components/ui/button'
 import { Calendar, History, User, CreditCard, Bell, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'

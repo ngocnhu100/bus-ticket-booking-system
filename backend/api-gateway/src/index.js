@@ -107,6 +107,50 @@ app.use('/notification', async (req, res) => {
   }
 });
 
+// Trip service routes
+app.use('/trips', async (req, res) => {
+  try {
+    const tripServiceUrl = process.env.TRIP_SERVICE_URL || 'http://trip-service:3002';
+    const queryString = Object.keys(req.query).length 
+      ? '?' + new URLSearchParams(req.query).toString() 
+      : '';
+    
+    console.log(`Proxying ${req.method} ${req.originalUrl} → ${tripServiceUrl}${req.path}${queryString}`);
+
+    const response = await axios({
+      method: req.method,
+      url: `${tripServiceUrl}${req.path}${queryString}`,
+      data: req.body,
+      headers: {
+        'authorization': req.headers.authorization,   // ← Quan trọng: chuyển token sang trip-service
+        'content-type': 'application/json',
+      },
+      timeout: 15000,
+    });
+
+    // Forward headers (nếu cần)
+    Object.keys(response.headers).forEach(key => {
+      if (key !== 'transfer-encoding') res.setHeader(key, response.headers[key]);
+    });
+
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`Trip service error:`, error.message);
+
+    if (error.response) {
+      // Lỗi do trip-service trả về (401, 404, 500, v.v.)
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      // Trip service down hoặc timeout
+      res.status(503).json({
+        success: false,
+        error: { code: 'GATEWAY_003', message: 'Trip service currently unavailable' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+});
+
 // Dashboard routes (API composition - aggregates data from multiple services)
 app.get('/dashboard/summary', authenticate, async (req, res) => {
   try {
@@ -558,6 +602,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`🚀 API Gateway running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log(`🔗 Auth Service: ${process.env.AUTH_SERVICE_URL || 'http://localhost:3001'}`);
+    console.log(`📧 Trip Service: ${process.env.TRIP_SERVICE_URL || 'http://localhost:3002'}`);
     console.log(`📧 Notification Service: ${process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003'}`);
   });
 }
