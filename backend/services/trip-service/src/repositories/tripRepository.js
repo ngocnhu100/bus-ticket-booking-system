@@ -37,13 +37,13 @@ class TripRepository {
   async _getPointsForTrip(trip_id, route_id, departure_time) {
     const query = `
       SELECT 
-        stop_id as point_id, name, address, 
-        (departure_time + INTERVAL '1 minute' * estimated_time_offset) AS time
+        stop_id as point_id, stop_name as name, address, 
+        ($1::timestamp + INTERVAL '1 minute' * departure_offset_minutes) AS time
       FROM route_stops 
-      WHERE route_id = $1
+      WHERE route_id = $2
       ORDER BY sequence
     `;
-    const result = await pool.query(query, [route_id]);
+    const result = await pool.query(query, [departure_time, route_id]);
     const points = result.rows.map(row => ({
       point_id: row.point_id,
       name: row.name,
