@@ -19,6 +19,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null
+  token: string | null
   isAuthenticated: boolean
   loading: boolean
   login: (authData: {
@@ -37,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const navigate = useNavigate()
 
   const [user, setUser] = useState<User | null>(null)
-
+  const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,8 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (storedUser && refreshToken) {
         try {
           // Try to refresh the access token
-          await refreshAccessToken()
+          const newAccessToken = await refreshAccessToken()
           setUser(JSON.parse(storedUser))
+          setToken(newAccessToken)
         } catch (error) {
           // If refresh fails, clear tokens and user
           console.error('Failed to refresh token:', error)
@@ -76,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     localStorage.setItem('user', JSON.stringify(authData.user))
     setUser(authData.user)
+    setToken(authData.accessToken)
 
     if (authData.user.role === 'admin') {
       navigate('/admin', { replace: true })
@@ -88,12 +91,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     clearTokens()
     localStorage.removeItem('user')
     setUser(null)
+    setToken(null)
     navigate('/login', { replace: true })
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, loading, login, logout }}
+      value={{ user, token, isAuthenticated: !!user, loading, login, logout }}
     >
       {children}
     </AuthContext.Provider>

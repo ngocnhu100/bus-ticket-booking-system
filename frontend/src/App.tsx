@@ -26,6 +26,8 @@ import AdminSeatMapManagement from '@/pages/admin/AdminSeatMapManagement'
 import AdminOperatorManagement from '@/pages/admin/AdminOperatorManagement'
 import Landing from './pages/Landing'
 import TripSearchResults from './pages/TripSearchResults'
+import { BookingConfirmation } from './pages/BookingConfirmation'
+import { BookingDemo } from './pages/BookingDemo'
 
 const queryClient = new QueryClient()
 
@@ -62,6 +64,11 @@ const App = () => (
               <Route
                 path="/trip-search-results"
                 element={<TripSearchResults />}
+              />
+              <Route path="/booking-demo" element={<BookingDemo />} />
+              <Route
+                path="/booking-confirmation/:bookingReference"
+                element={<BookingConfirmation />}
               />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
