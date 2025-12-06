@@ -150,6 +150,13 @@ class TripController {
         });
       }
       
+      if (err.message.includes('Bus layout configuration')) {
+        return res.status(500).json({
+          success: false,
+          error: { code: 'LAYOUT_CONFIG_ERROR', message: err.message }
+        });
+      }
+      
       res.status(500).json({
         success: false,
         error: { code: 'SYS_ERROR', message: 'Internal Server Error' }

@@ -8,17 +8,19 @@ class SeatRepository {
    * @returns {Promise<Object>} Seat map data
    */
   async getSeatMapForTrip(tripId) {
-    // First get trip and bus info
+    // First get trip and bus info with layout
     const tripQuery = `
       SELECT
         t.trip_id,
         t.bus_id,
         t.base_price,
         b.bus_model_id,
-        bm.total_seats
+        bm.total_seats,
+        sl.layout_json
       FROM trips t
       JOIN buses b ON t.bus_id = b.bus_id
       JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+      LEFT JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
       WHERE t.trip_id = $1 AND t.status = 'active'
     `;
 
@@ -74,11 +76,20 @@ class SeatRepository {
       return acc;
     }, {});
 
-    // Calculate layout dimensions
-    // For simplicity, assume 2-2 layout (2 seats per row, 2 rows)
-    // In a real implementation, you'd have a layout configuration
-    const layout = '2-2';
-    const [seatsPerRow, numRows] = layout.split('-').map(Number);
+    // Calculate layout dimensions from database
+    if (!trip.layout_json) {
+      throw new Error('Bus layout configuration not found in database');
+    }
+
+    const layoutData = trip.layout_json;
+    if (!layoutData.rows || !Array.isArray(layoutData.rows) || layoutData.rows.length === 0) {
+      throw new Error('Invalid bus layout configuration: missing or empty rows');
+    }
+
+    const numRows = layoutData.rows.length;
+    // Calculate max seats per row
+    const seatsPerRow = Math.max(...layoutData.rows.map(row => row.seats ? row.seats.filter(seat => seat !== null).length : 0));
+    const layout = `${seatsPerRow}-${numRows}`;
 
     // Transform seats data
     const transformedSeats = seats.map(seat => {
