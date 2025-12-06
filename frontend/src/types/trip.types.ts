@@ -64,14 +64,14 @@ export interface OperatorAdminData {
  * Matches API: GET /trips/{tripId}/seats - seats array element
  */
 export interface Seat {
-  seat_id: string
+  seat_id?: string
+  bus_id: string
   seat_code: string
-  row: number
-  column: number
-  seat_type: 'standard' | 'vip' | 'window' | 'aisle'
+  seat_type: 'standard' | 'vip'
   position: 'window' | 'aisle'
   price: number
-  status: 'available' | 'occupied' | 'locked' | 'disabled'
+  is_active: boolean
+  created_at?: string
 }
 
 /**

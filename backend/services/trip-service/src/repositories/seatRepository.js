@@ -33,11 +33,13 @@ class SeatRepository {
     const seatsQuery = `
       SELECT
         seat_id,
+        bus_id,
         seat_code,
         seat_type,
         position,
         price,
-        is_active
+        is_active,
+        created_at
       FROM seats
       WHERE bus_id = $1 AND is_active = true
       ORDER BY seat_code
@@ -80,49 +82,32 @@ class SeatRepository {
 
     // Transform seats data
     const transformedSeats = seats.map(seat => {
-      let status = 'available';
-      let lockedUntil = null;
+      let is_active = seat.is_active;
 
       if (occupiedSeatCodes.has(seat.seat_code)) {
-        status = 'occupied';
+        is_active = false;
       } else if (lockedSeats[seat.seat_code]) {
-        status = 'locked';
-        lockedUntil = lockedSeats[seat.seat_code];
+        is_active = false;
       }
 
-      // Calculate row and column from seat_code
-      // Assuming seat codes like A1, A2, B1, B2, etc.
-      const rowLetter = seat.seat_code.charAt(0);
-      const colNumber = parseInt(seat.seat_code.substring(1));
-      const row = rowLetter.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
-      const column = colNumber;
-
       return {
-        seatId: seat.seat_id,
-        seatCode: seat.seat_code,
-        row,
-        column,
-        seatType: seat.seat_type,
+        seat_id: seat.seat_id,
+        bus_id: seat.bus_id,
+        seat_code: seat.seat_code,
+        seat_type: seat.seat_type,
         position: seat.position,
         price: parseFloat(trip.base_price) + parseFloat(seat.price || 0),
-        status,
-        ...(lockedUntil && { lockedUntil })
+        is_active,
+        created_at: seat.created_at
       };
     });
 
     return {
-      tripId,
-      seatMap: {
-        layout,
-        rows: numRows,
-        columns: seatsPerRow,
-        seats: transformedSeats
-      },
-      legend: {
-        available: 'seat can be selected',
-        occupied: 'seat already booked',
-        locked: 'seat temporarily reserved by another user'
-      }
+      trip_id: tripId,
+      layout,
+      rows: numRows,
+      columns: seatsPerRow,
+      seats: transformedSeats
     };
   }
 }
