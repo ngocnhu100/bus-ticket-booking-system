@@ -2,6 +2,7 @@
 const tripRepository = require('../repositories/tripRepository');
 const routeRepository = require('../repositories/routeRepository'); 
 const busRepository = require('../repositories/busRepository');
+const seatRepository = require('../repositories/seatRepository');
 
 class TripService {
   async createTrip(tripData) {
@@ -71,6 +72,10 @@ class TripService {
     */
     
     return await tripRepository.softDelete(id);
+  }
+
+  async getSeatMap(tripId) {
+    return await seatRepository.getSeatMapForTrip(tripId);
   }
 }
 

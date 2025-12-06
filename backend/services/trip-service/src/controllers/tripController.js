@@ -128,6 +128,34 @@ class TripController {
       });
     }
   }
+
+  async getSeats(req, res) {
+    try {
+      const { id: tripId } = req.params;
+      
+      const seatMapData = await tripService.getSeatMap(tripId);
+      
+      res.json({
+        success: true,
+        data: seatMapData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('TripController.getSeats: Error occurred:', err.message);
+      
+      if (err.message === 'Trip not found') {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'TRIP_NOT_FOUND', message: 'Trip not found' }
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Internal Server Error' }
+      });
+    }
+  }
 }
 
 module.exports = new TripController();
