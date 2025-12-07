@@ -16,6 +16,7 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get('/health', bookingController.healthCheck);
@@ -33,6 +34,9 @@ app.put('/:id/cancel', authenticate, bookingController.cancel);
 // Admin routes
 app.get('/admin/bookings', authenticate, authorize(['admin']), bookingController.getAllBookings);
 
+// Serve ticket files (static)
+app.use('/tickets', express.static('tickets'));
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -41,7 +45,8 @@ app.use((err, req, res, next) => {
     error: {
       code: 'SYS_001',
       message: 'Internal server error'
-    }
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -52,18 +57,22 @@ app.use((req, res) => {
     error: {
       code: 'ROUTE_001',
       message: 'Route not found'
-    }
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Booking Service running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  
-  // Start booking expiration job
-  bookingExpirationJob.start();
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Booking Service running on port ${PORT}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    
+    // Start booking expiration job
+    bookingExpirationJob.start();
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

@@ -107,6 +107,52 @@ app.use('/notification', async (req, res) => {
   }
 });
 
+// Booking service routes
+app.use('/bookings', async (req, res) => {
+  try {
+    const bookingServiceUrl = process.env.BOOKING_SERVICE_URL || 'http://localhost:3004';
+    
+    // req.path is already stripped of /bookings prefix by app.use, so we need to add it back
+    const fullPath = '/bookings' + req.path;
+    
+    // Query string is already in req.originalUrl, extract it properly
+    const queryString = req.originalUrl.includes('?') 
+      ? '?' + req.originalUrl.split('?')[1] 
+      : '';
+    
+    console.log(`🔄 Proxying ${req.method} ${req.originalUrl} to ${bookingServiceUrl}${fullPath}${queryString}`);
+
+    const response = await axios({
+      method: req.method,
+      url: `${bookingServiceUrl}${fullPath}${queryString}`,
+      data: req.body,
+      headers: {
+        'authorization': req.headers.authorization,
+        'content-type': 'application/json',
+      },
+      timeout: 15000,
+    });
+
+    Object.keys(response.headers).forEach(key => {
+      if (key !== 'transfer-encoding') res.setHeader(key, response.headers[key]);
+    });
+
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`❌ Booking service error:`, error.message);
+
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(503).json({
+        success: false,
+        error: { code: 'GATEWAY_004', message: 'Booking service unavailable' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+});
+
 // Trip service routes
 app.use('/trips', async (req, res) => {
   try {

@@ -1,0 +1,103 @@
+﻿/* E-Ticket Print Styles */
+
+@media print {
+  /* Page setup for A4 */
+  @page {
+    size: A4 portrait;
+    margin: 1cm;
+  }
+
+  /* Hide non-essential elements */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Ensure colors are preserved in print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  /* Optimize ticket container for print */
+  .e-ticket-container {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Remove shadows and borders that don't print well */
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  /* Ensure page breaks are handled correctly */
+  .e-ticket-container {
+    page-break-inside: avoid;
+  }
+
+  /* Optimize card layout */
+  .e-ticket-container > div {
+    border: 1px solid #e5e7eb;
+  }
+
+  /* Adjust header for print */
+  .e-ticket-container header {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Ensure QR code is crisp */
+  .e-ticket-container img[alt='QR Code'] {
+    image-rendering: crisp-edges;
+    image-rendering: -webkit-optimize-contrast;
+  }
+
+  /* Adjust spacing for print */
+  .e-ticket-container .space-y-6 > * + * {
+    margin-top: 1rem;
+  }
+
+  .e-ticket-container .space-y-4 > * + * {
+    margin-top: 0.75rem;
+  }
+
+  /* Ensure text is readable */
+  .e-ticket-container {
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+
+  .e-ticket-container h1 {
+    font-size: 18pt;
+  }
+
+  .e-ticket-container h2 {
+    font-size: 14pt;
+  }
+
+  /* Optimize badges for print */
+  .e-ticket-container .badge {
+    border: 1px solid currentColor;
+  }
+}
+
+/* Screen-only responsive adjustments */
+@media screen and (max-width: 640px) {
+  .e-ticket-container {
+    font-size: 14px;
+  }
+
+  .e-ticket-container h1 {
+    font-size: 20px;
+  }
+
+  .e-ticket-container h2 {
+    font-size: 16px;
+  }
+
+  .e-ticket-container .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
