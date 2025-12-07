@@ -152,9 +152,12 @@ ON CONFLICT DO NOTHING;
 
 -- 3. Operators
 INSERT INTO operators (name, contact_email, contact_phone, status, rating, logo_url) VALUES
-('Sapaco Tourist', 'contact@sapaco.vn', '+84-28-1234-5678', 'active', 4.5, 'https://example.com/sapaco-logo.png'),
-('The Sinh Tourist', 'info@thesinh.vn', '+84-24-8765-4321', 'active', 4.2, 'https://example.com/thesinh-logo.png'),
-('Futa Bus Lines', 'support@futa.vn', '+84-28-9876-5432', 'active', 4.0, 'https://example.com/futa-logo.png')
+('Sapaco Tourist', 'contact@sapaco.vn', '+84-28-1234-5678', 'approved', 4.5, 'https://example.com/sapaco-logo.png'),
+('The Sinh Tourist', 'info@thesinh.vn', '+84-24-8765-4321', 'approved', 4.2, 'https://example.com/thesinh-logo.png'),
+('Futa Bus Lines', 'support@futa.vn', '+84-28-9876-5432', 'approved', 4.0, 'https://example.com/futa-logo.png'),
+('Giant I', 'info@gianti.vn', '+84-28-1111-2222', 'approved', 4.3, 'https://example.com/gianti-logo.png'),
+('Kumho Samco', 'contact@kumhosamco.vn', '+84-24-3333-4444', 'approved', 4.1, 'https://example.com/kumho-logo.png'),
+('Sao Viet', 'support@saoviet.vn', '+84-28-5555-6666', 'approved', 3.9, 'https://example.com/saoviet-logo.png')
 ON CONFLICT DO NOTHING;
 
 -- 4. Buses
@@ -169,7 +172,27 @@ INSERT INTO buses (operator_id, bus_model_id, license_plate, plate_number, ameni
 
 ((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated' LIMIT 1),
- '29A-54321', '29A-54321', '["wifi", "ac", "snacks"]', 'active')
+ '29A-54321', '29A-54321', '["wifi", "ac", "snacks"]', 'active'),
+
+((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
+ (SELECT bus_model_id FROM bus_models WHERE name = 'Volvo 50 seated' LIMIT 1),
+ '51B-11111', '51B-11111', '["wifi", "ac", "entertainment", "snacks"]', 'active'),
+
+((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
+ (SELECT bus_model_id FROM bus_models WHERE name = 'Samco Isuzu Limousine 29 seats' LIMIT 1),
+ '30B-22222', '30B-22222', '["wifi", "ac", "refreshments"]', 'active'),
+
+((SELECT operator_id FROM operators WHERE name = 'Sao Viet' LIMIT 1),
+ (SELECT bus_model_id FROM bus_models WHERE name = 'Mercedes Sprinter 16 seats' LIMIT 1),
+ '29B-33333', '29B-33333', '["wifi", "ac"]', 'active'),
+
+((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
+ (SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated' LIMIT 1),
+ '51C-44444', '51C-44444', '["wifi", "ac", "tv"]', 'active'),
+
+((SELECT operator_id FROM operators WHERE name = 'The Sinh Tourist' LIMIT 1),
+ (SELECT bus_model_id FROM bus_models WHERE name = 'Hyundai Universe 45 seated' LIMIT 1),
+ '30C-55555', '30C-55555', '["wifi", "ac", "blankets"]', 'active')
 ON CONFLICT DO NOTHING;
 
 -- 5. Routes
@@ -181,32 +204,201 @@ INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_min
  'Ho Chi Minh City', 'Da Nang', 964, 900),
 
 ((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
- 'Hanoi', 'Da Nang', 764, 720)
+ 'Hanoi', 'Da Nang', 764, 720),
+
+((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
+ 'Ho Chi Minh City', 'Hue', 1083, 1020),
+
+((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
+ 'Hanoi', 'Ho Chi Minh City', 1726, 1800),
+
+((SELECT operator_id FROM operators WHERE name = 'Sao Viet' LIMIT 1),
+ 'Da Nang', 'Ho Chi Minh City', 964, 900),
+
+((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
+ 'Hanoi', 'Sapa', 376, 480),
+
+((SELECT operator_id FROM operators WHERE name = 'The Sinh Tourist' LIMIT 1),
+ 'Ho Chi Minh City', 'Nha Trang', 448, 420),
+
+((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
+ 'Da Nang', 'Hanoi', 764, 720),
+
+((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
+ 'Hanoi', 'Hai Phong', 102, 90),
+
+((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
+ 'Ho Chi Minh City', 'Can Tho', 169, 150),
+
+((SELECT operator_id FROM operators WHERE name = 'Sao Viet' LIMIT 1),
+ 'Da Nang', 'Quang Ngai', 150, 120)
 ON CONFLICT DO NOTHING;
 
 -- 6. Route Stops
-INSERT INTO route_stops (route_id, stop_name, stop_order, distance_from_start, estimated_time) VALUES
+INSERT INTO route_stops (route_id, stop_name, sequence, arrival_offset_minutes, departure_offset_minutes) VALUES
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
  'Ho Chi Minh City', 1, 0, 0),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- 'Da Nang', 2, 964, 540),
+ 'Da Nang', 2, 540, 550),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- 'Hanoi', 3, 1726, 1080)
+ 'Hanoi', 3, 1080, 1080),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
+ 'Ho Chi Minh City', 1, 0, 0),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
+ 'Da Nang', 2, 540, 540),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
+ 'Hanoi', 1, 0, 0),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
+ 'Da Nang', 2, 360, 360),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hue' LIMIT 1),
+ 'Ho Chi Minh City', 1, 0, 0),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hue' LIMIT 1),
+ 'Hue', 2, 600, 600),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ 'Hanoi', 1, 0, 0),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ 'Da Nang', 2, 360, 370),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ 'Ho Chi Minh City', 3, 1080, 1080)
 ON CONFLICT DO NOTHING;
 
 -- 7. Trips
 INSERT INTO trips (route_id, bus_id, departure_time, arrival_time, base_price, policies, status) VALUES
+-- Ho Chi Minh City to Hanoi (popular route - multiple trips)
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
  (SELECT bus_id FROM buses WHERE license_plate = '51A-12345' LIMIT 1),
- '2024-01-20 08:00:00', '2024-01-20 14:00:00', 500000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+ '2025-12-08 08:00:00', '2025-12-08 14:00:00', 500000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51C-44444' LIMIT 1),
+ '2025-12-08 10:00:00', '2025-12-08 16:00:00', 480000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51A-12345' LIMIT 1),
+ '2025-12-08 14:00:00', '2025-12-08 20:00:00', 520000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51C-44444' LIMIT 1),
+ '2025-12-08 18:00:00', '2025-12-09 00:00:00', 450000, '{"refund": "24h", "changes": "not_allowed"}', 'active'),
+
+-- Hanoi to Ho Chi Minh City (reverse route - multiple trips)
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30C-55555' LIMIT 1),
+ '2025-12-09 06:00:00', '2025-12-09 12:00:00', 500000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51B-11111' LIMIT 1),
+ '2025-12-09 08:00:00', '2025-12-09 14:00:00', 480000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30C-55555' LIMIT 1),
+ '2025-12-09 12:00:00', '2025-12-09 18:00:00', 520000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+
+-- Ho Chi Minh City to Da Nang (popular route - multiple trips)
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30A-67890' LIMIT 1),
+ '2025-12-08 10:00:00', '2025-12-08 18:00:00', 350000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30B-22222' LIMIT 1),
+ '2025-12-08 14:00:00', '2025-12-08 22:00:00', 320000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
  (SELECT bus_id FROM buses WHERE license_plate = '30A-67890' LIMIT 1),
- '2024-01-20 10:00:00', '2024-01-20 18:00:00', 350000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+ '2025-12-08 18:00:00', '2025-12-09 02:00:00', 380000, '{"refund": "12h", "changes": "not_allowed"}', 'active'),
 
+-- Da Nang to Ho Chi Minh City (reverse route)
+((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29B-33333' LIMIT 1),
+ '2025-12-09 08:00:00', '2025-12-09 16:00:00', 350000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Ho Chi Minh City' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29A-54321' LIMIT 1),
+ '2025-12-09 12:00:00', '2025-12-09 20:00:00', 320000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+-- Hanoi to Da Nang
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
  (SELECT bus_id FROM buses WHERE license_plate = '29A-54321' LIMIT 1),
- '2024-01-21 06:00:00', '2024-01-21 12:00:00', 250000, '{"refund": "24h", "changes": "not_allowed"}', 'active')
+ '2025-12-09 06:00:00', '2025-12-09 12:00:00', 250000, '{"refund": "24h", "changes": "not_allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30B-22222' LIMIT 1),
+ '2025-12-09 10:00:00', '2025-12-09 16:00:00', 280000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+
+-- Da Nang to Hanoi (reverse route)
+((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Hanoi' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51B-11111' LIMIT 1),
+ '2025-12-10 08:00:00', '2025-12-10 14:00:00', 250000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+-- Other routes (single trips for now)
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hue' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51B-11111' LIMIT 1),
+ '2025-12-08 12:00:00', '2025-12-08 21:00:00', 400000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Sapa' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29B-33333' LIMIT 1),
+ '2025-12-09 07:00:00', '2025-12-09 13:00:00', 150000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Nha Trang' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30A-67890' LIMIT 1),
+ '2025-12-08 16:00:00', '2025-12-08 20:00:00', 200000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Hai Phong' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29A-54321' LIMIT 1),
+ '2025-12-09 09:00:00', '2025-12-09 10:30:00', 80000, '{"refund": "12h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Can Tho' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29B-33333' LIMIT 1),
+ '2025-12-08 20:00:00', '2025-12-08 21:30:00', 100000, '{"refund": "24h", "changes": "allowed"}', 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Quang Ngai' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30B-22222' LIMIT 1),
+ '2025-12-09 14:00:00', '2025-12-09 15:00:00', 50000, '{"refund": "12h", "changes": "allowed"}', 'active')
 ON CONFLICT DO NOTHING;
+
+-- Generate seats for all buses
+DELETE FROM seats;
+
+INSERT INTO seats (bus_id, seat_code, seat_type, position, price, is_active)
+SELECT
+  b.bus_id,
+  seat_element #>> '{}' as seat_code,
+  CASE
+    WHEN seat_element #>> '{}' LIKE 'VIP%' THEN 'vip'
+    WHEN seat_element #>> '{}' LIKE 'H%A' OR seat_element #>> '{}' LIKE 'H%B' THEN 'sleeper'
+    ELSE 'standard'
+  END as seat_type,
+  CASE
+    WHEN seat_element #>> '{}' ~ '^[0-9]+A$' THEN 'window'  -- Row + A = window
+    WHEN seat_element #>> '{}' ~ '^[0-9]+B$' THEN 'aisle'   -- Row + B = aisle
+    WHEN seat_element #>> '{}' ~ '^[0-9]+C$' THEN 'aisle'   -- Row + C = aisle
+    WHEN seat_element #>> '{}' ~ '^[0-9]+D$' THEN 'aisle'   -- Row + D = aisle
+    WHEN seat_element #>> '{}' ~ '^[0-9]+E$' THEN 'aisle'   -- Row + E = aisle
+    ELSE 'aisle'
+  END as position,
+  CASE
+    WHEN seat_element #>> '{}' LIKE 'VIP%' THEN 50000  -- VIP surcharge
+    WHEN seat_element #>> '{}' LIKE 'H%A' OR seat_element #>> '{}' LIKE 'H%B' THEN 100000  -- Sleeper surcharge
+    ELSE 0
+  END as price,
+  true as is_active
+FROM buses b
+JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
+CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
+CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') as seat_element
+WHERE seat_element IS NOT NULL
+  AND seat_element #>> '{}' IS NOT NULL
+  AND seat_element #>> '{}' != 'null'
+ON CONFLICT (bus_id, seat_code) DO NOTHING;
