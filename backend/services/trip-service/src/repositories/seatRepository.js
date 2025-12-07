@@ -40,11 +40,13 @@ class SeatRepository {
         seat_type,
         position,
         price,
+        row_num,
+        col_num,
         is_active,
         created_at
       FROM seats
       WHERE bus_id = $1 AND is_active = true
-      ORDER BY seat_code
+      ORDER BY row_num, col_num
     `;
 
     const seatsResult = await pool.query(seatsQuery, [trip.bus_id]);
@@ -107,33 +109,9 @@ class SeatRepository {
         lockedUntil = lockedSeats[seat.seat_code];
       }
 
-      // Parse seat_code to extract row and column
-      // Handle different formats: "1A", "H1A", "VIP1", etc.
-      let row = 1;
-      let column = 1;
-
-      if (seat.seat_code.startsWith('VIP')) {
-        // VIP format: "VIP1", "VIP2", etc.
-        const vipMatch = seat.seat_code.match(/^VIP(\d+)$/);
-        if (vipMatch) {
-          row = parseInt(vipMatch[1], 10);
-          column = 1; // VIP seats are typically in column 1
-        }
-      } else if (seat.seat_code.startsWith('H')) {
-        // Sleeper format: "H1A", "H2B", etc.
-        const sleeperMatch = seat.seat_code.match(/^H(\d+)([A-Z])$/);
-        if (sleeperMatch) {
-          row = parseInt(sleeperMatch[1], 10);
-          column = sleeperMatch[2].charCodeAt(0) - 64;
-        }
-      } else {
-        // Regular format: "1A", "2B", "10C", etc.
-        const regularMatch = seat.seat_code.match(/^(\d+)([A-Z])$/);
-        if (regularMatch) {
-          row = parseInt(regularMatch[1], 10);
-          column = regularMatch[2].charCodeAt(0) - 64;
-        }
-      }
+      // Use row_num and col_num from database
+      const row = seat.row_num;
+      const column = seat.col_num;
 
       return {
         seat_id: seat.seat_id,

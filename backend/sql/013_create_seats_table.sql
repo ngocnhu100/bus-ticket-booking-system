@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS seats (
     seat_type VARCHAR(20) DEFAULT 'standard', -- standard, vip
     position VARCHAR(20) DEFAULT 'aisle', -- window | aisle
     price DECIMAL(12,2) DEFAULT 0, -- Additional price if VIP
+    row_num INTEGER, -- Row number in the layout
+    col_num INTEGER, -- Column number in the layout
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(bus_id, seat_code)

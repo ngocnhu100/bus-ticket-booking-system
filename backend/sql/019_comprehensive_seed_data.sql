@@ -23,16 +23,16 @@ INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
    "type": "seated",
    "floors": 1,
    "rows": [
-     {"row": 1, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 2, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 3, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 4, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 5, "seats": ["5A","5B",null,"5C","5D"]},
-     {"row": 6, "seats": ["6A","6B",null,"6C","6D"]},
-     {"row": 7, "seats": ["7A","7B",null,"7C","7D"]},
-     {"row": 8, "seats": ["8A","8B",null,"8C","8D"]},
-     {"row": 9, "seats": ["9A","9B",null,"9C","9D"]},
-     {"row": 10, "seats": ["10A","10B","10C","10D","10E"]}
+     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+     {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+     {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
+     {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
+     {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
+     {"row": 6, "seats": ["4A","4B",null,"4C","4D"]},
+     {"row": 7, "seats": ["5A","5B",null,"5C","5D"]},
+     {"row": 8, "seats": ["6A","6B",null,"6C","6D"]},
+     {"row": 9, "seats": ["7A","7B",null,"7C","7D"]},
+     {"row": 10, "seats": ["8A","8B","8C","8D","8E"]}
    ]
  }'),
 
@@ -65,12 +65,12 @@ INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
    "type": "limousine",
    "floors": 1,
    "rows": [
-     {"row": 1, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 2, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 3, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 4, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 5, "seats": ["5A","5B",null,"5C","5D"]},
-     {"row": 6, "seats": ["6A","6B","6C","6D","6E"]}
+     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+     {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+     {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
+     {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
+     {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
+     {"row": 6, "seats": ["4A","4B","4C","4D","4E"]}
    ]
  }'),
 
@@ -108,12 +108,12 @@ INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
    "type": "seated",
    "floors": 1,
    "rows": [
-     {"row": 1, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 2, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 3, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 4, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 5, "seats": ["5A","5B",null,"5C","5D"]},
-     {"row": 6, "seats": ["6A","6B","6C","6D","6E"]}
+     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+     {"row": 2, "seats": ["1A","1B",null,"1C","1D"]},
+     {"row": 3, "seats": ["2A","2B",null,"2C","2D"]},
+     {"row": 4, "seats": ["3A","3B",null,"3C","3D"]},
+     {"row": 5, "seats": ["4A","4B",null,"4C","4D"]},
+     {"row": 6, "seats": ["5A","5B","5C","5D","5E"]}
    ]
  }'),
 
@@ -123,10 +123,10 @@ INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
    "type": "seated",
    "floors": 1,
    "rows": [
-     {"row": 1, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 2, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 3, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 4, "seats": ["4A","4B","4C","4D","4E"]}
+     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+     {"row": 2, "seats": ["1A","1B",null,"1C","1D"]},
+     {"row": 3, "seats": ["2A","2B",null,"2C","2D"]},
+     {"row": 4, "seats": ["3A","3B","3C","3D","3E"]}
    ]
  }'),
 
@@ -136,16 +136,16 @@ INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
    "type": "seated",
    "floors": 1,
    "rows": [
-     {"row": 1, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 2, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 3, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 4, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 5, "seats": ["5A","5B",null,"5C","5D"]},
-     {"row": 6, "seats": ["6A","6B",null,"6C","6D"]},
-     {"row": 7, "seats": ["7A","7B",null,"7C","7D"]},
-     {"row": 8, "seats": ["8A","8B",null,"8C","8D"]},
-     {"row": 9, "seats": ["9A","9B",null,"9C","9D"]},
-     {"row": 10, "seats": ["10A","10B","10C","10D","10E"]}
+     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+     {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+     {"row": 3, "seats": ["VIP3A","VIP3B",null,"VIP3C","VIP3D"]},
+     {"row": 4, "seats": ["1A","1B",null,"1C","1D"]},
+     {"row": 5, "seats": ["2A","2B",null,"2C","2D"]},
+     {"row": 6, "seats": ["3A","3B",null,"3C","3D"]},
+     {"row": 7, "seats": ["4A","4B",null,"4C","4D"]},
+     {"row": 8, "seats": ["5A","5B",null,"5C","5D"]},
+     {"row": 9, "seats": ["6A","6B",null,"6C","6D"]},
+     {"row": 10, "seats": ["7A","7B","7C","7D","7E"]}
    ]
  }')
 ON CONFLICT DO NOTHING;
@@ -370,35 +370,36 @@ ON CONFLICT DO NOTHING;
 -- Generate seats for all buses
 DELETE FROM seats;
 
-INSERT INTO seats (bus_id, seat_code, seat_type, position, price, is_active)
+INSERT INTO seats (bus_id, seat_code, seat_type, position, price, row_num, col_num, is_active)
 SELECT
   b.bus_id,
-  seat_element #>> '{}' as seat_code,
+  seat_element.value::text as seat_code,
   CASE
-    WHEN seat_element #>> '{}' LIKE 'VIP%' THEN 'vip'
-    WHEN seat_element #>> '{}' LIKE 'H%A' OR seat_element #>> '{}' LIKE 'H%B' THEN 'sleeper'
+    WHEN seat_element.value::text LIKE 'VIP%' THEN 'vip'
+    WHEN seat_element.value::text LIKE 'H%A' OR seat_element.value::text LIKE 'H%B' THEN 'sleeper'
     ELSE 'standard'
   END as seat_type,
   CASE
-    WHEN seat_element #>> '{}' ~ '^[0-9]+A$' THEN 'window'  -- Row + A = window
-    WHEN seat_element #>> '{}' ~ '^[0-9]+B$' THEN 'aisle'   -- Row + B = aisle
-    WHEN seat_element #>> '{}' ~ '^[0-9]+C$' THEN 'aisle'   -- Row + C = aisle
-    WHEN seat_element #>> '{}' ~ '^[0-9]+D$' THEN 'aisle'   -- Row + D = aisle
-    WHEN seat_element #>> '{}' ~ '^[0-9]+E$' THEN 'aisle'   -- Row + E = aisle
+    WHEN seat_element.value::text ~ '^[0-9]+A$' THEN 'window'  -- Row + A = window
+    WHEN seat_element.value::text ~ '^[0-9]+B$' THEN 'aisle'   -- Row + B = aisle
+    WHEN seat_element.value::text ~ '^[0-9]+C$' THEN 'aisle'   -- Row + C = aisle
+    WHEN seat_element.value::text ~ '^[0-9]+D$' THEN 'aisle'   -- Row + D = aisle
+    WHEN seat_element.value::text ~ '^[0-9]+E$' THEN 'aisle'   -- Row + E = aisle
     ELSE 'aisle'
   END as position,
   CASE
-    WHEN seat_element #>> '{}' LIKE 'VIP%' THEN 50000  -- VIP surcharge
-    WHEN seat_element #>> '{}' LIKE 'H%A' OR seat_element #>> '{}' LIKE 'H%B' THEN 100000  -- Sleeper surcharge
+    WHEN seat_element.value::text LIKE 'VIP%' THEN 50000  -- VIP surcharge
+    WHEN seat_element.value::text LIKE 'H%A' OR seat_element.value::text LIKE 'H%B' THEN 100000  -- Sleeper surcharge
     ELSE 0
   END as price,
+  (row_data->>'row')::integer as row_num,
+  seat_element.column_index as col_num,
   true as is_active
 FROM buses b
 JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
 JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
 CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
-CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') as seat_element
-WHERE seat_element IS NOT NULL
-  AND seat_element #>> '{}' IS NOT NULL
-  AND seat_element #>> '{}' != 'null'
+CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') WITH ORDINALITY as seat_element(value, column_index)
+WHERE seat_element.value IS NOT NULL
+  AND seat_element.value::text != 'null'
 ON CONFLICT (bus_id, seat_code) DO NOTHING;
