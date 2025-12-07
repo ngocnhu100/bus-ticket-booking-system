@@ -94,6 +94,19 @@ app.post('/send-email', async (req, res) => {
         break;
       }
 
+      case 'booking-ticket': {
+        const { bookingData, ticketUrl, qrCode } = req.body;
+        if (!bookingData || !ticketUrl) {
+          return res.status(400).json({
+            success: false,
+            error: { code: 'VAL_001', message: 'bookingData and ticketUrl required for ticket emails' },
+            timestamp: new Date().toISOString()
+          });
+        }
+        await emailService.sendTicketEmail(to, bookingData, ticketUrl, qrCode);
+        break;
+      }
+
       default:
         // Generic email sending
         {

@@ -1,5 +1,6 @@
 const bookingRepository = require('./bookingRepository');
 const redisClient = require('./redis');
+const ticketService = require('./services/ticketService');
 
 class BookingService {
   /**
@@ -180,6 +181,64 @@ class BookingService {
   async getUserBookings(userId, page = 1, limit = 10) {
     const offset = (page - 1) * limit;
     return await bookingRepository.findByUserId(userId, limit, offset);
+  }
+
+  /**
+   * Confirm booking and trigger ticket generation
+   * @param {string} bookingId - Booking UUID
+   * @returns {Promise<object>} Confirmed booking with ticket info
+   */
+  async confirmBooking(bookingId) {
+    try {
+      console.log(`✅ Confirming booking: ${bookingId}`);
+
+      // 1. Update booking status to confirmed
+      const confirmedBooking = await bookingRepository.confirmBooking(bookingId);
+
+      if (!confirmedBooking) {
+        throw new Error(`Booking not found: ${bookingId}`);
+      }
+
+      // 2. Generate ticket asynchronously (non-blocking)
+      // If ticket generation fails, booking is still confirmed
+      ticketService.processTicketGeneration(bookingId)
+        .then(() => {
+          console.log(`✅ Ticket generated successfully for: ${confirmedBooking.booking_reference}`);
+        })
+        .catch(error => {
+          console.error(`❌ Ticket generation failed for ${confirmedBooking.booking_reference}:`, error.message);
+          // Log but don't throw - booking confirmation succeeded
+        });
+
+      console.log(`✅ Booking confirmed: ${confirmedBooking.booking_reference}`);
+
+      return confirmedBooking;
+    } catch (error) {
+      console.error(`❌ Error confirming booking ${bookingId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get booking by ID with ticket info
+   * @param {string} bookingId - Booking UUID
+   * @returns {Promise<object>} Booking with eTicket info
+   */
+  async getBookingById(bookingId) {
+    const booking = await bookingRepository.findById(bookingId);
+    
+    if (!booking) {
+      return null;
+    }
+
+    // Format response with eTicket
+    return {
+      ...booking,
+      eTicket: {
+        ticketUrl: booking.ticket_url || null,
+        qrCode: booking.qr_code_url || null
+      }
+    };
   }
 }
 

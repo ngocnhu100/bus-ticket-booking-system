@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useLocation, Link } from 'react-router-dom'
-import { CheckCircle, Loader2, AlertCircle, Download, Mail } from 'lucide-react'
+import {
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+  Download,
+  Mail,
+  Ticket,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Header } from '@/components/landing/Header'
@@ -232,6 +239,56 @@ export function BookingConfirmation() {
               </span>
             </div>
           </Card>
+
+          {/* E-Ticket Section */}
+          {booking.eTicket && booking.eTicket.ticketUrl && (
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Ticket className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-semibold">Your E-Ticket</h2>
+              </div>
+
+              <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
+                {/* QR Code Display */}
+                {booking.eTicket.qrCode && (
+                  <div className="flex flex-col items-center gap-4 pb-4 border-b">
+                    <div className="bg-white p-4 rounded-lg shadow-sm">
+                      <img
+                        src={booking.eTicket.qrCode}
+                        alt="Ticket QR Code"
+                        className="w-48 h-48"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium">
+                        Scan QR Code for Verification
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Show this code at the boarding gate
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Download Button */}
+                <div className="flex flex-col gap-3">
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() =>
+                      window.open(booking.eTicket!.ticketUrl!, '_blank')
+                    }
+                  >
+                    <Download className="mr-2 h-5 w-5" />
+                    Download PDF Ticket
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Your ticket has been sent to {booking.contactEmail}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Booking Details */}
           <Card className="p-6 space-y-2">

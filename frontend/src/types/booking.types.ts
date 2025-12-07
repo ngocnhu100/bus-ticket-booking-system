@@ -6,6 +6,11 @@ export interface Passenger {
   price?: number
 }
 
+export interface ETicket {
+  ticketUrl: string | null
+  qrCode: string | null
+}
+
 export interface CreateBookingRequest {
   tripId: string
   passengers: Passenger[]
@@ -28,6 +33,7 @@ export interface Booking {
   createdAt: string
   updatedAt: string
   passengers: Passenger[]
+  eTicket?: ETicket
 }
 
 export interface BookingResponse {

@@ -101,7 +101,13 @@ class BookingController {
 
         return res.json({
           success: true,
-          data: booking,
+          data: {
+            ...booking,
+            eTicket: {
+              ticketUrl: booking.ticket_url || null,
+              qrCode: booking.qr_code_url || null
+            }
+          },
           timestamp: new Date().toISOString()
         });
       }
@@ -139,7 +145,13 @@ class BookingController {
 
       res.json({
         success: true,
-        data: booking,
+        data: {
+          ...booking,
+          eTicket: {
+            ticketUrl: booking.ticket_url || null,
+            qrCode: booking.qr_code_url || null
+          }
+        },
         timestamp: new Date().toISOString()
       });
     } catch (error) {
@@ -185,6 +197,51 @@ class BookingController {
       });
     } catch (error) {
       console.error('⚠️ Lookup booking error:', error);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+
+  async confirmBooking(req, res) {
+    try {
+      const { bookingId } = req.params;
+
+      console.log(`🔄 Confirming booking: ${bookingId}`);
+
+      // Confirm booking and trigger ticket generation
+      const confirmedBooking = await bookingService.confirmBooking(bookingId);
+
+      if (!confirmedBooking) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'BOOKING_003', message: 'Booking not found' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Get updated booking with ticket info (may not be available immediately)
+      const bookingWithTicket = await bookingService.getBookingById(bookingId);
+
+      res.json({
+        success: true,
+        data: bookingWithTicket,
+        message: 'Booking confirmed successfully. Ticket is being generated and will be emailed to you shortly.',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('⚠️ Confirm booking error:', error);
+      
+      if (error.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'BOOKING_003', message: 'Booking not found' },
+          timestamp: new Date().toISOString()
+        });
+      }
+
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Internal server error' },

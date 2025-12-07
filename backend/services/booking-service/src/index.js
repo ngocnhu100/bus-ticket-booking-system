@@ -31,11 +31,17 @@ app.get('/health', (req, res) => {
 app.post('/bookings', optionalAuthenticate, bookingController.createBooking);
 app.post('/bookings/lookup', bookingController.lookupBooking);
 
+// Booking confirmation endpoint
+app.post('/bookings/:bookingId/confirm', optionalAuthenticate, bookingController.confirmBooking);
+
 // Protected routes (authenticated users only)
 app.get('/bookings/user', authenticate, bookingController.getUserBookings);
 
 // Booking lookup - supports both authenticated and guest (with contact verification)
 app.get('/bookings/:bookingReference', optionalAuthenticate, bookingController.getBooking);
+
+// Serve ticket files (static)
+app.use('/tickets', express.static('tickets'));
 
 // Error handling
 app.use((err, req, res, next) => {

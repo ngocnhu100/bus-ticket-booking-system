@@ -1,4 +1,5 @@
 const sgMail = require('@sendgrid/mail');
+const { generateTicketEmailTemplate } = require('../templates/ticketEmailTemplate');
 
 // Only set API key if it's provided
 if (process.env.SENDGRID_API_KEY) {
@@ -179,6 +180,44 @@ class EmailService {
       console.error('⚠️ Error sending password changed email:', error);
       console.error('⚠️ SendGrid response:', error.response?.body || error.message);
       throw new Error('Failed to send password changed email');
+    }
+  }
+
+  async sendTicketEmail(email, bookingData, ticketUrl, qrCode) {
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(`📧 [DEV MODE] Ticket email would be sent to ${email} for booking ${bookingData.reference}`);
+      console.log(`📧 [DEV MODE] Ticket URL: ${ticketUrl}`);
+      return { success: true, mode: 'development' };
+    }
+
+    const htmlContent = generateTicketEmailTemplate({
+      bookingReference: bookingData.reference,
+      tripId: bookingData.tripId,
+      status: bookingData.status,
+      totalPrice: bookingData.totalPrice,
+      currency: bookingData.currency,
+      passengers: bookingData.passengers,
+      contactEmail: bookingData.contactEmail,
+      contactPhone: bookingData.contactPhone,
+      ticketUrl,
+      qrCode
+    });
+
+    const msg = {
+      to: email,
+      from: DEFAULT_EMAIL_FROM,
+      subject: `Your Bus Ticket - ${bookingData.reference}`,
+      html: htmlContent
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(`📧 Ticket email sent to ${email} for booking ${bookingData.reference}`);
+    } catch (error) {
+      console.error('⚠️ Error sending ticket email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send ticket email');
     }
   }
 }

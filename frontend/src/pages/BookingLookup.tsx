@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { Search, Mail, Phone, Ticket, AlertCircle } from 'lucide-react'
+import {
+  Search,
+  Mail,
+  Phone,
+  Ticket,
+  AlertCircle,
+  Download,
+} from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +31,10 @@ interface BookingData {
     seat_code: string
     phone: string
   }>
+  eTicket?: {
+    ticketUrl: string | null
+    qrCode: string | null
+  }
 }
 
 export function BookingLookup() {
@@ -67,8 +78,30 @@ export function BookingLookup() {
 
       const response = await axios.get(url)
 
+      console.log('API Response:', response.data)
+
       if (response.data.success) {
-        setBooking(response.data.data)
+        const bookingData = response.data.data
+        console.log('Raw booking data:', JSON.stringify(bookingData, null, 2))
+        console.log('Has eTicket?', bookingData.eTicket)
+        console.log('ticket_url:', bookingData.ticket_url)
+        console.log('qr_code_url:', bookingData.qr_code_url)
+
+        // Map eTicket - backend might return both formats
+        if (!bookingData.eTicket || !bookingData.eTicket.ticketUrl) {
+          if (bookingData.ticket_url || bookingData.qr_code_url) {
+            bookingData.eTicket = {
+              ticketUrl: bookingData.ticket_url,
+              qrCode: bookingData.qr_code_url,
+            }
+            console.log(
+              'Created eTicket from snake_case fields:',
+              bookingData.eTicket
+            )
+          }
+        }
+
+        setBooking(bookingData)
       } else {
         setError('Không tìm thấy đặt vé')
       }
@@ -272,6 +305,54 @@ export function BookingLookup() {
                   </p>
                 </div>
               </div>
+
+              {/* E-Ticket Section */}
+              {booking.eTicket && booking.eTicket.ticketUrl && (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Ticket className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold">Vé điện tử (E-Ticket)</h3>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
+                    {/* QR Code Display */}
+                    {booking.eTicket.qrCode && (
+                      <div className="flex flex-col items-center gap-4 pb-4 border-b border-white/50">
+                        <div className="bg-white p-4 rounded-lg shadow-sm">
+                          <img
+                            src={booking.eTicket.qrCode}
+                            alt="QR Code vé"
+                            className="w-40 h-40"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium">
+                            Quét mã QR để xác thực
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Xuất trình mã này khi lên xe
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Download Button */}
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      onClick={() =>
+                        window.open(booking.eTicket!.ticketUrl!, '_blank')
+                      }
+                    >
+                      <Download className="mr-2 h-5 w-5" />
+                      Tải xuống vé PDF
+                    </Button>
+                    <p className="text-xs text-center text-muted-foreground">
+                      Vé đã được gửi đến {booking.contact_email}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Passengers */}
               <div className="pt-4 border-t">

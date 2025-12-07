@@ -154,6 +154,79 @@ class BookingRepository {
     const result = await pool.query(query, [bookingReference]);
     return result.rows[0].exists;
   }
+
+  async findById(bookingId) {
+    const query = `
+      SELECT b.*, 
+        json_agg(
+          json_build_object(
+            'ticket_id', bp.ticket_id,
+            'booking_id', bp.booking_id,
+            'seat_code', bp.seat_code,
+            'price', bp.price,
+            'full_name', bp.full_name,
+            'phone', bp.phone,
+            'document_id', bp.document_id,
+            'created_at', bp.created_at
+          )
+        ) as passengers
+      FROM bookings b
+      LEFT JOIN booking_passengers bp ON b.booking_id = bp.booking_id
+      WHERE b.booking_id = $1
+      GROUP BY b.booking_id
+    `;
+
+    const result = await pool.query(query, [bookingId]);
+    return result.rows[0] || null;
+  }
+
+  async updateTicketInfo(bookingId, ticketData) {
+    const { ticketUrl, qrCode } = ticketData;
+    
+    const query = `
+      UPDATE bookings
+      SET 
+        ticket_url = $1,
+        qr_code_url = $2,
+        updated_at = NOW()
+      WHERE booking_id = $3
+      RETURNING *
+    `;
+
+    const values = [ticketUrl, qrCode, bookingId];
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  }
+
+  async updateBookingStatus(bookingId, status) {
+    const query = `
+      UPDATE bookings
+      SET 
+        status = $1,
+        updated_at = NOW()
+      WHERE booking_id = $2
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [status, bookingId]);
+    return result.rows[0];
+  }
+
+  async confirmBooking(bookingId) {
+    const query = `
+      UPDATE bookings
+      SET 
+        status = 'confirmed',
+        payment_status = 'paid',
+        paid_at = NOW(),
+        updated_at = NOW()
+      WHERE booking_id = $1
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, [bookingId]);
+    return result.rows[0];
+  }
 }
 
 module.exports = new BookingRepository();
