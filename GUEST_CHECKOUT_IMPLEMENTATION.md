@@ -1,111 +1,60 @@
-# Guest Checkout Implementation
+# Guest Checkout Implementation Summary
 
-## ✨ Features
+## Overview
 
-**Guest checkout** allows users to book bus tickets without creating an account.
+Implemented a complete **guest checkout feature** for the bus ticket booking system, allowing users to book tickets **WITHOUT login/registration**. The implementation follows microservices architecture and integrates seamlessly with the existing system.
 
-### Implemented:
+---
 
-- ✅ Book tickets without login (no JWT required)
-- ✅ Contact validation (email OR phone)
-- ✅ Unique booking reference generation (format: `BK20241207001`)
-- ✅ Guest booking lookup (by reference + contact info)
-- ✅ 10-minute seat reservation with Redis
-- ✅ Same API works for both guest and authenticated users
+## 🎯 Key Features Delivered
 
-## 🧰 Implementation
+✅ **Guest Checkout Support** - Users can book without JWT authentication  
+✅ **Optional Authentication** - Same API endpoint works for both guest and logged-in users  
+✅ **Contact Validation** - Requires either email OR phone for guest bookings  
+✅ **Seat Locking** - Redis-based seat reservation (10 minutes) prevents double-booking  
+✅ **Booking Reference Generation** - Unique reference codes (e.g., BK20240115ABC123)  
+✅ **Frontend Integration** - Complete booking UI with guest toggle  
+✅ **Confirmation Page** - Displays booking details after successful creation
 
-### Backend Files:
+---
 
-```
-booking-service/src/
-├── bookingController.js    - Guest checkout logic
-├── bookingService.js       - Redis seat locking + reference generation
-├── bookingRepository.js    - DB queries (nullable user_id)
-├── validators.js           - Contact validation (email OR phone)
-└── middleware.js           - optionalAuthenticate middleware
-```
+## 📁 Files Created/Modified
 
-### Frontend Files:
+### **Backend - NEW Booking Service**
+
+#### 1. **Service Structure** (`/backend/services/booking-service/`)
 
 ```
-frontend/src/
-├── components/booking/BookingForm.tsx  - Guest mode toggle
-├── pages/BookingLookup.tsx             - Guest lookup page
-└── api/booking.api.ts                  - API calls (no auth for guests)
+booking-service/
+├── package.json                 # Dependencies: express, pg, redis, joi, uuid
+├── Dockerfile                   # Multi-stage Node 18 alpine build
+└── src/
+    ├── index.js                 # Express server (port 3004)
+    ├── bookingController.js     # Request handlers with guest logic
+    ├── bookingService.js        # Business logic + seat locking
+    ├── bookingRepository.js     # PostgreSQL queries
+    ├── validators.js            # Joi schemas
+    ├── middleware.js            # optionalAuthenticate & authenticate
+    ├── database.js              # PostgreSQL connection pool
+    └── redis.js                 # Redis client for seat locking
 ```
 
-### Database:
+#### 2. **Key Implementation Details**
 
-```sql
-ALTER TABLE bookings
-  ALTER COLUMN user_id DROP NOT NULL,
-  ADD contact_email VARCHAR(100),
-  ADD contact_phone VARCHAR(20);
-```
-
-### Key Logic:
+**`src/index.js`** - Express Server
 
 ```javascript
-// Booking reference: BK + YYYYMMDD + Redis sequence
-await redisClient.incr(`booking:sequence:${dateKey}`);
-
-// Conditional auth
-if (!isGuestCheckout && !userId) throw AuthError;
-if (isGuestCheckout && !contactEmail && !contactPhone) throw ValidationError;
-```
-
-## 🧪 Testing
-
-### Quick Test Script:
-
-```bash
-cd backend/services/booking-service
-node test-booking-reference.js
-```
-
-### API Test:
-
-```bash
-# Create guest booking
-curl -X POST http://localhost:3004/bookings \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tripId": "TRIP_TEST_001",
-    "isGuestCheckout": true,
-    "contactEmail": "guest@test.com",
-    "contactPhone": "0901234567",
-    "passengers": [{"fullName": "Test User", "seatNumber": "A1"}],
-    "totalPrice": 200000
-  }'
-
-# Lookup booking (no auth required)
-curl "http://localhost:3004/bookings/BK20241207001?contactEmail=guest@test.com"
-```
-
-### Test Results:
-
-- ✅ **Unique References**: 100% unique (tested with 20 concurrent requests)
-- ✅ **Format**: `BK20241207086` (BK + date + sequence)
-- ✅ **Seat Locking**: Prevents double-booking
-- ✅ **Guest Validation**: Requires email AND phone
-- ✅ **Lookup Security**: Only returns booking if contact matches
-
-### Frontend Test:
-
-1. Visit `http://localhost:5173/booking-demo`
-2. Select seats → Proceed → Toggle "Guest mode"
-3. Fill contact info (email + phone required)
-4. Submit → View confirmation with booking reference
-5. Test lookup at `http://localhost:5173/booking-lookup`
-   app.get("/bookings/user", authenticate, getUserBookings);
+// Routes with optional authentication
+app.post("/bookings", optionalAuthenticate, createBooking);
+app.get("/bookings/:bookingReference", getBookingByReference);
+app.post("/bookings/lookup", lookupBooking);
+app.get("/bookings/user", authenticate, getUserBookings);
 
 // Health check
 app.get("/health", (req, res) => {
-res.json({ status: "healthy", service: "booking-service" });
+  res.json({ status: "healthy", service: "booking-service" });
 });
-
-````
+```
 
 **`src/middleware.js`** - Optional Authentication
 
@@ -131,7 +80,7 @@ async function optionalAuthenticate(req, res, next) {
     next();
   }
 }
-````
+```
 
 **`src/validators.js`** - Guest Validation
 

@@ -14,14 +14,14 @@ const MOCK_TRIP: Trip = {
   trip_id: 'TRIP_TEST_001',
   route: {
     route_id: '123e4567-e89b-12d3-a456-426614174001',
-    origin: 'TP. Hồ Chí Minh',
-    destination: 'Đà Lạt',
+    origin: 'Ho Chi Minh City',
+    destination: 'Da Lat',
     distance_km: 308,
     estimated_minutes: 390,
   },
   operator: {
     operator_id: '123e4567-e89b-12d3-a456-426614174003',
-    name: 'Phương Trang',
+    name: 'BusGo Express',
     rating: 4.8,
   },
   bus: {
@@ -69,14 +69,14 @@ const MOCK_TRIP: Trip = {
   dropoff_points: [
     {
       point_id: '1',
-      name: 'Trung tâm Đà Lạt',
-      address: '01 Nguyễn Thị Minh Khai',
+      name: 'Da Lat City Center',
+      address: '01 Nguyen Thi Minh Khai',
       time: '2024-12-20T14:15:00Z',
     },
     {
       point_id: '2',
-      name: 'Hồ Xuân Hương',
-      address: 'Trần Quốc Toản',
+      name: 'Xuan Huong Lake',
+      address: 'Tran Quoc Toan',
       time: '2024-12-20T14:30:00Z',
     },
   ],

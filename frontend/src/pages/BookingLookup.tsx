@@ -52,12 +52,12 @@ export function BookingLookup() {
 
     // Validation
     if (!bookingReference.trim()) {
-      setError('Vui lòng nhập mã đặt vé')
+      setError('Please enter booking reference')
       return
     }
 
     if (!contactEmail.trim() && !contactPhone.trim()) {
-      setError('Vui lòng nhập email HOẶC số điện thoại')
+      setError('Please enter email OR phone number')
       return
     }
 
@@ -103,16 +103,16 @@ export function BookingLookup() {
 
         setBooking(bookingData)
       } else {
-        setError('Không tìm thấy đặt vé')
+        setError('Booking not found')
       }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         const errorMessage =
           err.response.data?.error?.message ||
-          'Không tìm thấy đặt vé hoặc thông tin không khớp'
+          'Booking not found or contact information does not match'
         setError(errorMessage)
       } else {
-        setError('Có lỗi xảy ra. Vui lòng thử lại.')
+        setError('An error occurred. Please try again.')
       }
       console.error('Lookup error:', err)
     } finally {
@@ -153,9 +153,10 @@ export function BookingLookup() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Tra Cứu Đặt Vé</h1>
+          <h1 className="text-3xl font-bold mb-2">Booking Lookup</h1>
           <p className="text-muted-foreground">
-            Nhập mã đặt vé và thông tin liên hệ để tra cứu
+            Enter booking reference and contact information to look up your
+            booking
           </p>
         </div>
 
@@ -166,19 +167,19 @@ export function BookingLookup() {
             <div>
               <Label htmlFor="bookingReference" className="flex items-center">
                 <Ticket className="w-4 h-4 mr-2" />
-                Mã đặt vé *
+                Booking Reference *
               </Label>
               <Input
                 id="bookingReference"
                 type="text"
-                placeholder="VD: BK202512064939"
+                placeholder="Ex: BK202512064939"
                 value={bookingReference}
                 onChange={(e) => setBookingReference(e.target.value)}
                 className="mt-2"
                 disabled={loading}
               />
               <p className="text-sm text-muted-foreground mt-1">
-                Mã đặt vé gồm 16 ký tự, bắt đầu bằng BK
+                Booking reference has 16 characters, starts with BK
               </p>
             </div>
 
@@ -186,7 +187,7 @@ export function BookingLookup() {
             <div>
               <Label htmlFor="contactEmail" className="flex items-center">
                 <Mail className="w-4 h-4 mr-2" />
-                Email liên hệ
+                Contact Email
               </Label>
               <Input
                 id="contactEmail"
@@ -203,7 +204,7 @@ export function BookingLookup() {
             <div>
               <Label htmlFor="contactPhone" className="flex items-center">
                 <Phone className="w-4 h-4 mr-2" />
-                Số điện thoại liên hệ
+                Contact Phone
               </Label>
               <Input
                 id="contactPhone"
@@ -218,8 +219,8 @@ export function BookingLookup() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
               <AlertCircle className="w-4 h-4 inline mr-2" />
-              Vui lòng nhập <strong>email HOẶC số điện thoại</strong> bạn đã
-              dùng khi đặt vé
+              Please enter <strong>email OR phone number</strong> you used when
+              booking
             </div>
 
             {/* Error Message */}
@@ -240,12 +241,12 @@ export function BookingLookup() {
               {loading ? (
                 <>
                   <Search className="w-4 h-4 mr-2 animate-spin" />
-                  Đang tra cứu...
+                  Looking up...
                 </>
               ) : (
                 <>
                   <Search className="w-4 h-4 mr-2" />
-                  Tra cứu đặt vé
+                  Look Up Booking
                 </>
               )}
             </Button>
@@ -259,9 +260,11 @@ export function BookingLookup() {
               {/* Header */}
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Thông Tin Đặt Vé</h2>
+                  <h2 className="text-2xl font-bold mb-2">
+                    Booking Information
+                  </h2>
                   <p className="text-muted-foreground">
-                    Mã đặt vé: {booking.booking_reference}
+                    Booking Reference: {booking.booking_reference}
                   </p>
                 </div>
                 <Badge className={getStatusColor(booking.status)}>
@@ -272,14 +275,12 @@ export function BookingLookup() {
               {/* Booking Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">
-                    Mã chuyến xe
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-1">Trip ID</p>
                   <p className="font-medium">{booking.trip_id}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
-                    Tổng tiền
+                    Total Amount
                   </p>
                   <p className="font-bold text-lg text-green-600">
                     {parseFloat(booking.total_price).toLocaleString('vi-VN')}{' '}
@@ -292,13 +293,13 @@ export function BookingLookup() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
-                    Số điện thoại
+                    Phone Number
                   </p>
                   <p className="font-medium">{booking.contact_phone}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
-                    Ngày đặt vé
+                    Booking Date
                   </p>
                   <p className="font-medium">
                     {new Date(booking.created_at).toLocaleString('vi-VN')}
@@ -399,7 +400,7 @@ export function BookingLookup() {
                     setContactPhone('')
                   }}
                 >
-                  Tra cứu vé khác
+                  Look up another booking
                 </Button>
               </div>
             </div>
@@ -409,10 +410,10 @@ export function BookingLookup() {
         {/* Demo Instructions */}
         {!booking && (
           <Card className="p-6 bg-gray-50 mt-6">
-            <h3 className="font-semibold mb-3">💡 Hướng dẫn test</h3>
+            <h3 className="font-semibold mb-3">💡 Test Instructions</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <strong>Bước 1:</strong> Tạo booking mới tại{' '}
+                <strong>Step 1:</strong> Create new booking at{' '}
                 <a
                   href="/booking-demo"
                   className="text-blue-600 hover:underline"
@@ -421,18 +422,20 @@ export function BookingLookup() {
                 </a>
               </p>
               <p>
-                <strong>Bước 2:</strong> Copy mã đặt vé (VD: BK202512064939)
+                <strong>Step 2:</strong> Copy booking reference (Ex:
+                BK202512064939)
               </p>
               <p>
-                <strong>Bước 3:</strong> Nhập mã + email/phone đã dùng khi đặt
+                <strong>Step 3:</strong> Enter reference + email/phone used when
+                booking
               </p>
               <p>
-                <strong>Bước 4:</strong> Click "Tra cứu đặt vé"
+                <strong>Step 4:</strong> Click "Look Up Booking"
               </p>
               <div className="mt-4 p-3 bg-white rounded border">
-                <p className="font-medium mb-2">Test case mẫu:</p>
+                <p className="font-medium mb-2">Sample test case:</p>
                 <code className="text-xs">
-                  Mã: BK202512064939
+                  Reference: BK202512064939
                   <br />
                   Email: testguest@example.com
                   <br />

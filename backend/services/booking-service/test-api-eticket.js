@@ -6,8 +6,8 @@ const BOOKING_SERVICE_URL = 'http://localhost:3004';
 // Mock trip data
 const mockTrip = {
   trip_id: 'TRIP_TEST_001',
-  departure_location: 'Hà Nội',
-  arrival_location: 'Hồ Chí Minh',
+  departure_location: 'Hanoi',
+  arrival_location: 'Ho Chi Minh',
   departure_time: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
   arrival_time: new Date(Date.now() + 90000000).toISOString(),
   base_price: 500000,
@@ -32,14 +32,14 @@ async function testETicketFlow() {
       contactPhone: '0901234567',
       passengers: [
         {
-          fullName: 'Nguyễn Văn Test',
+          fullName: 'John Smith',
           seatNumber: seat1,
           documentType: 'CITIZEN_ID',
           documentId: '001234567890',
           phone: '0901111111'
         },
         {
-          fullName: 'Trần Thị Test',
+          fullName: 'Jane Doe',
           seatNumber: seat2,
           documentType: 'PASSPORT',
           documentId: 'P001234567891',

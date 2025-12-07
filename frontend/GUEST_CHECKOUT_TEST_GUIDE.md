@@ -1,78 +1,53 @@
-# Guest Checkout - Test Guide
+# Guest Checkout Testing Guide
 
-## 🚀 Quick Test
+## 🎯 Quick Test - Demo Page
 
-### 1. Demo Page (No Login Required)
+### Access Demo Page
 
-```bash
+```
 http://localhost:5173/booking-demo
 ```
 
-**Steps:**
+Trang demo này cho phép bạn test guest checkout flow hoàn chỉnh mà không cần:
 
-1. Select seats (white = available, gray = booked)
-2. Click "Proceed to Booking"
-3. Toggle "Guest mode" ON
-4. Fill contact info:
-   - Email: `guest@test.com` (required)
-   - Phone: `0901234567` (required)
-5. Fill passenger names
-6. Click "Book Now"
-7. View confirmation page with booking reference
+- ❌ Tìm kiếm chuyến xe
+- ❌ Database có trip thật
+- ❌ Đăng nhập
 
-### 2. Guest Booking Lookup
+### Demo Features
 
-```bash
-http://localhost:5173/booking-lookup
-```
+- ✅ Mock trip data (TP.HCM → Đà Lạt)
+- ✅ Mock seat map (16 ghế, 3 ghế đã đặt)
+- ✅ Select multiple seats
+- ✅ Real-time price calculation
+- ✅ Guest checkout form
+- ✅ Booking confirmation
 
-**Steps:**
+---
 
-1. Enter booking reference: `BK20241207001`
-2. Enter email OR phone used during booking
-3. Click "Lookup"
-4. View booking details + e-ticket
+## 📝 Test Steps
 
-## 🧪 API Testing
+### **Test 1: Guest Checkout (Không đăng nhập)**
 
-### Create Guest Booking
+1. **Truy cập demo page:**
 
-```bash
-curl -X POST http://localhost:3004/bookings \
-  -H "Content-Type: application/json" \
-  -d '{
-    "tripId": "TRIP_TEST_001",
-    "isGuestCheckout": true,
-    "contactEmail": "test@example.com",
-    "contactPhone": "0901234567",
-    "passengers": [{
-      "fullName": "John Doe",
-      "seatNumber": "A1"
-    }],
-    "totalPrice": 200000
-  }'
-```
+   ```
+   http://localhost:5173/booking-demo
+   ```
 
-### Lookup Booking
+2. **Chọn ghế:**
+   - Click vào các ghế màu trắng (available)
+   - Ghế màu xám là đã đặt (không click được)
+   - Chọn ít nhất 1 ghế
 
-```bash
-curl "http://localhost:3004/bookings/BK20241207001?contactEmail=test@example.com"
-```
+3. **Click "Proceed to Booking"**
 
-## ✅ Test Results
-
-**Booking Reference Generation:**
-
-- ✅ Sequential: All unique (tested 5 concurrent)
-- ✅ Concurrent: 14/20 success (seat conflicts expected)
-- ✅ Format: `BK20241207086` (BK + YYYYMMDD + sequence)
-
-**Guest Checkout:**
-
-- ✅ No JWT required
-- ✅ Contact validation works (email OR phone)
-- ✅ Seat locking prevents double-booking
-- ✅ Booking confirmation page displays correctly
+4. **Điền thông tin:**
+   - ✅ Guest mode: ON (default)
+   - ✅ Contact Email: `guest@example.com` HOẶC
+   - ✅ Contact Phone: `+84987654321`
+   - ✅ Passenger 1 - Full Name: `Nguyễn Văn A`
+   - ⚠️ ID Number & Phone (optional)
 
 5. **Click "Confirm Booking"**
 

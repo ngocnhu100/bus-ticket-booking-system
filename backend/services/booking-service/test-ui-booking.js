@@ -50,7 +50,7 @@ async function testUIBooking() {
     console.log(`   1. Go to: http://localhost:5174/booking-lookup`);
     console.log(`   2. Enter Reference: ${BOOKING_REF}`);
     console.log(`   3. Enter Email: ${CONTACT_EMAIL}`);
-    console.log(`   4. Click "Tra cứu đặt vé"`);
+    console.log(`   4. Click "Look Up Booking"`);
     console.log(`   5. Should see E-Ticket section with QR code and download button\n`);
 
   } catch (error) {

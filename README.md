@@ -1,6 +1,28 @@
 # Bus Ticket Booking System
 
-Hệ thống đặt vé xe buýt trực tuyến với kiến trúc microservices, cung cấp giải pháp toàn diện cho việc tìm kiếm, đặt vé và quản lý chuyến xe.
+**Production-Ready** | Microservices Architecture | Guest Checkout | E-Ticket Generation
+
+## 🎯 Overview
+
+Enterprise bus ticketing platform with guest checkout, real-time seat booking, automated e-ticket generation, and comprehensive admin management.
+
+## ✨ Key Features (Dec 2025)
+
+### For Passengers
+
+- 🎫 **Guest Checkout** - Book without registration (email + phone required)
+- 🔍 **Trip Search** - Advanced filters (price, time, bus type, amenities)
+- 💺 **Real-time Seat Selection** - Redis-backed seat locking (10 min hold)
+- 📧 **E-Ticket Delivery** - Auto PDF + QR code via email
+- 📱 **Booking Lookup** - Search by reference + contact verification
+- 🖨️ **Print/Download** - Browser-optimized ticket printing
+
+### For Operators
+
+- 🚌 **Fleet Management** - Buses, routes, operators, schedules
+- 📊 **Analytics Dashboard** - Bookings, revenue, occupancy metrics
+- 🗓️ **Trip Scheduling** - Calendar view with bulk operations
+- 🎨 **Seat Layout Designer** - Visual editor for bus configurations
 
 ## 🏗️ Kiến trúc hệ thống
 
@@ -51,33 +73,45 @@ Hệ thống đặt vé xe buýt trực tuyến với kiến trúc microservices
 
 ### 2. Auth Service (Port: 3001)
 
-- **Chức năng**: Quản lý xác thực và phân quyền người dùng
-- **Nhiệm vụ**:
-  - User registration & login
+- **Chức năng**: Authentication & user management
+- **Features**:
+  - User registration & login (email/password, Google OAuth)
   - JWT token generation & validation
-  - Google OAuth integration
-  - Password reset & email verification
-  - Role-based access control (RBAC)
+  - Password reset & email verification via SendGrid
+  - Role-based access control (passenger, admin)
   - Session management với Redis
 - **Technology**: Express.js, bcrypt, JWT, Google Auth Library
 
-### 3. Trip Service (Port: 3002)
+### 3. Booking Service (Port: 3004) ⭐ NEW
 
-- **Chức năng**: Quản lý và tìm kiếm chuyến xe
-- **Nhiệm vụ**:
-  - Advanced trip search với multiple filters
+- **Chức năng**: Booking & e-ticket management
+- **Features**:
+  - **Guest checkout** - No registration required
+  - Unique booking reference generation (Redis atomic counter)
+  - Real-time seat locking (10-minute hold)
+  - E-ticket generation (PDF + QR code)
+  - Automated email delivery
+  - Booking lookup with contact verification
+- **Technology**: Express.js, PostgreSQL, Redis, PDFKit, QRCode, SendGrid
+- **Documentation**: [Booking Service README](./backend/services/booking-service/README.md)
+
+### 4. Trip Service (Port: 3002)
+
+- **Chức năng**: Trip search & management
+- **Features**:
+  - Advanced trip search with multiple filters
   - Sorting (price, time, duration)
-  - Pagination
-  - Redis caching cho performance
+  - Pagination with customizable page size
+  - Redis caching for performance
   - Database indexing optimization
 - **Technology**: Express.js, PostgreSQL, Redis
-- **Chi tiết**: [Trip Service Documentation](./backend/services/trip-service/README.md)
+- **Documentation**: [Trip Service README](./backend/services/trip-service/README.md)
 
-### 4. Notification Service (Port: 3003)
+### 5. Notification Service (Port: 3003)
 
-- **Chức năng**: Gửi thông báo và email
-- **Nhiệm vụ**:
-  - Email notifications
+- **Chức năng**: Email notifications & alerts
+- **Features**:
+  - E-ticket email delivery with branded templates
   - Booking confirmations
   - Password reset emails
   - System alerts
@@ -85,15 +119,59 @@ Hệ thống đặt vé xe buýt trực tuyến với kiến trúc microservices
 
 ## ✨ Tính năng chính
 
-- ✅ User registration và login (email/password, Google OAuth)
-- ✅ Role-based access control (passenger và admin)
-- ✅ Email verification và password reset
-- ✅ Dashboards cho passengers (trip history, profile, payments, notifications)
-- ✅ Admin dashboards (stats, bookings management)
-- ✅ Advanced trip search với multiple filters
-- ✅ Trip sorting và pagination
-- ✅ Redis caching cho performance
-- ✅ Protected routes và personalized data display
+### Core Features
+
+- ✅ **Guest Checkout** - Book without login (Dec 2025)
+- ✅ **E-Ticket Generation** - PDF + QR code (Dec 2025)
+- ✅ User registration & login (email/password, Google OAuth)
+- ✅ Role-based access control (passenger, admin)
+- ✅ Email verification & password reset
+- ✅ Advanced trip search with filters
+- ✅ Real-time seat locking (Redis)
+- ✅ Booking lookup with contact verification
+- ✅ Admin dashboards (analytics, fleet management)
+- ✅ Passenger dashboards (bookings, profile)
+
+### Recent Updates (Dec 2025)
+
+- 🆕 Guest checkout without registration
+- 🆕 Unique booking reference generation (Redis atomic)
+- 🆕 E-ticket PDF generation with PDFKit
+- 🆕 QR code for boarding verification
+- 🆕 Automated email delivery
+- 🆕 Booking lookup security (contact matching)
+
+## 🧪 Testing
+
+### Quick Tests
+
+```bash
+# Test booking reference generation
+cd backend/services/booking-service
+node test-booking-reference.js
+
+# Test e-ticket generation
+node test-ui-booking.js
+
+# Test guest lookup
+.\test-guest-lookup.ps1
+```
+
+### Frontend Testing
+
+```bash
+# Visit booking lookup
+http://localhost:5173/booking-lookup
+
+# Use test booking:
+Reference: BK20251207058
+Email: test-eticket@example.com
+
+# E-ticket preview
+http://localhost:5173/e-ticket-preview
+```
+
+See [GUEST_CHECKOUT_ETICKET_SUMMARY.md](./GUEST_CHECKOUT_ETICKET_SUMMARY.md) for detailed testing guide.
 
 ## 🛠️ Tech Stack
 

@@ -111,9 +111,9 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
     const getStatusBadge = () => {
       const statusConfig = {
-        confirmed: { label: 'Đã xác nhận', variant: 'default' as const },
-        pending: { label: 'Chờ xử lý', variant: 'secondary' as const },
-        cancelled: { label: 'Đã hủy', variant: 'destructive' as const },
+        confirmed: { label: 'Confirmed', variant: 'default' as const },
+        pending: { label: 'Pending', variant: 'secondary' as const },
+        cancelled: { label: 'Cancelled', variant: 'destructive' as const },
       }
       const config = statusConfig[data.status]
       return <Badge variant={config.variant}>{config.label}</Badge>
@@ -121,10 +121,10 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
     const getPaymentBadge = () => {
       const paymentConfig = {
-        paid: { label: 'Đã thanh toán', variant: 'default' as const },
-        pending: { label: 'Chờ thanh toán', variant: 'secondary' as const },
+        paid: { label: 'Paid', variant: 'default' as const },
+        pending: { label: 'Payment Pending', variant: 'secondary' as const },
         failed: {
-          label: 'Thanh toán thất bại',
+          label: 'Payment Failed',
           variant: 'destructive' as const,
         },
       }
@@ -134,7 +134,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
     return (
       <div ref={ref} className={`e-ticket-container ${className}`}>
-        <Card className="max-w-4xl mx-auto border-2 border-black">
+        <Card className="max-w-4xl mx-auto border-2 border-black rounded-xl overflow-hidden">
           {/* Header */}
           <CardHeader className="bg-black text-white">
             <div className="flex items-center justify-between">
@@ -151,7 +151,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                   )}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">VÉ XE ĐIỆN TỬ</h1>
+                  <h1 className="text-2xl font-bold">BUS E-TICKET</h1>
                   <p className="text-sm font-medium mt-1">
                     {data.trip.operator.name}
                   </p>
@@ -167,7 +167,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                     className="gap-2"
                   >
                     <Download className="h-4 w-4" />
-                    {isDownloading ? 'Đang tải...' : 'Tải xuống'}
+                    {isDownloading ? 'Downloading...' : 'Download'}
                   </Button>
                 </div>
               )}
@@ -176,11 +176,11 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
           <CardContent className="p-6 space-y-6">
             {/* Booking Reference */}
-            <div className="border-2 border-black p-6">
+            <div className="border-2 border-black p-6 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider mb-2">
-                    MÃ ĐẶT CHỖ
+                    BOOKING REFERENCE
                   </p>
                   <p className="text-3xl font-bold tracking-wider">
                     {data.bookingReference}
@@ -198,15 +198,15 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
               <div className="flex items-center gap-2 pb-2 border-b-2 border-black">
                 <MapPin className="h-5 w-5" />
                 <h2 className="text-lg font-bold uppercase">
-                  Thông Tin Chuyến Đi
+                  Trip Information
                 </h2>
               </div>
 
               {/* Route */}
-              <div className="border-2 border-black p-4">
+              <div className="border-2 border-black p-4 rounded-lg">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <p className="text-xs font-bold uppercase mb-2">Điểm Đi</p>
+                    <p className="text-xs font-bold uppercase mb-2">From</p>
                     <p className="text-xl font-bold">
                       {data.trip.route.originCity}
                     </p>
@@ -220,7 +220,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                     )}
                   </div>
                   <div className="flex-1 text-right">
-                    <p className="text-xs font-bold uppercase mb-2">Điểm Đến</p>
+                    <p className="text-xs font-bold uppercase mb-2">To</p>
                     <p className="text-xl font-bold">
                       {data.trip.route.destinationCity}
                     </p>
@@ -233,7 +233,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span className="text-sm">Ngày đi</span>
+                    <span className="text-sm">Departure Date</span>
                   </div>
                   <p className="font-medium">
                     {formatDate(data.trip.schedule.departureTime)}
@@ -242,7 +242,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    <span className="text-sm">Giờ khởi hành</span>
+                    <span className="text-sm">Departure Time</span>
                   </div>
                   <p className="font-medium">
                     {formatTime(data.trip.schedule.departureTime)}
@@ -251,7 +251,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="h-4 w-4" />
-                    <span className="text-sm">Giờ đến dự kiến</span>
+                    <span className="text-sm">Estimated Arrival</span>
                   </div>
                   <p className="font-medium">
                     {formatTime(data.trip.schedule.arrivalTime)}
@@ -260,7 +260,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Bus className="h-4 w-4" />
-                    <span className="text-sm">Loại xe</span>
+                    <span className="text-sm">Bus Type</span>
                   </div>
                   <p className="font-medium">{data.trip.bus.type}</p>
                 </div>
@@ -268,10 +268,9 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
               {data.trip.schedule.duration && (
                 <p className="text-sm text-muted-foreground">
-                  Thời gian di chuyển:{' '}
-                  {formatDuration(data.trip.schedule.duration)}
+                  Travel Time: {formatDuration(data.trip.schedule.duration)}
                   {data.trip.route.distance &&
-                    `  Khoảng cách: ${data.trip.route.distance}km`}
+                    `  Distance: ${data.trip.route.distance}km`}
                 </p>
               )}
             </div>
@@ -280,12 +279,15 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b-2 border-black">
                 <User className="h-5 w-5" />
-                <h2 className="text-lg font-bold uppercase">Hành Khách</h2>
+                <h2 className="text-lg font-bold uppercase">Passengers</h2>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
                 {data.passengers.map((passenger, index) => (
-                  <div key={index} className="border-2 border-black p-4">
+                  <div
+                    key={index}
+                    className="border-2 border-black p-4 rounded-lg"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full border-2 border-black flex items-center justify-center">
@@ -299,7 +301,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                         </div>
                       </div>
                       <Badge variant="outline" className="border-black">
-                        Ghế {passenger.seatNumber}
+                        Seat {passenger.seatNumber}
                       </Badge>
                     </div>
                   </div>
@@ -313,7 +315,7 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
                 <div className="flex items-center gap-2 pb-2 border-b-2 border-black">
                   <Phone className="h-5 w-5" />
                   <h2 className="text-lg font-bold uppercase">
-                    Thông Tin Liên Hệ
+                    Contact Information
                   </h2>
                 </div>
 
@@ -338,21 +340,21 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
             <div className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b-2 border-black">
                 <CreditCard className="h-5 w-5" />
-                <h2 className="text-lg font-bold uppercase">Chi Tiết Giá</h2>
+                <h2 className="text-lg font-bold uppercase">Price Details</h2>
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Giá vé</span>
+                  <span className="text-muted-foreground">Ticket Price</span>
                   <span>{formatCurrency(data.pricing.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Phí dịch vụ</span>
+                  <span className="text-muted-foreground">Service Fee</span>
                   <span>{formatCurrency(data.pricing.serviceFee)}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-lg font-bold">
-                  <span>Tổng cộng</span>
+                  <span>Total</span>
                   <span className="text-primary">
                     {formatCurrency(data.pricing.total)}
                   </span>
@@ -362,18 +364,20 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
             {/* QR Code */}
             {data.qrCode && (
-              <div className="border-2 border-dashed border-black p-6 text-center space-y-4 page-break-avoid">
+              <div className="border-2 border-dashed border-black p-6 text-center space-y-4 page-break-avoid rounded-lg">
                 <div className="flex justify-center">
                   <img
                     src={data.qrCode}
                     alt="QR Code"
-                    className="w-48 h-48 border-2 border-black"
+                    className="w-48 h-48 border-2 border-black rounded-lg"
                   />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-bold uppercase">Mã QR Lên Xe</p>
+                  <p className="text-sm font-bold uppercase">
+                    Boarding QR Code
+                  </p>
                   <p className="text-xs text-muted-foreground">
-                    Vui lòng xuất trình mã này khi lên xe
+                    Please present this code when boarding
                   </p>
                 </div>
               </div>
@@ -381,11 +385,9 @@ export const ETicket = React.forwardRef<HTMLDivElement, ETicketProps>(
 
             {/* Footer Info */}
             <div className="text-center text-xs text-muted-foreground pt-4 border-t">
-              <p>
-                Vé điện tử được phát hành vào {formatDate(data.bookingDate)}
-              </p>
+              <p>E-ticket issued on {formatDate(data.bookingDate)}</p>
               <p className="mt-1">
-                Vui lòng có mặt trước 15 phút so với giờ khởi hành
+                Please arrive 15 minutes before departure time
               </p>
             </div>
           </CardContent>

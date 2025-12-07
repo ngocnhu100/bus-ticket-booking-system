@@ -10,24 +10,24 @@ const mockConfirmedBooking: ETicketData = {
   bookingDate: '2024-01-15T10:30:00Z',
   passengers: [
     {
-      name: 'Nguyễn Văn A',
+      name: 'John Smith',
       seatNumber: 'A12',
       passengerType: 'adult',
     },
     {
-      name: 'Trần Thị B',
+      name: 'Jane Doe',
       seatNumber: 'A13',
       passengerType: 'adult',
     },
   ],
   trip: {
     route: {
-      originCity: 'Hồ Chí Minh',
-      destinationCity: 'Đà Lạt',
+      originCity: 'Ho Chi Minh',
+      destinationCity: 'Da Lat',
       distance: 308,
     },
     operator: {
-      name: 'Phương Trang FUTA Bus Lines',
+      name: 'BusGo Express',
     },
     schedule: {
       departureTime: '2024-01-20T08:00:00+07:00',
@@ -36,7 +36,7 @@ const mockConfirmedBooking: ETicketData = {
     },
     bus: {
       busNumber: 'BUS-001',
-      type: 'Giường nằm VIP',
+      type: 'VIP Sleeper',
     },
   },
   pricing: {
@@ -63,7 +63,7 @@ const ETicketPreview: React.FC = () => {
     try {
       const element = ticketRef.current
       if (!element) {
-        throw new Error('Không tìm thấy vé để tải xuống')
+        throw new Error('Ticket not found for download')
       }
 
       // Get the actual ticket card content only
@@ -73,7 +73,7 @@ const ETicketPreview: React.FC = () => {
       // Create a new window with just the ticket
       const printWindow = window.open('', '_blank', 'width=800,height=600')
       if (!printWindow) {
-        throw new Error('Không thể mở cửa sổ in. Vui lòng cho phép popup.')
+        throw new Error('Cannot open print window. Please allow popups.')
       }
 
       // Write content to new window with inline CSS
@@ -283,7 +283,7 @@ const ETicketPreview: React.FC = () => {
     } catch (error) {
       console.error('Download error:', error)
       alert(
-        `Lỗi: ${error instanceof Error ? error.message : 'Không thể tải xuống vé'}. Vui lòng thử lại.`
+        `Error: ${error instanceof Error ? error.message : 'Cannot download ticket'}. Please try again.`
       )
       setIsDownloading(false)
     }
