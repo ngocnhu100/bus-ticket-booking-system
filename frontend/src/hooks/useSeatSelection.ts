@@ -86,6 +86,9 @@ export function useSeatSelection({
       if (!isSelectable(seat)) {
         return false
       }
+      if (!seat.seat_id) {
+        return false
+      }
 
       const isCurrentlySelected = isSelected(seat.seat_id)
 
@@ -244,5 +247,5 @@ export function useSeatSelection({
  * Helper function to check if seat is selectable
  */
 function isSelectable(seat: Seat): boolean {
-  return seat.is_active === true
+  return seat.status === 'available'
 }

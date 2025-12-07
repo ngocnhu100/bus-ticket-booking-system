@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { Icon } from 'lucide-react'
 import { steeringWheel } from '@lucide/lab'
@@ -18,6 +18,12 @@ interface SeatMapProps {
   maxSelectable?: number
   /** Whether the map is in read-only mode */
   readOnly?: boolean
+  /** Current user ID for lock ownership checking */
+  currentUserId?: string
+  /** User's active locks */
+  userLocks?: Array<{ seat_code: string; expires_at: string }>
+  /** Callback when a lock expires */
+  onLockExpire?: (seatCode: string) => void
   /** Custom class name */
   className?: string
 }
@@ -40,11 +46,19 @@ export function SeatMap({
   onSeatSelect,
   maxSelectable = 10,
   readOnly = false,
+  currentUserId,
+  userLocks = [],
+  onLockExpire,
   className = '',
 }: SeatMapProps) {
   const [localSelectedSeats, setLocalSelectedSeats] =
     useState<string[]>(selectedSeats)
   const [selectionError, setSelectionError] = useState<string>('')
+
+  // Sync local state with prop changes
+  useEffect(() => {
+    setLocalSelectedSeats(selectedSeats)
+  }, [selectedSeats])
 
   // Organize seats by row for easier rendering
   const seatsByRow = useMemo(() => {
@@ -79,7 +93,13 @@ export function SeatMap({
   }, [seatMapData])
 
   const handleSeatClick = (seat: Seat) => {
-    if (readOnly || seat.status !== 'available') return
+    if (readOnly) return
+
+    // Allow clicking if available or locked by current user
+    const isLockedByUser = userLocks.some(
+      (lock) => lock.seat_code === seat.seat_code
+    )
+    if (seat.status !== 'available' && !isLockedByUser) return
 
     const isCurrentlySelected = localSelectedSeats.includes(seat.seat_id!)
 
@@ -94,14 +114,7 @@ export function SeatMap({
     // Clear any previous error
     setSelectionError('')
 
-    // Update local state
-    const newSelectedSeats = isCurrentlySelected
-      ? localSelectedSeats.filter((id) => id !== seat.seat_id)
-      : [...localSelectedSeats, seat.seat_id!]
-
-    setLocalSelectedSeats(newSelectedSeats)
-
-    // Call parent callback
+    // Call parent callback - let parent handle state updates
     onSeatSelect?.(seat, !isCurrentlySelected)
   }
 
@@ -172,6 +185,12 @@ export function SeatMap({
                         const seat = rowSeats.find((s) => s.column === column)
 
                         if (seat) {
+                          const userLock = userLocks.find(
+                            (lock) => lock.seat_code === seat.seat_code
+                          )
+                          const isLockedByUser = userLocks.some(
+                            (lock) => lock.seat_code === seat.seat_code
+                          )
                           return (
                             <SeatItem
                               key={seat.seat_id}
@@ -182,7 +201,13 @@ export function SeatMap({
                                   : false
                               }
                               onClick={() => handleSeatClick(seat)}
-                              disabled={readOnly || seat.status !== 'available'}
+                              disabled={
+                                readOnly ||
+                                (seat.status !== 'available' && !isLockedByUser)
+                              }
+                              currentUserId={currentUserId}
+                              userLock={userLock}
+                              onLockExpire={onLockExpire}
                             />
                           )
                         } else {

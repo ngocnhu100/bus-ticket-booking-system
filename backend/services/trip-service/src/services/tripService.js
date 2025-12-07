@@ -3,6 +3,7 @@ const tripRepository = require('../repositories/tripRepository');
 const routeRepository = require('../repositories/routeRepository'); 
 const busRepository = require('../repositories/busRepository');
 const seatRepository = require('../repositories/seatRepository');
+const seatLockService = require('./seatLockService');
 
 class TripService {
   async createTrip(tripData) {
@@ -75,7 +76,19 @@ class TripService {
   }
 
   async getSeatMap(tripId) {
-    return await seatRepository.getSeatMapForTrip(tripId);
+    const seatMapData = await seatRepository.getSeatMapForTrip(tripId);
+    
+    // Get locked seats from Redis
+    const lockedSeats = await seatLockService.getLockedSeats(tripId);
+    
+    // Update seat statuses based on locks
+    seatMapData.seats.forEach(seat => {
+      if (lockedSeats[seat.seat_code]) {
+        seat.status = 'locked';
+      }
+    });
+    
+    return seatMapData;
   }
 }
 

@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { request as apiRequest } from '@/api/auth'
 
 export interface TripSearchParams {
   origin: string
@@ -135,22 +135,136 @@ export async function searchTrips(
     queryParams.append('limit', params.limit.toString())
   }
 
-  const response = await fetch(
-    `${API_BASE_URL}/trips/search?${queryParams.toString()}`,
+  const data = await apiRequest(`/trips/search?${queryParams.toString()}`, {
+    method: 'GET',
+  })
+
+  return data
+}
+
+// ============================================================================
+// SEAT LOCKING API FUNCTIONS
+// ============================================================================
+
+export interface SeatLockRequest {
+  tripId: string
+  seatCodes: string[]
+  userId: string
+}
+
+export interface SeatLockResponse {
+  success: boolean
+  data: {
+    locked_seats: string[]
+    expires_at: string
+  }
+  message?: string
+}
+
+export interface SeatLockExtendResponse {
+  success: boolean
+  data: {
+    extended_seats: string[]
+    expires_at: string
+  }
+  message?: string
+}
+
+export interface SeatLockReleaseResponse {
+  success: boolean
+  data: {
+    released_seats: string[]
+  }
+  message?: string
+}
+
+export interface UserLocksResponse {
+  success: boolean
+  data: {
+    trip_id: string
+    user_id: string
+    locked_seats: {
+      seat_code: string
+      locked_at: string
+      expires_at: string
+    }[]
+  }
+}
+
+/**
+ * Lock seats for a user during checkout process
+ */
+export async function lockSeats(
+  request: SeatLockRequest
+): Promise<SeatLockResponse> {
+  const body = {
+    seatCodes: request.seatCodes,
+  }
+  if (request.sessionId !== undefined) {
+    body.sessionId = request.sessionId
+  }
+  return await apiRequest(`/trips/${request.tripId}/seats/lock`, {
+    method: 'POST',
+    body,
+  })
+}
+
+/**
+ * Extend existing seat locks
+ */
+export async function extendSeatLocks(
+  request: SeatLockRequest
+): Promise<SeatLockExtendResponse> {
+  const body = {
+    seatCodes: request.seatCodes,
+  }
+  if (request.sessionId !== undefined) {
+    body.sessionId = request.sessionId
+  }
+  return await apiRequest(`/trips/${request.tripId}/seats/extend`, {
+    method: 'POST',
+    body,
+  })
+}
+
+/**
+ * Release specific seat locks
+ */
+export async function releaseSeatLocks(
+  request: SeatLockRequest
+): Promise<SeatLockReleaseResponse> {
+  const body = {
+    seatCodes: request.seatCodes,
+  }
+  if (request.sessionId !== undefined) {
+    body.sessionId = request.sessionId
+  }
+  return await apiRequest(`/trips/${request.tripId}/seats/release`, {
+    method: 'POST',
+    body,
+  })
+}
+
+/**
+ * Release all locks for a user
+ */
+export async function releaseAllSeatLocks(
+  tripId: string
+): Promise<SeatLockReleaseResponse> {
+  return await apiRequest(`/trips/${tripId}/seats/release-all`, {
+    method: 'POST',
+    body: {},
+  })
+}
+
+/**
+ * Get all active locks for a user for a specific trip
+ */
+export async function getUserLocks(tripId: string): Promise<UserLocksResponse> {
+  return await apiRequest(
+    `/trips/${encodeURIComponent(tripId)}/seats/my-locks`,
     {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
     }
   )
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(
-      errorData?.error?.message || 'Failed to search trips. Please try again.'
-    )
-  }
-
-  return response.json()
 }

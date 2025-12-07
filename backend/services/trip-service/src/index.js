@@ -9,8 +9,10 @@ const routeController = require('./controllers/routeController');
 const busModelController = require('./controllers/busModelController');
 const busController = require('./controllers/busController');
 const adminOperatorController = require('./controllers/adminOperatorController');
+const seatLockController = require('./controllers/seatLockController');
 
 const { authenticate, authorize } = require('./middleware/authMiddleware');
+const lockCleanupService = require('./services/lockCleanupService');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -19,6 +21,9 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
+
+// Start lock cleanup service
+lockCleanupService.start(5); // Clean up every 5 minutes
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
@@ -35,6 +40,13 @@ app.get('/popular-routes', routeController.getPopularRoutes);
 // --- Dynamic trip route ---
 app.get('/:id/seats', tripController.getSeats);
 app.get('/:id', tripController.getById);
+
+// --- Seat lock management ---
+app.post('/:id/seats/lock', authenticate, seatLockController.lockSeats);
+app.post('/:id/seats/extend', authenticate, seatLockController.extendLocks);
+app.post('/:id/seats/release', authenticate, seatLockController.releaseLocks);
+app.post('/:id/seats/release-all', authenticate, seatLockController.releaseAllLocks);
+app.get('/:id/seats/my-locks', authenticate, seatLockController.getMyLocks);
 
 // --- Admin: Trip management ---
 app.post('/', authenticate, authorize(['admin']), tripController.create);

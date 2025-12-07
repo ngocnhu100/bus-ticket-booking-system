@@ -1,5 +1,6 @@
 import { Check, AlertCircle } from 'lucide-react'
 import type { Seat } from '@/types/trip.types'
+import { CountdownTimer } from './CountdownTimer'
 import './SeatItem.css'
 
 interface SeatItemProps {
@@ -11,6 +12,12 @@ interface SeatItemProps {
   onClick: () => void
   /** Whether the seat is disabled (can't be clicked) */
   disabled: boolean
+  /** Current user ID */
+  currentUserId?: string
+  /** User's lock for this seat */
+  userLock?: { seat_code: string; expires_at: string }
+  /** Callback when lock expires */
+  onLockExpire?: (seatCode: string) => void
 }
 
 /**
@@ -34,6 +41,10 @@ export function SeatItem({
   isSelected,
   onClick,
   disabled,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  currentUserId,
+  userLock,
+  onLockExpire,
 }: SeatItemProps) {
   // Determine seat status class
   const getSeatStatusClass = () => {
@@ -45,7 +56,7 @@ export function SeatItem({
   }
 
   // Determine if seat is clickable
-  const isClickable = seat.status === 'available' && !disabled
+  const isClickable = !disabled
 
   // Get seat icon based on status
   const getSeatIcon = () => {
@@ -86,6 +97,18 @@ export function SeatItem({
 
         {/* Seat Code */}
         <span className="seat-code">{seat.seat_code}</span>
+
+        {/* Countdown Timer for selected seats with locks */}
+        {userLock && isSelected && (
+          <div className="seat-countdown">
+            <CountdownTimer
+              expiresAt={userLock.expires_at}
+              onExpire={() => onLockExpire?.(seat.seat_code)}
+              showWarning={true}
+              warningThreshold={120}
+            />
+          </div>
+        )}
       </div>
 
       {/* Status Indicator Dot */}

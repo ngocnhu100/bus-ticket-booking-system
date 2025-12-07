@@ -73,6 +73,8 @@ export interface Seat {
   position: 'window' | 'aisle'
   price: number
   status: 'available' | 'occupied' | 'locked'
+  locked_by?: string
+  locked_until?: string
   created_at?: string
 }
 

@@ -180,7 +180,8 @@ class AuthController {
       const accessToken = authService.generateAccessToken({ userId: user.user_id, role: user.role });
       const refreshToken = authService.generateRefreshToken({ userId: user.user_id });
 
-      // Store refresh token
+      // Delete old refresh token and store new one
+      await authService.deleteRefreshToken(user.user_id);
       await authService.storeRefreshToken(user.user_id, refreshToken);
 
       res.json({
@@ -257,6 +258,8 @@ class AuthController {
       const accessToken = authService.generateAccessToken({ userId: user.user_id, role: user.role });
       const refreshToken = authService.generateRefreshToken({ userId: user.user_id });
 
+      // Delete old refresh token and store new one
+      await authService.deleteRefreshToken(user.user_id);
       await authService.storeRefreshToken(user.user_id, refreshToken);
 
       res.json({
@@ -304,7 +307,8 @@ class AuthController {
           timestamp: new Date().toISOString()
         });
       }
-
+      // Allows old refresh tokens to remain valid, preventing logout on refresh when multiple login sessions exist.
+      /* 
       const storedToken = await authService.getRefreshToken(decoded.userId);
       if (storedToken !== refreshToken) {
         return res.status(401).json({
@@ -312,7 +316,7 @@ class AuthController {
           error: { code: 'AUTH_002', message: 'Refresh token revoked' },
           timestamp: new Date().toISOString()
         });
-      }
+      } */
 
       // Get user role from database
       const user = await userRepository.findById(decoded.userId);

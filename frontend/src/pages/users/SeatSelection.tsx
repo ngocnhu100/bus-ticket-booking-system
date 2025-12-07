@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react'
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { SeatMap } from '@/components/users/SeatMap'
-import { ChevronLeft, ArrowRight } from 'lucide-react'
+import { ChevronLeft, ArrowRight, Lock, Clock } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useSeatLocks } from '@/hooks/useSeatLocks'
+import { useAuth } from '@/context/AuthContext'
 import type { Seat, SeatMapData, Trip } from '@/types/trip.types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -35,6 +38,7 @@ function formatTime(dateString: string | undefined): string {
 export function SeatSelection() {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [trip, setTrip] = useState<Trip | null>(null)
   const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null)
@@ -42,6 +46,54 @@ export function SeatSelection() {
   const [totalPrice, setTotalPrice] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Separate function to fetch seat map
+  const fetchSeatMap = useCallback(async () => {
+    if (!tripId) return
+
+    try {
+      const seatsResponse = await fetch(`${API_BASE_URL}/trips/${tripId}/seats`)
+      console.log('Seats API response:', seatsResponse)
+      if (!seatsResponse.ok) {
+        throw new Error('Failed to fetch seat map')
+      }
+      const seatsResult = await seatsResponse.json()
+      console.log('Seats API result:', seatsResult)
+      const seatsData = seatsResult.data.seat_map || seatsResult
+      console.log('Processed seats data:', seatsData)
+      setSeatMapData(seatsData)
+    } catch (err) {
+      console.error('Error fetching seat map:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load seat map')
+    }
+  }, [tripId])
+
+  // Seat locking functionality
+  const {
+    locks: userLocks,
+    isLoading: locksLoading,
+    error: locksError,
+    lockSeats: lockSeatsApi,
+    extendLocks: extendLocksApi,
+    releaseLocks: releaseLocksApi,
+    releaseAllLocks: releaseAllLocksApi,
+    refreshLocks,
+  } = useSeatLocks({
+    autoRefreshInterval: 30, // Refresh every 30 seconds
+    onLocksExpire: (expiredLocks) => {
+      console.log('Locks expired:', expiredLocks)
+      // Refresh seat map when locks expire
+      if (tripId) {
+        fetchSeatMap()
+      }
+    },
+    onError: (error) => {
+      console.error('Seat lock error:', error)
+      setError(`Lock operation failed: ${error.message}`)
+    },
+    userId: user?.userId.toString(),
+    tripId,
+  })
 
   // Fetch trip details and seat map
   useEffect(() => {
@@ -68,18 +120,7 @@ export function SeatSelection() {
         setTrip(tripData)
 
         // Fetch seat map
-        const seatsResponse = await fetch(
-          `${API_BASE_URL}/trips/${tripId}/seats`
-        )
-        console.log('Seats API response:', seatsResponse)
-        if (!seatsResponse.ok) {
-          throw new Error('Failed to fetch seat map')
-        }
-        const seatsResult = await seatsResponse.json()
-        console.log('Seats API result:', seatsResult)
-        const seatsData = seatsResult.data.seat_map || seatsResult
-        console.log('Processed seats data:', seatsData)
-        setSeatMapData(seatsData)
+        await fetchSeatMap()
       } catch (err) {
         console.error('Error fetching trip/seats:', err)
         setError(
@@ -91,17 +132,85 @@ export function SeatSelection() {
     }
 
     fetchTripAndSeats()
-  }, [tripId])
+  }, [tripId, fetchSeatMap])
 
-  const handleSeatSelect = (seat: Seat, isSelected: boolean) => {
-    if (!seat.seat_id) return // Skip if no seat id
+  // Cleanup locks when component unmounts
+  useEffect(() => {
+    return () => {
+      // Release all locks when leaving the page
+      if (user && selectedSeats.length > 0 && tripId) {
+        releaseAllLocksApi(tripId, user.userId.toString()).catch((err) => {
+          console.error('Error releasing locks on unmount:', err)
+        })
+      }
+    }
+  }, [user, selectedSeats.length, tripId, releaseAllLocksApi])
 
-    if (isSelected) {
-      setSelectedSeats([...selectedSeats, seat.seat_id])
-      setTotalPrice((prev) => prev + seat.price)
+  // Set selectedSeats from loaded locks
+  useEffect(() => {
+    if (seatMapData) {
+      const lockedSeatIds = userLocks
+        .map(
+          (lock) =>
+            seatMapData.seats.find((seat) => seat.seat_code === lock.seat_code)
+              ?.seat_id
+        )
+        .filter(Boolean) as string[]
+      setSelectedSeats(lockedSeatIds)
+    }
+  }, [userLocks, seatMapData])
+
+  // Calculate total price based on selected seats
+  useEffect(() => {
+    if (seatMapData && selectedSeats.length > 0) {
+      const total = selectedSeats.reduce((sum, seatId) => {
+        const seat = seatMapData.seats.find((s) => s.seat_id === seatId)
+        return sum + (seat?.price || 0)
+      }, 0)
+      setTotalPrice(total)
     } else {
-      setSelectedSeats(selectedSeats.filter((id) => id !== seat.seat_id))
-      setTotalPrice((prev) => prev - seat.price)
+      setTotalPrice(0)
+    }
+  }, [selectedSeats, seatMapData])
+
+  const handleSeatSelect = async (seat: Seat, isSelected: boolean) => {
+    if (!seat.seat_id || !user || !tripId) return
+
+    try {
+      if (isSelected) {
+        // Lock the seat when selecting
+        await lockSeatsApi({
+          tripId,
+          seatCodes: [seat.seat_code],
+          userId: user.userId.toString(),
+        })
+        // Refresh seat map first to show updated lock status
+        await fetchSeatMap()
+        // Then refresh locks to update selection state
+        await refreshLocks(tripId)
+      } else {
+        // Release the lock when deselecting
+        await releaseLocksApi({
+          tripId,
+          seatCodes: [seat.seat_code],
+          userId: user.userId.toString(),
+        })
+        // Refresh seat map first to show updated lock status
+        await fetchSeatMap()
+        // Delay before refreshing locks to allow backend to process
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        // Refresh locks multiple times to ensure we get updated data
+        await refreshLocks(tripId)
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        await refreshLocks(tripId)
+      }
+    } catch (err) {
+      console.error('Error managing seat lock:', err)
+      setError(
+        err instanceof Error
+          ? `Failed to ${isSelected ? 'lock' : 'release'} seat: ${err.message}`
+          : 'Failed to update seat selection'
+      )
     }
   }
 
@@ -244,6 +353,13 @@ export function SeatSelection() {
                   selectedSeats={selectedSeats}
                   onSeatSelect={handleSeatSelect}
                   maxSelectable={MAX_SELECTABLE_SEATS}
+                  currentUserId={user?.userId.toString()}
+                  userLocks={userLocks}
+                  onLockExpire={async (seatCode) => {
+                    console.log('Lock expired for seat:', seatCode)
+                    // Refresh seat map when a lock expires
+                    await fetchSeatMap()
+                  }}
                 />
               )}
             </div>
@@ -269,6 +385,28 @@ export function SeatSelection() {
                       {selectedSeats.length}
                     </p>
                   </div>
+
+                  {/* Lock Status Information */}
+                  {selectedSeats.length > 0 && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Lock className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                          Seats Locked
+                        </span>
+                      </div>
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        Your selected seats are temporarily reserved for 10
+                        minutes. Complete your booking before the time expires.
+                      </p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Clock className="w-3 h-3 text-blue-600" />
+                        <span className="text-xs text-blue-600">
+                          Auto-release in 10 minutes
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-2 border-t border-border/50">
                     <p className="text-muted-foreground">Fare per seat:</p>

@@ -7,14 +7,16 @@
 
 /**
  * Seat Availability Definitions
- * Defines if a seat is active/available based on is_active boolean
+ * Defines seat availability status based on status string
  */
 export const SEAT_AVAILABILITY = {
-  ACTIVE: true,
-  INACTIVE: false,
+  AVAILABLE: 'available',
+  OCCUPIED: 'occupied',
+  LOCKED: 'locked',
 } as const
 
-export type SeatAvailability = boolean
+export type SeatAvailability =
+  (typeof SEAT_AVAILABILITY)[keyof typeof SEAT_AVAILABILITY]
 
 /**
  * Seat Type Definitions
@@ -42,9 +44,10 @@ export type SeatPosition = (typeof SEAT_POSITION)[keyof typeof SEAT_POSITION]
  * Seat Availability Labels
  * Human-readable labels for availability states
  */
-export const SEAT_AVAILABILITY_LABELS: Record<boolean, string> = {
-  true: 'Available',
-  false: 'Unavailable',
+export const SEAT_AVAILABILITY_LABELS: Record<SeatAvailability, string> = {
+  [SEAT_AVAILABILITY.AVAILABLE]: 'Available',
+  [SEAT_AVAILABILITY.OCCUPIED]: 'Occupied',
+  [SEAT_AVAILABILITY.LOCKED]: 'Locked',
 }
 
 /**

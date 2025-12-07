@@ -45,18 +45,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       const storedUser = localStorage.getItem('user')
       const refreshToken = getRefreshToken()
 
+      console.log('🔐 Auth Initialization:', {
+        hasStoredUser: !!storedUser,
+        hasRefreshToken: !!refreshToken,
+      })
+
       if (storedUser && refreshToken) {
         try {
           // Try to refresh the access token
           await refreshAccessToken()
           setUser(JSON.parse(storedUser))
+          console.log('✅ Token refreshed successfully')
         } catch (error) {
           // If refresh fails, clear tokens and user
-          console.error('Failed to refresh token:', error)
+          console.error('❌ Failed to refresh token:', error)
           clearTokens()
           localStorage.removeItem('user')
           setUser(null)
         }
+      } else {
+        console.log('⚠️ No stored user or refresh token found')
       }
       setLoading(false)
     }

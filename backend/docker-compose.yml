@@ -80,9 +80,12 @@ services:
       - DB_NAME=bus_ticket_dev
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - AUTH_SERVICE_URL=http://auth-service:3001
       - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
+    ports:
+      - "3002:3002"
     depends_on:
       postgres:
         condition: service_healthy

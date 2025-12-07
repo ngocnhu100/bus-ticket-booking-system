@@ -1,5 +1,6 @@
 // repositories/seatRepository.js
 const pool = require('../database');
+const seatLockService = require('../services/seatLockService');
 
 class SeatRepository {
   /**
@@ -73,10 +74,13 @@ class SeatRepository {
     `;
 
     const lockedResult = await pool.query(lockedSeatsQuery, [tripId]);
-    const lockedSeats = lockedResult.rows.reduce((acc, row) => {
+    const dbLockedSeats = lockedResult.rows.reduce((acc, row) => {
       acc[row.seat_code] = row.locked_until;
       return acc;
     }, {});
+
+    // Get Redis-based temporary locks
+    const redisLockedSeats = await seatLockService.getLockedSeats(tripId);
 
     // Calculate layout dimensions from database
     if (!trip.layout_json) {
@@ -101,12 +105,18 @@ class SeatRepository {
     const transformedSeats = seats.map(seat => {
       let status = 'available';
       let lockedUntil = null;
+      let lockedBy = null;
 
       if (occupiedSeatCodes.has(seat.seat_code)) {
         status = 'occupied';
-      } else if (lockedSeats[seat.seat_code]) {
+      } else if (dbLockedSeats[seat.seat_code]) {
         status = 'locked';
-        lockedUntil = lockedSeats[seat.seat_code];
+        lockedUntil = dbLockedSeats[seat.seat_code];
+        lockedBy = 'booking'; // Database booking lock
+      } else if (redisLockedSeats[seat.seat_code]) {
+        status = 'locked';
+        lockedUntil = new Date(redisLockedSeats[seat.seat_code].expiresAt);
+        lockedBy = redisLockedSeats[seat.seat_code].userId;
       }
 
       // Use row_num and col_num from database
@@ -124,6 +134,7 @@ class SeatRepository {
         price: parseFloat(trip.base_price) + parseFloat(seat.price || 0),
         status,
         lockedUntil,
+        lockedBy,
         created_at: seat.created_at
       };
     });

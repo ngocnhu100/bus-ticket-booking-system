@@ -376,7 +376,7 @@ SELECT
   seat_element.value #>> '{}' as seat_code,
   CASE
     WHEN seat_element.value #>> '{}' LIKE 'VIP%' THEN 'vip'
-    WHEN seat_element.value #>> '{}' LIKE 'H%A' OR seat_element.value #>> '{}' LIKE 'H%B' THEN 'sleeper'
+    WHEN seat_element.value #>> '{}' LIKE 'H%A' OR seat_element.value #>> '{}' LIKE 'H%B' THEN 'vip'
     ELSE 'standard'
   END as seat_type,
   CASE

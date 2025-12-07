@@ -5,9 +5,18 @@ let accessTokenInMemory = null
 
 const setAccessToken = (token) => {
   accessTokenInMemory = token ?? null
+  if (token) {
+    console.log('🔐 Access token set', { hasToken: !!token })
+  } else {
+    console.log('🔐 Access token cleared')
+  }
 }
 
-export const getAccessToken = () => accessTokenInMemory
+export const getAccessToken = () => {
+  const token = accessTokenInMemory
+  console.log('🔐 Getting access token:', { hasToken: !!token })
+  return token
+}
 export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY)
 
 export function clearTokens() {
@@ -36,9 +45,10 @@ export async function request(
   path,
   { body, token, method = 'POST', headers, ...options } = {}
 ) {
+  const resolvedToken = token || getAccessToken()
   console.log(`[FE Request] ${method} ${path}`, {
     body,
-    token: token ? '[TOKEN]' : null,
+    token: resolvedToken ? '[TOKEN]' : null,
     headers,
   })
 
@@ -46,7 +56,7 @@ export async function request(
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
-      headers: buildHeaders(headers, token || getAccessToken()),
+      headers: buildHeaders(headers, resolvedToken),
       ...(body && method !== 'GET' ? { body: JSON.stringify(body) } : {}),
       ...options,
     })
@@ -66,7 +76,12 @@ export async function request(
   const isError = !response.ok || (data && data.success === false)
   if (isError) {
     // If unauthorized and we have a refresh token, try to refresh
-    if (response.status === 401 && getRefreshToken() && !token) {
+    if (
+      response.status === 401 &&
+      getRefreshToken() &&
+      !path.includes('/auth/refresh')
+    ) {
+      //if (response.status === 401 && getRefreshToken() && !token) {
       try {
         await refreshAccessToken()
         // Retry the request with the new token

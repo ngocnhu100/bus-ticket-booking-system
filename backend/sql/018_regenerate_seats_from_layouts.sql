@@ -9,7 +9,7 @@ SELECT
   seat_element.value::text as seat_code,
   CASE
     WHEN seat_element.value::text LIKE 'VIP%' THEN 'vip'
-    WHEN seat_element.value::text LIKE 'H%A' OR seat_element.value::text LIKE 'H%B' THEN 'sleeper'
+    WHEN seat_element.value::text LIKE 'H%A' OR seat_element.value::text LIKE 'H%B' THEN 'vip'  -- Premium seats mapped to vip type
     ELSE 'standard'
   END as seat_type,
   CASE
