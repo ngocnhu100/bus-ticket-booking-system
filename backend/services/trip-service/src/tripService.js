@@ -123,8 +123,8 @@ function sortTrips(trips, sortBy = 'time', order = 'asc') {
           
         default: {
           // Default sort by departure time
-          const defaultTimeA = a.schedule.departureTime.split(':').map(Number);
-          const defaultTimeB = b.schedule.departureTime.split(':').map(Number);
+          const defaultTimeA = a.schedule.departure_time.split(':').map(Number);
+          const defaultTimeB = b.schedule.departure_time.split(':').map(Number);
           compareValue = (defaultTimeA[0] * 60 + defaultTimeA[1]) - (defaultTimeB[0] * 60 + defaultTimeB[1]);
         }
       }
