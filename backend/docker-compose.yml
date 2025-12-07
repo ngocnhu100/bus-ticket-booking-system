@@ -112,6 +112,39 @@ services:
       - ./services/notification-service:/app
       - /app/node_modules
 
+  # Booking Service
+  booking-service:
+    build:
+      context: ./services/booking-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-booking-service
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bus_ticket_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - TRIP_SERVICE_URL=http://trip-service:3002
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - BOOKING_LOCK_DURATION_MINUTES=10
+      - SERVICE_FEE_PERCENTAGE=3
+      - SERVICE_FEE_FIXED=10000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./services/booking-service:/app
+      - /app/node_modules
+
   # API Gateway
   api-gateway:
     build:
@@ -124,6 +157,7 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - TRIP_SERVICE_URL=http://trip-service:3002
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - BOOKING_SERVICE_URL=http://booking-service:3004
       - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
     ports:
       - "3000:3000"
