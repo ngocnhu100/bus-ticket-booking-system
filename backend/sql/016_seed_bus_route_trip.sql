@@ -149,43 +149,51 @@ INSERT INTO route_stops (
     'Sapa Bus Terminal', 'Sapa Town', 360, 360, 2)
 ON CONFLICT DO NOTHING;
 
--- 6. trips (with policies, status 'active') - expanded
+-- 6. trips (with policies, status 'active') - expanded with future dates
 INSERT INTO trips (route_id, bus_id, departure_time, arrival_time, base_price, policies, status) VALUES
--- HCMC -> Da Lat daytime
+-- HCMC -> Da Lat daytime (multiple trips for testing)
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat'),
  (SELECT bus_id FROM buses WHERE license_plate = '51G-123.45'),
- '2025-12-02 08:00:00', '2025-12-02 15:00:00', 350000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+ '2026-01-15 08:00:00', '2026-01-15 15:00:00', 350000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat'),
+ (SELECT bus_id FROM buses WHERE license_plate = '51G-123.45'),
+ '2026-01-16 08:00:00', '2026-01-16 15:00:00', 350000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
 
 -- HCMC -> Da Lat night sleeper
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat'),
  (SELECT bus_id FROM buses WHERE license_plate = '51F-999.99'),
- '2025-12-02 22:00:00', '2025-12-03 05:30:00', 520000.00, '{"cancellation_policy": "48h partial", "modification_policy": "Limited", "refund_policy": "Partial"}'::jsonb, 'active'),
+ '2026-01-15 22:00:00', '2026-01-16 05:30:00', 520000.00, '{"cancellation_policy": "48h partial", "modification_policy": "Limited", "refund_policy": "Partial"}'::jsonb, 'active'),
 
--- HCMC -> Nha Trang
+-- HCMC -> Nha Trang (multiple trips)
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Nha Trang'),
  (SELECT bus_id FROM buses WHERE license_plate = '51K-777.77'),
- '2025-12-03 20:30:00', '2025-12-04 05:00:00', 480000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+ '2026-01-15 20:30:00', '2026-01-16 05:00:00', 480000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+
+((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Nha Trang'),
+ (SELECT bus_id FROM buses WHERE license_plate = '51K-777.77'),
+ '2026-01-20 20:30:00', '2026-01-21 05:00:00', 480000.00, '{"cancellation_policy": "24h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
 
 -- HCMC -> Can Tho
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Can Tho'),
  (SELECT bus_id FROM buses WHERE license_plate = '51S-555.55'),
- '2025-12-04 07:00:00', '2025-12-04 11:00:00', 180000.00, '{"cancellation_policy": "12h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
+ '2026-01-15 07:00:00', '2026-01-15 11:00:00', 180000.00, '{"cancellation_policy": "12h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active'),
 
 -- Da Nang -> Hue
 ((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Hue'),
  (SELECT bus_id FROM buses WHERE license_plate = '51G-050.50'),
- '2025-12-07 09:00:00', '2025-12-07 11:00:00', 120000.00, '{"cancellation_policy": "6h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active')
+ '2026-01-20 09:00:00', '2026-01-20 11:00:00', 120000.00, '{"cancellation_policy": "6h free", "modification_policy": "Flexible", "refund_policy": "Full"}'::jsonb, 'active')
 ON CONFLICT DO NOTHING;
 
 -- =========================================================
--- 1. Insert trips for routes that previously had no trips / null base_price
+-- Additional trips for routes that need more coverage
 INSERT INTO trips (route_id, bus_id, departure_time, arrival_time, base_price, policies, status)
 VALUES
 -- Hanoi -> Ha Long (day trip)
 (
   (SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ha Long'),
   (SELECT bus_id FROM buses WHERE license_plate = '51G-050.50' LIMIT 1),
-  '2025-12-05 07:00:00', '2025-12-05 11:00:00', 200000.00,
+  '2026-01-18 07:00:00', '2026-01-18 11:00:00', 200000.00,
   '{"cancellation_policy":"24h free","modification_policy":"Flexible","refund_policy":"Full"}'::jsonb,
   'active'
 ),
@@ -193,7 +201,7 @@ VALUES
 (
   (SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Sapa'),
   (SELECT bus_id FROM buses WHERE license_plate = '51F-999.99' LIMIT 1),
-  '2025-12-06 20:00:00', '2025-12-07 04:00:00', 300000.00,
+  '2026-01-19 20:00:00', '2026-01-20 04:00:00', 300000.00,
   '{"cancellation_policy":"48h partial","modification_policy":"Limited","refund_policy":"Partial"}'::jsonb,
   'active'
 ),
@@ -201,7 +209,7 @@ VALUES
 (
   (SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Bao Loc'),
   (SELECT bus_id FROM buses WHERE license_plate = '51G-123.45' LIMIT 1),
-  '2025-12-08 08:00:00', '2025-12-08 12:30:00', 250000.00,
+  '2026-01-22 08:00:00', '2026-01-22 12:30:00', 250000.00,
   '{"cancellation_policy":"24h free","modification_policy":"Flexible","refund_policy":"Full"}'::jsonb,
   'active'
 )
@@ -222,130 +230,174 @@ WHERE total >= g
 ON CONFLICT (bus_id, seat_code) DO NOTHING;
 
 -- =========================================================
--- SEED DATA: BOOKINGS (expanded)
+-- SEED DATA: SAMPLE BOOKINGS (with proper schema)
 -- =========================================================
 
-WITH 
-  trip_dalat_day AS (
-    SELECT t.trip_id, t.base_price
-    FROM trips t
-    JOIN buses b ON t.bus_id = b.bus_id
-    WHERE b.license_plate = '51G-123.45'
-    LIMIT 1
-  ),
-  trip_dalat_night AS (
-    SELECT t.trip_id, t.base_price
-    FROM trips t
-    JOIN buses b ON t.bus_id = b.bus_id
-    WHERE b.license_plate = '51F-999.99'
-    LIMIT 1
-  ),
-  trip_nhatrang AS (
-    SELECT t.trip_id, t.base_price
-    FROM trips t
-    JOIN buses b ON t.bus_id = b.bus_id
-    WHERE b.license_plate = '51K-777.77'
-    LIMIT 1
-  ),
-  trip_cantho AS (
-    SELECT t.trip_id, t.base_price
-    FROM trips t
-    JOIN buses b ON t.bus_id = b.bus_id
-    WHERE b.license_plate = '51S-555.55'
-    LIMIT 1
-  )
+-- First, let's insert bookings without the CTE complexity
+DO $$
+DECLARE
+  v_trip_dalat_day UUID;
+  v_trip_dalat_night UUID;
+  v_trip_nhatrang UUID;
+  v_trip_cantho UUID;
+  v_user_id UUID;
+  v_booking1_id UUID;
+  v_booking2_id UUID;
+  v_booking3_id UUID;
+  v_booking4_id UUID;
+  v_booking5_id UUID;
+BEGIN
+  -- Get trip IDs
+  SELECT t.trip_id INTO v_trip_dalat_day
+  FROM trips t
+  JOIN buses b ON t.bus_id = b.bus_id
+  WHERE b.license_plate = '51G-123.45'
+    AND t.departure_time = '2026-01-15 08:00:00'
+  LIMIT 1;
 
-INSERT INTO bookings (
-    booking_id, booking_reference, trip_id, 
-    contact_email, contact_phone, status, 
-    subtotal, service_fee, total_price, 
-    payment_method, payment_status, paid_at, ticket_url
-)
-VALUES 
--- Booking 1: Confirmed (Da Lat daytime) - 2 seats
-(
-    uuid_generate_v4(), 'EN20260110001', (SELECT trip_id FROM trip_dalat_day),
-    'john.doe@example.com', '+84901234567', 'confirmed',
-    (SELECT base_price * 2 FROM trip_dalat_day), 20000, (SELECT base_price * 2 + 20000 FROM trip_dalat_day),
-    'momo', 'paid', NOW(), 'https://cdn.example.com/tickets/en-bk1.pdf'
-),
--- Booking 2: Pending (Nha Trang) - 1 seat
-(
-    uuid_generate_v4(), 'EN20260111002', (SELECT trip_id FROM trip_nhatrang),
-    'jane.smith@example.com', '+84909887777', 'pending',
-    (SELECT base_price * 1 FROM trip_nhatrang), 10000, (SELECT base_price * 1 + 10000 FROM trip_nhatrang),
-    NULL, 'unpaid', NULL, NULL
-),
--- Booking 3: Cancelled (Da Lat night) - 1 seat
-(
-    uuid_generate_v4(), 'EN20260110099', (SELECT trip_id FROM trip_dalat_night),
-    'canceled.user@example.com', '+84905555555', 'cancelled',
-    (SELECT base_price * 1 FROM trip_dalat_night), 10000, (SELECT base_price * 1 + 10000 FROM trip_dalat_night),
-    'visa', 'refunded', NOW() - INTERVAL '1 day', NULL
-),
--- Booking 4: Confirmed (Can Tho) - group booking 4 seats
-(
-    uuid_generate_v4(), 'EN20260112003', (SELECT trip_id FROM trip_cantho),
-    'group.leader@example.com', '+84901112233', 'confirmed',
-    (SELECT base_price * 4 FROM trip_cantho), 40000, (SELECT base_price * 4 + 40000 FROM trip_cantho),
-    'credit_card', 'paid', NOW(), 'https://cdn.example.com/tickets/en-bk4.pdf'
-),
--- Booking 5: Confirmed (Da Lat daytime) - single VIP seat example
-(
-    uuid_generate_v4(), 'EN20260110005', (SELECT trip_id FROM trip_dalat_day),
-    'alice.wonder@example.com', '+84903334455', 'confirmed',
-    (SELECT base_price * 1 FROM trip_dalat_day), 15000, (SELECT base_price * 1 + 15000 FROM trip_dalat_day),
-    'paypal', 'paid', NOW(), 'https://cdn.example.com/tickets/en-bk5.pdf'
-);
+  SELECT t.trip_id INTO v_trip_dalat_night
+  FROM trips t
+  JOIN buses b ON t.bus_id = b.bus_id
+  WHERE b.license_plate = '51F-999.99'
+    AND t.departure_time = '2026-01-15 22:00:00'
+  LIMIT 1;
 
--- =========================================================
--- SEED DATA: BOOKING PASSENGERS (expanded)
--- =========================================================
+  SELECT t.trip_id INTO v_trip_nhatrang
+  FROM trips t
+  JOIN buses b ON t.bus_id = b.bus_id
+  WHERE b.license_plate = '51K-777.77'
+    AND t.departure_time = '2026-01-15 20:30:00'
+  LIMIT 1;
 
-INSERT INTO booking_passengers (booking_id, seat_code, price, full_name, phone, document_id)
-VALUES
--- Booking 1 passengers (Da Lat daytime) - seats A1, A2
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260110001'),
-    'A1', 350000, 'John Doe', '+84901234567', 'ID123456789'
-),
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260110001'),
-    'A2', 350000, 'Mary Doe', '+84901234568', NULL
-),
+  SELECT t.trip_id INTO v_trip_cantho
+  FROM trips t
+  JOIN buses b ON t.bus_id = b.bus_id
+  WHERE b.license_plate = '51S-555.55'
+    AND t.departure_time = '2026-01-15 07:00:00'
+  LIMIT 1;
 
--- Booking 2 passenger (Nha Trang) - seat A1 on that trip
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260111002'),
-    'A1', 480000, 'Jane Smith', '+84909887777', 'ID987654321'
-),
+  -- Get a test user (use passenger@bus-ticket.com which exists in 005_seed_users.sql)
+  SELECT user_id INTO v_user_id
+  FROM users 
+  WHERE email = 'passenger@bus-ticket.com'  -- ✅ FIXED: Use existing user
+  LIMIT 1;
+  
+  -- Verify user exists
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Test user not found. Please run 005_seed_users.sql first.';
+  END IF;
 
--- Booking 3 passenger (Cancelled, Da Lat night) - seat A5
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260110099'),
-    'A5', 520000, 'Canceled User', '+84905555555', NULL
-),
+  -- Insert Booking 1: Confirmed (Da Lat daytime) - 2 seats
+  v_booking1_id := uuid_generate_v4();
+  INSERT INTO bookings (
+      booking_id, booking_reference, trip_id, user_id,
+      contact_email, contact_phone, status, locked_until,
+      subtotal, service_fee, total_price, currency,
+      payment_method, payment_status, paid_at, 
+      ticket_url, qr_code_url
+  ) VALUES (
+      v_booking1_id, 'BK20260115001', v_trip_dalat_day, v_user_id,
+      'john.doe@example.com', '0901234567', 'confirmed', NULL,
+      700000, 20000, 720000, 'VND',
+      'momo', 'paid', NOW() - INTERVAL '1 day', 
+      'https://cdn.example.com/tickets/bk20260115001.pdf',
+      'https://cdn.example.com/qr/bk20260115001.png'
+  );
 
--- Booking 4 group (Can Tho) - seats A1..A4
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260112003'),
-    'A1', 180000, 'Group Member One', '+84901112234', 'ID111111111'
-),
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260112003'),
-    'A2', 180000, 'Group Member Two', '+84901112235', 'ID222222222'
-),
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260112003'),
-    'A3', 180000, 'Group Member Three', '+84901112236', 'ID333333333'
-),
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260112003'),
-    'A4', 180000, 'Group Member Four', '+84901112237', NULL
-),
+  -- Insert passengers for Booking 1
+  INSERT INTO booking_passengers (booking_id, seat_code, price, full_name, phone, document_id)
+  VALUES
+    (v_booking1_id, 'A1', 350000, 'John Doe', '0901234567', '079012345678'),
+    (v_booking1_id, 'A2', 350000, 'Mary Doe', '0901234568', '079087654321');
 
--- Booking 5 VIP passenger (Da Lat daytime) - seat A3
-(
-    (SELECT booking_id FROM bookings WHERE booking_reference = 'EN20260110005'),
-    'A3', 350000, 'Alice Wonder', '+84903334455', 'ID555666777'
-);
+  -- Insert Booking 2: Pending (Nha Trang) - 1 seat
+  v_booking2_id := uuid_generate_v4();
+  INSERT INTO bookings (
+      booking_id, booking_reference, trip_id, user_id,
+      contact_email, contact_phone, status, locked_until,
+      subtotal, service_fee, total_price, currency,
+      payment_method, payment_status, paid_at, 
+      ticket_url, qr_code_url
+  ) VALUES (
+      v_booking2_id, 'BK20260115002', v_trip_nhatrang, v_user_id,
+      'jane.smith@example.com', '0909887777', 'pending', NOW() + INTERVAL '8 minutes',
+      480000, 10000, 490000, 'VND',
+      NULL, 'unpaid', NULL, 
+      NULL, NULL
+  );
+
+  -- Insert passenger for Booking 2
+  INSERT INTO booking_passengers (booking_id, seat_code, price, full_name, phone, document_id)
+  VALUES
+    (v_booking2_id, 'A1', 480000, 'Jane Smith', '0909887777', '079098765432');
+
+  -- Insert Booking 3: Cancelled (Da Lat night) - 1 seat
+  v_booking3_id := uuid_generate_v4();
+  INSERT INTO bookings (
+      booking_id, booking_reference, trip_id, user_id,
+      contact_email, contact_phone, status, locked_until,
+      subtotal, service_fee, total_price, currency,
+      payment_method, payment_status, paid_at,
+      cancellation_reason, refund_amount,
+      ticket_url, qr_code_url
+  ) VALUES (
+      v_booking3_id, 'BK20260115003', v_trip_dalat_night, v_user_id,
+      'canceled.user@example.com', '0905555555', 'cancelled', NULL,
+      520000, 10000, 530000, 'VND',
+      'credit_card', 'refunded', NOW() - INTERVAL '2 days',
+      'User requested cancellation', 424000,
+      NULL, NULL
+  );
+
+  -- Insert passenger for Booking 3
+  INSERT INTO booking_passengers (booking_id, seat_code, price, full_name, phone, document_id)
+  VALUES
+    (v_booking3_id, 'A5', 520000, 'Canceled User', '0905555555', '079055555555');
+
+  -- Insert Booking 4: Confirmed (Can Tho) - group booking 4 seats
+  v_booking4_id := uuid_generate_v4();
+  INSERT INTO bookings (
+      booking_id, booking_reference, trip_id, user_id,
+      contact_email, contact_phone, status, locked_until,
+      subtotal, service_fee, total_price, currency,
+      payment_method, payment_status, paid_at, 
+      ticket_url, qr_code_url
+  ) VALUES (
+      v_booking4_id, 'BK20260115004', v_trip_cantho, v_user_id,
+      'group.leader@example.com', '0901112233', 'confirmed', NULL,
+      720000, 40000, 760000, 'VND',
+      'credit_card', 'paid', NOW() - INTERVAL '3 hours', 
+      'https://cdn.example.com/tickets/bk20260115004.pdf',
+      'https://cdn.example.com/qr/bk20260115004.png'
+  );
+
+  -- Insert passengers for Booking 4
+  INSERT INTO booking_passengers (booking_id, seat_code, price, full_name, phone, document_id)
+  VALUES
+    (v_booking4_id, 'A1', 180000, 'Group Member One', '0901112234', '079011111111'),
+    (v_booking4_id, 'A2', 180000, 'Group Member Two', '0901112235', '079022222222'),
+    (v_booking4_id, 'A3', 180000, 'Group Member Three', '0901112236', '079033333333'),
+    (v_booking4_id, 'A4', 180000, 'Group Member Four', '0901112237', '079044444444');
+
+  -- Insert Booking 5: Pending - guest booking
+  v_booking5_id := uuid_generate_v4();
+  INSERT INTO bookings (
+      booking_id, booking_reference, trip_id, user_id,
+      contact_email, contact_phone, status, locked_until,
+      subtotal, service_fee, total_price, currency,
+      payment_method, payment_status, paid_at, 
+      ticket_url, qr_code_url
+  ) VALUES (
+      v_booking5_id, 'BK20260115005', v_trip_dalat_day, NULL,
+      'guest.user@example.com', '0903334455', 'pending', NOW() + INTERVAL '2 minutes',
+      350000, 15000, 365000, 'VND',
+      NULL, 'unpaid', NULL, 
+      NULL, NULL
+  );
+
+  -- Insert passenger for Booking 5
+  INSERT INTO booking_passengers (booking_id, seat_code, price, full_name, phone, document_id)
+  VALUES
+    (v_booking5_id, 'A10', 350000, 'Guest User', '0903334455', '079055566677');
+
+END $$;

@@ -1,7 +1,7 @@
 -- Migration: create users table
 
 CREATE TABLE IF NOT EXISTS users (
-  user_id SERIAL PRIMARY KEY,
+  user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email VARCHAR(255) UNIQUE,
   phone VARCHAR(32) UNIQUE,
   password_hash TEXT,
