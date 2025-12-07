@@ -64,14 +64,16 @@ export interface OperatorAdminData {
  * Matches API: GET /trips/{tripId}/seats - seats array element
  */
 export interface Seat {
-  seat_id: string
+  seat_id?: string
+  bus_id: string
   seat_code: string
   row: number
   column: number
-  seat_type: 'standard' | 'vip' | 'window' | 'aisle'
+  seat_type: 'standard' | 'vip'
   position: 'window' | 'aisle'
   price: number
-  status: 'available' | 'occupied' | 'locked' | 'disabled'
+  status: 'available' | 'occupied' | 'locked'
+  created_at?: string
 }
 
 /**
@@ -83,7 +85,33 @@ export interface SeatMapData {
   layout: string // e.g., "2-2", "2-3"
   rows: number
   columns: number
+  driver?: DriverPosition | null
+  doors?: DoorPosition[]
   seats: Seat[]
+}
+
+/**
+ * DriverPosition - Location of the driver seat
+ * Not part of the row/col grid - uses position types
+ */
+export interface DriverPosition {
+  position: 'front-left' | 'front-right' | 'front-center'
+  label: string
+}
+
+/**
+ * DoorPosition - Location of bus entrances/exits
+ * Not part of the row/col grid - uses position types
+ */
+export interface DoorPosition {
+  position:
+    | 'front-left'
+    | 'front-right'
+    | 'rear-left'
+    | 'rear-right'
+    | 'middle-left'
+    | 'middle-right'
+  label: string
 }
 
 // ============================================================================

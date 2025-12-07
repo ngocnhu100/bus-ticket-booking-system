@@ -29,6 +29,24 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Seat Map Theme Colors */
+  --seat-available: oklch(0.973 0.005 256.128);
+  --seat-available-hover: oklch(0.88 0.085 255.508);
+  --seat-available-border: oklch(0.929 0.013 255.508);
+
+  --seat-selected: oklch(0.488 0.243 264.376);
+  --seat-selected-hover: oklch(0.417 0.276 265.175);
+  --seat-selected-border: oklch(0.351 0.218 264.695);
+
+  --seat-occupied: oklch(0.553 0.155 29.23);
+  --seat-occupied-border: oklch(0.463 0.151 27.2);
+
+  --seat-locked: oklch(0.704 0.04 256.788);
+  --seat-locked-border: oklch(0.595 0.068 255.508);
+
+  --seat-disabled: oklch(0.867 0.015 247.896);
+  --seat-disabled-border: oklch(0.73 0.046 247.858);
 }
 
 a {
@@ -141,6 +159,24 @@ button:focus-visible {
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+
+  /* Dark Mode Seat Colors */
+  --seat-available: oklch(0.279 0.041 260.031);
+  --seat-available-hover: oklch(0.351 0.218 264.695);
+  --seat-available-border: oklch(0.417 0.276 265.175);
+
+  --seat-selected: oklch(0.551 0.257 265.375);
+  --seat-selected-hover: oklch(0.618 0.277 264.695);
+  --seat-selected-border: oklch(0.7 0.31 264.695);
+
+  --seat-occupied: oklch(0.704 0.191 22.216);
+  --seat-occupied-border: oklch(0.814 0.224 24.95);
+
+  --seat-locked: oklch(0.487 0.094 47.6);
+  --seat-locked-border: oklch(0.595 0.118 47.6);
+
+  --seat-disabled: oklch(0.436 0.077 256.128);
+  --seat-disabled-border: oklch(0.54 0.09 255.508);
 }
 
 @layer base {

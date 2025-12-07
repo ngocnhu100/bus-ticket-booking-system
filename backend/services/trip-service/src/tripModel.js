@@ -1,25 +1,25 @@
 // Mock data for trips with detailed information
 const mockTrips = [
   {
-    tripId: 'TRIP001',
+    trip_id: 'TRIP001',
     route: {
-      routeId: 'ROUTE001',
+      route_id: 'ROUTE001',
       origin: 'Ho Chi Minh City',
       destination: 'Hanoi',
-      distance: 1720,
-      estimatedDuration: 720 // minutes
+      distance_km: 1720,
+      estimated_minutes: 720 // minutes
     },
     operator: {
-      operatorId: 'OP001',
+      operator_id: 'OP001',
       name: 'Futa Bus Lines',
       rating: 4.5,
       logo: 'https://via.placeholder.com/100x100?text=Futa'
     },
     bus: {
-      busId: 'BUS001',
-      busType: 'limousine',
-      licensePlate: '59A-12345',
-      totalSeats: 40,
+      bus_id: 'BUS001',
+      bus_type: 'limousine',
+      plate_number: '59A-12345',
+      seat_capacity: 40,
       amenities: [
         { id: 'wifi', name: 'WiFi' },
         { id: 'ac', name: 'Air Conditioning' },
@@ -27,20 +27,20 @@ const mockTrips = [
       ]
     },
     schedule: {
-      scheduleId: 'SCH001',
-      departureTime: '08:00',
-      arrivalTime: '20:00',
-      frequency: 'daily'
+      departure_time: '08:00',
+      arrival_time: '20:00',
+      duration: 720 // minutes
     },
     pricing: {
-      basePrice: 450000,
-      currency: 'VND',
-      discounts: []
+      base_price: 450000,
+      currency: 'VND'
     },
     availability: {
-      availableSeats: 15,
-      totalSeats: 40
-    }
+      total_seats: 40,
+      available_seats: 15,
+      booked_seats: 25
+    },
+    status: 'active'
   },
   {
     tripId: 'TRIP002',
@@ -163,9 +163,10 @@ const mockTrips = [
       discounts: []
     },
     availability: {
-      availableSeats: 12,
-      totalSeats: 40
-    }
+      total_seats: 40,
+      available_seats: 15,
+      booked_seats: 25
+    },
   },
   {
     tripId: 'TRIP005',

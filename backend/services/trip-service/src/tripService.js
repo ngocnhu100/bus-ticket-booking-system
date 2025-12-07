@@ -38,14 +38,14 @@ function filterTrips(filters) {
   // Filter by bus type (support multiple types)
   if (filters.busType && filters.busType.length > 0) {
     filtered = filtered.filter(trip =>
-      filters.busType.includes(trip.bus.busType)
+      filters.busType.includes(trip.bus.bus_type)
     );
   }
 
   // Filter by departure time period (support multiple periods)
   if (filters.departureTime && filters.departureTime.length > 0) {
     filtered = filtered.filter(trip => {
-      const period = getTimePeriod(trip.schedule.departureTime);
+      const period = getTimePeriod(trip.schedule.departure_time);
       return filters.departureTime.includes(period);
     });
   }
@@ -53,12 +53,12 @@ function filterTrips(filters) {
   // Filter by price range
   if (filters.minPrice !== undefined && filters.minPrice !== null) {
     filtered = filtered.filter(trip =>
-      trip.pricing.basePrice >= filters.minPrice
+      trip.pricing.base_price >= filters.minPrice
     );
   }
   if (filters.maxPrice !== undefined && filters.maxPrice !== null) {
     filtered = filtered.filter(trip =>
-      trip.pricing.basePrice <= filters.maxPrice
+      trip.pricing.base_price <= filters.maxPrice
     );
   }
 
@@ -82,7 +82,7 @@ function filterTrips(filters) {
   // Filter by available seats (based on passengers)
   if (filters.passengers) {
     filtered = filtered.filter(trip =>
-      trip.availability.availableSeats >= filters.passengers
+      trip.availability.available_seats >= filters.passengers
     );
   }
 
@@ -103,27 +103,31 @@ function sortTrips(trips, sortBy = 'time', order = 'asc') {
     let compareValue = 0;
     
     switch (sortBy) {
-      case 'price':
-        compareValue = a.pricing.basePrice - b.pricing.basePrice;
-        break;
-        
-      case 'time':
-        // Compare departure times (HH:mm format)
-        const timeA = a.schedule.departureTime.split(':').map(Number);
-        const timeB = b.schedule.departureTime.split(':').map(Number);
-        compareValue = (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
-        break;
-        
-      case 'duration':
-        compareValue = a.route.estimatedDuration - b.route.estimatedDuration;
-        break;
-        
-      default:
-        // Default sort by departure time
-        const defaultTimeA = a.schedule.departureTime.split(':').map(Number);
-        const defaultTimeB = b.schedule.departureTime.split(':').map(Number);
-        compareValue = (defaultTimeA[0] * 60 + defaultTimeA[1]) - (defaultTimeB[0] * 60 + defaultTimeB[1]);
-    }
+        case 'price': {
+          compareValue = a.pricing.base_price - b.pricing.base_price;
+          break;
+        }
+          
+        case 'time': {
+          // Compare departure times (HH:mm format)
+          const timeA = a.schedule.departure_time.split(':').map(Number);
+          const timeB = b.schedule.departure_time.split(':').map(Number);
+          compareValue = (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+          break;
+        }
+          
+        case 'duration': {
+          compareValue = a.route.estimated_minutes - b.route.estimated_minutes;
+          break;
+        }
+          
+        default: {
+          // Default sort by departure time
+          const defaultTimeA = a.schedule.departure_time.split(':').map(Number);
+          const defaultTimeB = b.schedule.departure_time.split(':').map(Number);
+          compareValue = (defaultTimeA[0] * 60 + defaultTimeA[1]) - (defaultTimeB[0] * 60 + defaultTimeB[1]);
+        }
+      }
     
     // Apply order (asc or desc)
     return order === 'desc' ? -compareValue : compareValue;
@@ -210,7 +214,7 @@ async function searchTrips(params) {
  * @returns {Object|null} Trip data or null if not found
  */
 async function getTripById(tripId) {
-  const trip = mockTrips.find(t => t.tripId === tripId);
+  const trip = mockTrips.find(t => t.trip_id === tripId);
   return trip || null;
 }
 

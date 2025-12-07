@@ -128,6 +128,76 @@ class TripController {
       });
     }
   }
+
+  async getSeats(req, res) {
+    try {
+      const { id: tripId } = req.params;
+      
+      const seatMapData = await tripService.getSeatMap(tripId);
+      
+      const transformedSeats = seatMapData.seats.map(seat => {
+        const seatData = {
+          seat_id: seat.seat_id,
+          seat_code: seat.seat_code,
+          row: seat.row,
+          column: seat.column,
+          seat_type: seat.seat_type,
+          position: seat.position,
+          price: seat.price,
+          status: seat.status
+        };
+
+        if (seat.lockedUntil) {
+          seatData.lockedUntil = seat.lockedUntil.toISOString();
+        }
+
+        return seatData;
+      });
+
+      const response = {
+        success: true,
+        data: {
+          trip_id: tripId,
+          seat_map: {
+            layout: seatMapData.layout,
+            rows: seatMapData.rows,
+            columns: seatMapData.columns,
+            driver: seatMapData.driver,
+            doors: seatMapData.doors,
+            seats: transformedSeats
+          },
+          legend: {
+            available: "seat can be selected",
+            occupied: "seat already booked",
+            locked: "seat temporarily reserved by another user"
+          }
+        }
+      };
+      
+      res.json(response);
+    } catch (err) {
+      console.error('TripController.getSeats: Error occurred:', err.message);
+      
+      if (err.message === 'Trip not found') {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'TRIP_NOT_FOUND', message: 'Trip not found' }
+        });
+      }
+      
+      if (err.message.includes('Bus layout configuration')) {
+        return res.status(500).json({
+          success: false,
+          error: { code: 'LAYOUT_CONFIG_ERROR', message: err.message }
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Internal Server Error' }
+      });
+    }
+  }
 }
 
 module.exports = new TripController();

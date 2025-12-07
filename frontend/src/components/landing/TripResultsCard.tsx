@@ -10,6 +10,7 @@ import { MdOutlineTripOrigin, MdOutlineLocationOn } from 'react-icons/md'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { TripDetails } from './TripDetails'
 import type { Trip } from '@/types/trip.types'
 
@@ -25,6 +26,7 @@ export function TripResultsCard({
   isSelected = false,
 }: TripResultsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const navigate = useNavigate()
 
   // Extract and format display properties from nested Trip structure
   const operatorName = trip.operator.name
@@ -218,6 +220,10 @@ export function TripResultsCard({
           <Button
             variant={isSelected ? 'outline' : 'default'}
             className="flex-1"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/booking/${trip.trip_id}/seats`)
+            }}
           >
             Select Seats
           </Button>
