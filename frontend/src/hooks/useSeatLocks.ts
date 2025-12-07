@@ -50,10 +50,7 @@ export interface UseSeatLocksReturn {
   /** Release specific locks */
   releaseLocks: (request: SeatLockRequest) => Promise<SeatLockReleaseResponse>
   /** Release all user's locks */
-  releaseAllLocks: (
-    tripId: string,
-    userId: string
-  ) => Promise<SeatLockReleaseResponse>
+  releaseAllLocks: (tripId: string) => Promise<SeatLockReleaseResponse>
   /** Refresh locks from server */
   refreshLocks: (tripId: string) => Promise<void>
   /** Clear error state */
@@ -179,7 +176,7 @@ export function useSeatLocks(
     async (request: SeatLockRequest): Promise<SeatLockExtendResponse> => {
       try {
         setIsLoading(true)
-        // Separate userId
+        // Extract API payload (without userId)
         const { userId, ...apiPayload } = request
 
         // Send cleaned payload
@@ -226,13 +223,10 @@ export function useSeatLocks(
 
   // Release all locks
   const handleReleaseAllLocks = useCallback(
-    async (
-      tripId: string,
-      userId: string
-    ): Promise<SeatLockReleaseResponse> => {
+    async (tripId: string): Promise<SeatLockReleaseResponse> => {
       try {
         setIsLoading(true)
-        const response = await releaseAllSeatLocks(tripId, userId)
+        const response = await releaseAllSeatLocks(tripId)
         // Clear all locks after successful release
         setLocks([])
         setError(null)

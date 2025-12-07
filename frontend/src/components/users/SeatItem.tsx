@@ -12,8 +12,6 @@ interface SeatItemProps {
   onClick: () => void
   /** Whether the seat is disabled (can't be clicked) */
   disabled: boolean
-  /** Current user ID */
-  currentUserId?: string
   /** User's lock for this seat */
   userLock?: { seat_code: string; expires_at: string }
   /** Callback when lock expires */
@@ -41,8 +39,6 @@ export function SeatItem({
   isSelected,
   onClick,
   disabled,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  currentUserId,
   userLock,
   onLockExpire,
 }: SeatItemProps) {

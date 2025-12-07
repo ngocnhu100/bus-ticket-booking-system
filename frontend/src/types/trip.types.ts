@@ -65,7 +65,7 @@ export interface OperatorAdminData {
  */
 export interface Seat {
   seat_id?: string
-  bus_id: string
+  bus_id?: string
   seat_code: string
   row: number
   column: number

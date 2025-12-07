@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -50,7 +50,7 @@ export function PassengerInformationForm({
   }>({})
 
   const [passengers, setPassengersState] = useState<PassengerFormData[]>(
-    seatCodes.map((seatCode) => ({
+    seatCodes.map((seatCode: string) => ({
       fullName: '',
       phone: '',
       documentId: '',

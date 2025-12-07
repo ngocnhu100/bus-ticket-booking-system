@@ -150,6 +150,13 @@ export interface SeatLockRequest {
   tripId: string
   seatCodes: string[]
   userId: string
+  sessionId?: string
+}
+
+export interface SeatLockApiRequest {
+  tripId: string
+  seatCodes: string[]
+  sessionId?: string
 }
 
 export interface SeatLockResponse {
@@ -195,9 +202,9 @@ export interface UserLocksResponse {
  * Lock seats for a user during checkout process
  */
 export async function lockSeats(
-  request: SeatLockRequest
+  request: SeatLockApiRequest
 ): Promise<SeatLockResponse> {
-  const body = {
+  const body: { seatCodes: string[]; sessionId?: string } = {
     seatCodes: request.seatCodes,
   }
   if (request.sessionId !== undefined) {
@@ -213,9 +220,9 @@ export async function lockSeats(
  * Extend existing seat locks
  */
 export async function extendSeatLocks(
-  request: SeatLockRequest
+  request: SeatLockApiRequest
 ): Promise<SeatLockExtendResponse> {
-  const body = {
+  const body: { seatCodes: string[]; sessionId?: string } = {
     seatCodes: request.seatCodes,
   }
   if (request.sessionId !== undefined) {
@@ -231,9 +238,9 @@ export async function extendSeatLocks(
  * Release specific seat locks
  */
 export async function releaseSeatLocks(
-  request: SeatLockRequest
+  request: SeatLockApiRequest
 ): Promise<SeatLockReleaseResponse> {
-  const body = {
+  const body: { seatCodes: string[]; sessionId?: string } = {
     seatCodes: request.seatCodes,
   }
   if (request.sessionId !== undefined) {

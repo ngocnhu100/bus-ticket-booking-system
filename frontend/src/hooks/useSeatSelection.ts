@@ -140,7 +140,9 @@ export function useSeatSelection({
 
       const newSelectedIds = [
         ...selectedSeatIds,
-        ...canSelect.map((s) => s.seat_id),
+        ...canSelect
+          .map((s) => s.seat_id)
+          .filter((id): id is string => id !== undefined),
       ]
       const newSelectedSeats = [...selectedSeatsData, ...canSelect]
 
@@ -160,7 +162,7 @@ export function useSeatSelection({
         (id) => !seatIds.includes(id)
       )
       const newSelectedSeats = selectedSeatsData.filter(
-        (s) => !seatIds.includes(s.seat_id)
+        (s) => s.seat_id && !seatIds.includes(s.seat_id)
       )
 
       setSelectedSeatIds(newSelectedIds)
@@ -187,7 +189,11 @@ export function useSeatSelection({
       const available = seats.filter((s) => isSelectable(s))
       const toSelect = available.slice(0, maxSelectable)
 
-      setSelectedSeatIds(toSelect.map((s) => s.seat_id))
+      setSelectedSeatIds(
+        toSelect
+          .map((s) => s.seat_id)
+          .filter((id): id is string => id !== undefined)
+      )
       setSelectedSeatsData(toSelect)
       onSelectionsChange?.(toSelect)
     },

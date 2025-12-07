@@ -18,8 +18,8 @@ interface SeatMapProps {
   maxSelectable?: number
   /** Whether the map is in read-only mode */
   readOnly?: boolean
-  /** Current user ID for lock ownership checking */
-  currentUserId?: string
+  /** Whether an operation is in progress (disables interaction) */
+  operationInProgress?: boolean
   /** User's active locks */
   userLocks?: Array<{ seat_code: string; expires_at: string }>
   /** Callback when a lock expires */
@@ -46,7 +46,7 @@ export function SeatMap({
   onSeatSelect,
   maxSelectable = 10,
   readOnly = false,
-  currentUserId,
+  operationInProgress = false,
   userLocks = [],
   onLockExpire,
   className = '',
@@ -93,7 +93,7 @@ export function SeatMap({
   }, [seatMapData])
 
   const handleSeatClick = (seat: Seat) => {
-    if (readOnly) return
+    if (readOnly || operationInProgress) return
 
     // Allow clicking if available or locked by current user
     const isLockedByUser = userLocks.some(
@@ -203,9 +203,9 @@ export function SeatMap({
                               onClick={() => handleSeatClick(seat)}
                               disabled={
                                 readOnly ||
+                                operationInProgress ||
                                 (seat.status !== 'available' && !isLockedByUser)
                               }
-                              currentUserId={currentUserId}
                               userLock={userLock}
                               onLockExpire={onLockExpire}
                             />

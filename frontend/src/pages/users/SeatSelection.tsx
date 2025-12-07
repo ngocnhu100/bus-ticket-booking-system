@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
@@ -73,10 +72,7 @@ export function SeatSelection() {
   // Seat locking functionality
   const {
     locks: userLocks,
-    isLoading: locksLoading,
-    error: locksError,
     lockSeats: lockSeatsApi,
-    extendLocks: extendLocksApi,
     releaseLocks: releaseLocksApi,
     releaseAllLocks: releaseAllLocksApi,
     refreshLocks,
@@ -162,7 +158,7 @@ export function SeatSelection() {
       }
       // Release all locks when leaving the page
       if (user && selectedSeats.length > 0 && tripId) {
-        releaseAllLocksApi(tripId, user.userId.toString()).catch((err) => {
+        releaseAllLocksApi(tripId).catch((err: Error) => {
           console.error('Error releasing locks on unmount:', err)
         })
       }
@@ -388,7 +384,7 @@ export function SeatSelection() {
                   selectedSeats={selectedSeats}
                   onSeatSelect={handleSeatSelect}
                   maxSelectable={MAX_SELECTABLE_SEATS}
-                  currentUserId={user?.userId.toString()}
+                  operationInProgress={operationInProgress}
                   userLocks={userLocks}
                   onLockExpire={async (seatCode) => {
                     console.log('Lock expired for seat:', seatCode)

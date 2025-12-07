@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -133,7 +133,7 @@ export function BookingSummary({
       // Prepare booking data
       const bookingData = {
         tripId: trip.tripId,
-        seats: passengers.map((p) => p.seatCode),
+        seats: passengers.map((p: PassengerInfo) => p.seatCode),
         passengers: passengers,
         contactEmail: contactEmail,
         contactPhone: contactPhone,
@@ -296,7 +296,7 @@ export function BookingSummary({
                   Seat Numbers
                 </span>
                 <span className="font-medium">
-                  {passengers.map((p) => p.seatCode).join(', ')}
+                  {passengers.map((p: PassengerInfo) => p.seatCode).join(', ')}
                 </span>
               </div>
             </div>
@@ -321,7 +321,7 @@ export function BookingSummary({
               Passengers
             </h3>
             <div className="space-y-3">
-              {passengers.map((passenger, index) => (
+              {passengers.map((passenger: PassengerInfo, index: number) => (
                 <div
                   key={`${passenger.seatCode}-${index}`}
                   className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4"

@@ -1,4 +1,3 @@
-import React from 'react'
 import { Check, AlertCircle, Square } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import './SeatLegend.css'

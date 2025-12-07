@@ -8,6 +8,9 @@ import {
   Tv,
   Bed,
   Utensils,
+  CupSoda,
+  Headphones,
+  Cloud,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -38,20 +41,28 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
         usb: { icon: <Usb className="w-4 h-4" />, name: 'USB Charging' },
         toilet: { icon: <Bath className="w-4 h-4" />, name: 'Restroom' },
         entertainment: {
-          icon: <Tv className="w-4 h-4" />,
+          icon: <Headphones className="w-4 h-4" />,
           name: 'Entertainment',
         },
         tv: {
           icon: <Tv className="w-4 h-4" />,
-          name: 'Entertainment',
+          name: 'Television',
         },
-        blanket: {
+        blankets: {
           icon: <Bed className="w-4 h-4" />,
           name: 'Blanket & Pillow',
         },
-        snack: {
+        pillows: {
+          icon: <Cloud className="w-4 h-4" />,
+          name: 'Pillows',
+        },
+        snacks: {
           icon: <Utensils className="w-4 h-4" />,
-          name: 'Snacks & Beverages',
+          name: 'Snacks',
+        },
+        refreshments: {
+          icon: <CupSoda className="w-4 h-4" />,
+          name: 'Refreshments',
         },
       }
     return amenityMap[amenityId] || null

@@ -32,7 +32,15 @@ export interface BookingState {
  */
 export const useBookingStore = create<BookingState>()(
   persist(
-    (set, get) => ({
+    (
+      set: (
+        partial:
+          | BookingState
+          | Partial<BookingState>
+          | ((state: BookingState) => BookingState | Partial<BookingState>)
+      ) => void,
+      get: () => BookingState
+    ) => ({
       // Initial state
       selectedTrip: null,
       selectedSeats: [],
@@ -41,22 +49,22 @@ export const useBookingStore = create<BookingState>()(
       contactPhone: '',
 
       // Set selected trip
-      setSelectedTrip: (trip) => {
+      setSelectedTrip: (trip: Trip | null) => {
         set({ selectedTrip: trip })
       },
 
       // Set selected seats
-      setSelectedSeats: (seats) => {
+      setSelectedSeats: (seats: string[]) => {
         set({ selectedSeats: seats })
       },
 
       // Set passenger information
-      setPassengers: (passengers) => {
+      setPassengers: (passengers: PassengerInfo[]) => {
         set({ passengers })
       },
 
       // Set contact information
-      setContactInfo: (email, phone) => {
+      setContactInfo: (email: string, phone: string) => {
         set({ contactEmail: email, contactPhone: phone })
       },
 
@@ -85,7 +93,7 @@ export const useBookingStore = create<BookingState>()(
     }),
     {
       name: 'booking-storage', // localStorage key
-      partialize: (state) => ({
+      partialize: (state: BookingState) => ({
         // Only persist these fields
         selectedTrip: state.selectedTrip,
         selectedSeats: state.selectedSeats,

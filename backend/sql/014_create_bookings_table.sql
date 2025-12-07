@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     booking_reference VARCHAR(20) UNIQUE NOT NULL, -- Mã vé (VD: BK20251115001)
     
     -- Liên kết Trip & User
-    trip_id VARCHAR(50) NOT NULL REFERENCES trips(trip_id) ON DELETE RESTRICT,
+    trip_id UUID NOT NULL REFERENCES trips(trip_id) ON DELETE RESTRICT,
     user_id UUID, -- Nullable (cho phép Guest checkout)
     
     -- Thông tin liên hệ người đặt

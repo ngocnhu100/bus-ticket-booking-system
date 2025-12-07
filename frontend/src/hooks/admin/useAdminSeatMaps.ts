@@ -64,7 +64,17 @@ function transformSeatMapResponse(
     layout: seatMapData.layout || '',
     rows: seatMapData.rows || 0,
     columns: seatMapData.columns || 0,
-    seats: seatMapData.seats || [],
+    seats: (seatMapData.seats || []).map((seat) => ({
+      ...seat,
+      seat_type:
+        seat.seat_type === 'window' || seat.seat_type === 'aisle'
+          ? 'standard'
+          : (seat.seat_type as 'standard' | 'vip'),
+      status:
+        seat.status === 'disabled'
+          ? 'available'
+          : (seat.status as 'available' | 'occupied' | 'locked'),
+    })),
   }
 }
 
