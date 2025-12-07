@@ -324,50 +324,6 @@ class SeatLockService {
   }
 
   /**
-   * Get user's locked seats for a trip
-   * @param {string} userId - User ID
-   * @param {string} tripId - Trip ID
-   * @returns {Promise<Array>} Array of locked seat objects
-   */
-  async getUserLockedSeats(userId, tripId) {
-    if (!this.redis) {
-      throw new Error('Redis client not available');
-    }
-
-    const userLockKey = this._getUserLockKey(userId, tripId);
-    const seatCodes = await this.redis.smembers(userLockKey);
-
-    if (seatCodes.length === 0) {
-      return [];
-    }
-
-    const pipeline = this.redis.pipeline();
-    seatCodes.forEach(seatCode => {
-      const lockKey = this._getLockKey(tripId, seatCode);
-      pipeline.get(lockKey);
-    });
-
-    const results = await pipeline.exec();
-    const lockedSeats = [];
-
-    for (let i = 0; i < seatCodes.length; i++) {
-      const seatCode = seatCodes[i];
-      const lockData = results[i][1];
-
-      if (lockData) {
-        const lockInfo = JSON.parse(lockData);
-        lockedSeats.push({
-          seat_code: seatCode,
-          locked_at: lockInfo.lockedAt,
-          expires_at: lockInfo.expiresAt
-        });
-      }
-    }
-
-    return lockedSeats;
-  }
-
-  /**
    * Clean up expired locks (should be called by a background job)
    * @returns {Promise<number>} Number of cleaned locks
    */

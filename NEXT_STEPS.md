@@ -7,39 +7,103 @@
 - Integrate real-time seat availability
 - Add trip scheduling and route management
 
-## Assignment 3: Booking System and Seat Selection
+## Week 4: Payment integration and notifications
 
-**Goal:** Build the complete booking flow including seat selection, passenger information, and ticket generation.
+Goal:
 
-### Tasks
+Integrate payments, notifications, and post-booking management to complete the transaction lifecycle.
 
-#### User Portal / Seat Selection
+Tasks
 
-- Create interactive seat map component (~6 hours): Build visual seat map with clickable seats, different seat types, and status indicators.
-- Implement seat locking mechanism with Redis (~4 hours): Create temporary seat reservation system to prevent double bookings during checkout.
-- Develop real-time seat availability updates (~3 hours): Implement WebSocket or polling to show real-time seat status changes.
-- Create seat selection validation logic (~2 hours): Add validation to prevent selecting unavailable seats and enforce seat limits.
+User Portal / Payments
 
-#### User Portal / Booking Flow
+Integrate PayOS payment gateway (~3 hours)
 
-- Build passenger information collection forms (~3 hours): Create forms to collect passenger details (name, ID, phone) for each selected seat.
-- Implement booking creation and management (~6 hours): Build backend API to create bookings, manage booking states, and handle expiration.
-- Create booking summary and review interface (~3 hours): Design booking review page showing trip details, passengers, and total cost.
-- Develop booking history and management dashboard (~4 hours): Build user dashboard to view, modify, and cancel existing bookings.
+Set up PayOS API integration for processing credit card and digital wallet payments
 
-#### User Portal / Guest Services
+Team member: Backend developer
 
-- Implement guest checkout flow without registration (~3 hours): Allow users to book tickets without creating an account, collecting minimal required info.
-- Create guest booking lookup system (~2 hours): Build system for guests to retrieve bookings using reference number and email.
-- Setup booking reference generation (~1 hour): Create unique, user-friendly booking reference number generation system.
+Implement payment webhook handling (~3 hours)
 
-#### User Portal / Ticketing
+Create webhook endpoints to receive payment status updates from payment gateways
 
-- Implement PDF e-ticket generation with QR codes (~4 hours): Create PDF generation system with booking details and scannable QR codes.
-- Create e-ticket download and email delivery (~2 hours): Implement download functionality and automatic email delivery of e-tickets.
-- Design e-ticket template with branding (~1 hour): Design professional e-ticket layout with company branding and essential information.
+Team member: Backend developer
 
-**Total estimation time spent: ~44 hours**
+Create payment confirmation and failure flows (~2 hours)
+
+Build user interfaces for successful payments and error handling for failed payments
+
+Team member: Frontend developer
+
+User Portal / Notifications
+
+Setup email service (~1 hour)
+
+Configure email service provider (SendGrid/AWS SES) for sending transactional emails
+
+Team member: Backend developer
+
+Create email templates for booking confirmations (~2 hours)
+
+Design and implement HTML email templates for booking confirmations and receipts
+
+Team member: Frontend developer
+
+Implement SMS notifications (Optional) (~2 hours)
+
+Set up SMS service (Twilio) for sending booking confirmations and reminders
+
+Team member: Backend developer
+
+Setup trip reminder notifications (~2 hours)
+
+Create scheduled job system to send reminder emails/SMS before trip departure
+
+Team member: Backend developer
+
+Create notification preferences management (~2 hours)
+
+Build user interface to manage email and SMS notification preferences
+
+Team member: Frontend developer
+
+User Portal / Management
+
+Create booking modification functionality (~4 hours)
+
+Allow users to modify passenger details and change seats (if available)
+
+Team member: Full-stack developer
+
+Setup automated booking expiration (~1 hour)
+
+Implement background job to automatically cancel unpaid bookings after timeout
+
+Team member: Backend developer
+
+Admin Portal
+
+Create revenue analytics dashboard (~3 hours)
+
+Build admin dashboard showing revenue metrics, charts, and financial reports
+
+Team member: Frontend developer
+
+Implement booking analytics and reporting (~2 hours)
+
+Create analytics for booking trends, popular routes, and conversion rates
+
+Team member: Backend developer
+
+System & Infrastructure
+
+Setup real-time monitoring dashboard (~2 hours)
+
+Implement system health monitoring with key performance indicators
+
+Team member: DevOps engineer
+
+Total estimation time spent: ~36 hours
 
 ## Assignment 4: User Experience & Frontend
 
