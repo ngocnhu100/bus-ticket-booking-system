@@ -240,7 +240,7 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
 
   const generateSeats = (rows: number, columns: number): Seat[] => {
     const seats: Seat[] = []
-    const seat_types = ['standard', 'vip', 'window', 'aisle'] as const
+    const seat_types = ['standard', 'vip'] as const
 
     for (let row = 1; row <= rows; row++) {
       for (let col = 1; col <= columns; col++) {

@@ -1,0 +1,58 @@
+/* SeatLegend Component Styles */
+
+.seat-legend-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid;
+  border-radius: 4px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+/* Status Styles for Legend */
+.seat-legend-item.seat-available {
+  background-color: var(--seat-available);
+  border-color: var(--seat-available-border);
+  color: var(--seat-available-border);
+}
+
+.seat-legend-item.seat-selected {
+  background-color: var(--seat-selected);
+  border-color: var(--seat-selected-border);
+  color: white;
+}
+
+.seat-legend-item.seat-unavailable {
+  background-color: var(--seat-disabled);
+  border-color: var(--seat-disabled-border);
+  color: var(--seat-disabled-border);
+  opacity: 0.65;
+}
+
+.seat-legend-item.seat-occupied {
+  background-color: var(--seat-occupied);
+  border-color: var(--seat-occupied-border);
+  color: var(--seat-occupied-border);
+}
+
+.seat-legend-item.seat-locked {
+  background-color: var(--seat-locked);
+  border-color: var(--seat-locked-border);
+  color: var(--seat-locked-border);
+}
+
+.seat-legend-item.seat-driver {
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.seat-legend-item.seat-door {
+  background-color: hsl(217 91% 60% / 0.1);
+  border-color: hsl(217 91% 60% / 0.2);
+  color: hsl(217 91% 60%);
+}

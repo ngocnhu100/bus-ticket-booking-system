@@ -1,0 +1,37 @@
+-- Fix seat generation to use layout_json configuration
+-- Delete existing incorrectly generated seats
+DELETE FROM seats;
+
+-- Generate seats based on layout_json from seat_layouts table
+INSERT INTO seats (bus_id, seat_code, seat_type, position, price, is_active)
+SELECT
+  b.bus_id,
+  seat_element #>> '{}' as seat_code,
+  CASE
+    WHEN seat_element #>> '{}' LIKE 'VIP%' THEN 'vip'
+    WHEN seat_element #>> '{}' LIKE 'H%A' OR seat_element #>> '{}' LIKE 'H%B' THEN 'sleeper'
+    ELSE 'standard'
+  END as seat_type,
+  CASE
+    WHEN seat_element #>> '{}' ~ '^[0-9]+A$' THEN 'window'  -- Row + A = window
+    WHEN seat_element #>> '{}' ~ '^[0-9]+B$' THEN 'aisle'   -- Row + B = aisle
+    WHEN seat_element #>> '{}' ~ '^[0-9]+C$' THEN 'aisle'   -- Row + C = aisle
+    WHEN seat_element #>> '{}' ~ '^[0-9]+D$' THEN 'aisle'   -- Row + D = aisle
+    WHEN seat_element #>> '{}' ~ '^[0-9]+E$' THEN 'aisle'   -- Row + E = aisle
+    ELSE 'aisle'
+  END as position,
+  CASE
+    WHEN seat_element #>> '{}' LIKE 'VIP%' THEN 50000  -- VIP surcharge
+    WHEN seat_element #>> '{}' LIKE 'H%A' OR seat_element #>> '{}' LIKE 'H%B' THEN 100000  -- Sleeper surcharge
+    ELSE 0
+  END as price,
+  true as is_active
+FROM buses b
+JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
+CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
+CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') as seat_element
+WHERE seat_element IS NOT NULL
+  AND seat_element #>> '{}' IS NOT NULL
+  AND seat_element #>> '{}' != 'null'
+ON CONFLICT (bus_id, seat_code) DO NOTHING;

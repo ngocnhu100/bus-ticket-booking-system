@@ -136,16 +136,11 @@ class TripController {
       const seatMapData = await tripService.getSeatMap(tripId);
       
       const transformedSeats = seatMapData.seats.map(seat => {
-        // Calculate row and column from seat code (assuming format like A1, B2, etc.)
-        const match = seat.seat_code.match(/^([A-Z])(\d+)$/);
-        const row = match ? match[1].charCodeAt(0) - 'A'.charCodeAt(0) + 1 : 1;
-        const column = match ? parseInt(match[2]) : 1;
-
         const seatData = {
           seat_id: seat.seat_id,
           seat_code: seat.seat_code,
-          row: row,
-          column: column,
+          row: seat.row,
+          column: seat.column,
           seat_type: seat.seat_type,
           position: seat.position,
           price: seat.price,
@@ -167,6 +162,8 @@ class TripController {
             layout: seatMapData.layout,
             rows: seatMapData.rows,
             columns: seatMapData.columns,
+            driver: seatMapData.driver,
+            doors: seatMapData.doors,
             seats: transformedSeats
           },
           legend: {

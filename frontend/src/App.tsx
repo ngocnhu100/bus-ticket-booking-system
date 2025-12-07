@@ -26,6 +26,7 @@ import AdminSeatMapManagement from '@/pages/admin/AdminSeatMapManagement'
 import AdminOperatorManagement from '@/pages/admin/AdminOperatorManagement'
 import Landing from './pages/Landing'
 import TripSearchResults from './pages/TripSearchResults'
+import { SeatSelection } from './pages/users/SeatSelection'
 
 const queryClient = new QueryClient()
 
@@ -85,6 +86,10 @@ const App = () => (
                   element={<Notifications />}
                 />
                 <Route path="/trips/search" element={<TripSearch />} />
+                <Route
+                  path="/booking/:tripId/seats"
+                  element={<SeatSelection />}
+                />
               </Route>
 
               {/* Admin routes - protected */}

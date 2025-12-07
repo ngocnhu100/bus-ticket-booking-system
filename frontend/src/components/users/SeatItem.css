@@ -1,0 +1,232 @@
+/* SeatItem Component Styles */
+
+.seat-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1.5px solid;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: default;
+  transition: all 0.2s ease-in-out;
+  outline: none;
+
+  /* Remove default button appearance */
+  background: none;
+  font-family: inherit;
+
+  /* Focus state */
+  &:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Interactive Seat States */
+.seat-item-interactive {
+  cursor: pointer;
+
+  &:hover:not(.seat-item-disabled-btn) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active:not(.seat-item-disabled-btn) {
+    transform: translateY(-1px);
+  }
+}
+
+.seat-item-disabled-btn {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ============================================================================
+   SEAT STATUSES - Using Theme Variables
+   ============================================================================ */
+
+/* Available Seat (Can be selected) */
+.seat-available {
+  background-color: var(--seat-available);
+  border-color: var(--seat-available-border);
+  color: var(--seat-available-border);
+
+  &:hover {
+    background-color: var(--seat-available-hover);
+    border-color: var(--seat-available-border);
+  }
+
+  .seat-code {
+    color: var(--foreground);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+/* Selected Seat (User selected) */
+.seat-selected {
+  background-color: var(--seat-selected);
+  border-color: var(--seat-selected-border);
+  color: white;
+  font-weight: 700;
+
+  &:hover {
+    background-color: var(--seat-selected-hover);
+  }
+
+  .seat-code {
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Unavailable Seat (Not active) */
+.seat-unavailable {
+  background-color: var(--seat-disabled);
+  border-color: var(--seat-disabled-border);
+  color: var(--seat-disabled-border);
+  cursor: not-allowed;
+  opacity: 0.65;
+
+  .seat-code {
+    color: var(--muted-foreground);
+    opacity: 0.8;
+  }
+}
+
+/* Occupied Seat (Already booked) */
+.seat-occupied {
+  background-color: var(--seat-occupied);
+  border-color: var(--seat-occupied-border);
+  color: var(--seat-occupied-border);
+  cursor: not-allowed;
+
+  .seat-code {
+    color: var(--foreground);
+    opacity: 0.9;
+  }
+}
+
+/* Locked Seat (Temporarily reserved) */
+.seat-locked {
+  background-color: var(--seat-locked);
+  border-color: var(--seat-locked-border);
+  color: var(--seat-locked-border);
+  cursor: not-allowed;
+
+  .seat-code {
+    color: var(--foreground);
+    opacity: 0.9;
+  }
+}
+
+/* ============================================================================
+   SEAT TYPES - Additional Styling
+   ============================================================================ */
+
+/* VIP Seat Enhancement */
+.seat-vip {
+  &.seat-available {
+    box-shadow:
+      inset 0 0 0 1px var(--seat-available-border),
+      0 0 8px var(--seat-available-border);
+  }
+
+  &.seat-selected {
+    box-shadow:
+      inset 0 0 0 1px var(--seat-selected-border),
+      0 0 12px var(--seat-selected);
+  }
+}
+
+/* ============================================================================
+   SEAT CONTENT LAYOUT
+   ============================================================================ */
+
+.seat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+}
+
+.seat-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  min-width: 20px;
+}
+
+.seat-code {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.seat-indicator {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  opacity: 0.6;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .seat-item {
+    width: 44px;
+    height: 44px;
+    font-size: 0.7rem;
+    border-width: 1.5px;
+
+    .seat-code {
+      font-size: 0.75rem;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .seat-item {
+    width: 40px;
+    height: 40px;
+    font-size: 0.65rem;
+
+    .seat-code {
+      font-size: 0.7rem;
+    }
+  }
+}
+
+/* ============================================================================
+   DARK MODE OVERRIDES
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  .seat-code {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Print Styles */
+@media print {
+  .seat-item {
+    border-color: currentColor !important;
+  }
+}
