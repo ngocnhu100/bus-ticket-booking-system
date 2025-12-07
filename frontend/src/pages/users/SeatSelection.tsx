@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,8 @@ export function SeatSelection() {
   const [totalPrice, setTotalPrice] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [operationInProgress, setOperationInProgress] = useState(false)
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Separate function to fetch seat map
   const fetchSeatMap = useCallback(async () => {
@@ -95,6 +97,22 @@ export function SeatSelection() {
     tripId,
   })
 
+  // Debounced refresh function to prevent multiple concurrent refreshes
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current)
+    }
+    refreshTimeoutRef.current = setTimeout(async () => {
+      try {
+        await refreshLocks(tripId!)
+        setOperationInProgress(false)
+      } catch (err) {
+        console.error('Error refreshing locks:', err)
+        setOperationInProgress(false)
+      }
+    }, 300) // Wait 300ms after last operation
+  }, [tripId, refreshLocks])
+
   // Fetch trip details and seat map
   useEffect(() => {
     const fetchTripAndSeats = async () => {
@@ -134,9 +152,14 @@ export function SeatSelection() {
     fetchTripAndSeats()
   }, [tripId, fetchSeatMap])
 
-  // Cleanup locks when component unmounts
+  // Cleanup locks and timeouts when component unmounts
   useEffect(() => {
+    const currentTimeout = refreshTimeoutRef.current
     return () => {
+      // Clear any pending refresh timeout
+      if (currentTimeout) {
+        clearTimeout(currentTimeout)
+      }
       // Release all locks when leaving the page
       if (user && selectedSeats.length > 0 && tripId) {
         releaseAllLocksApi(tripId, user.userId.toString()).catch((err) => {
@@ -146,9 +169,9 @@ export function SeatSelection() {
     }
   }, [user, selectedSeats.length, tripId, releaseAllLocksApi])
 
-  // Set selectedSeats from loaded locks
+  // Set selectedSeats from loaded locks (only when not in operation)
   useEffect(() => {
-    if (seatMapData) {
+    if (seatMapData && !operationInProgress) {
       const lockedSeatIds = userLocks
         .map(
           (lock) =>
@@ -158,7 +181,7 @@ export function SeatSelection() {
         .filter(Boolean) as string[]
       setSelectedSeats(lockedSeatIds)
     }
-  }, [userLocks, seatMapData])
+  }, [userLocks, seatMapData, operationInProgress])
 
   // Calculate total price based on selected seats
   useEffect(() => {
@@ -176,6 +199,19 @@ export function SeatSelection() {
   const handleSeatSelect = async (seat: Seat, isSelected: boolean) => {
     if (!seat.seat_id || !user || !tripId) return
 
+    // Check if this seat is already being processed
+    const isAlreadySelected = selectedSeats.includes(seat.seat_id)
+    if (isSelected && isAlreadySelected) return // Already selected
+    if (!isSelected && !isAlreadySelected) return // Already deselected
+
+    setOperationInProgress(true)
+
+    // Optimistic update: immediately update selectedSeats
+    const newSelectedSeats = isSelected
+      ? [...selectedSeats, seat.seat_id]
+      : selectedSeats.filter((id) => id !== seat.seat_id)
+    setSelectedSeats(newSelectedSeats)
+
     try {
       if (isSelected) {
         // Lock the seat when selecting
@@ -186,8 +222,8 @@ export function SeatSelection() {
         })
         // Refresh seat map first to show updated lock status
         await fetchSeatMap()
-        // Then refresh locks to update selection state
-        await refreshLocks(tripId)
+        // Debounced refresh of locks
+        debouncedRefresh()
       } else {
         // Release the lock when deselecting
         await releaseLocksApi({
@@ -197,20 +233,19 @@ export function SeatSelection() {
         })
         // Refresh seat map first to show updated lock status
         await fetchSeatMap()
-        // Delay before refreshing locks to allow backend to process
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        // Refresh locks multiple times to ensure we get updated data
-        await refreshLocks(tripId)
-        await new Promise((resolve) => setTimeout(resolve, 200))
-        await refreshLocks(tripId)
+        // Debounced refresh of locks
+        debouncedRefresh()
       }
     } catch (err) {
       console.error('Error managing seat lock:', err)
+      // Revert optimistic update on error
+      setSelectedSeats(selectedSeats)
       setError(
         err instanceof Error
           ? `Failed to ${isSelected ? 'lock' : 'release'} seat: ${err.message}`
           : 'Failed to update seat selection'
       )
+      setOperationInProgress(false)
     }
   }
 
