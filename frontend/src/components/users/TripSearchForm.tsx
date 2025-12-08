@@ -1,117 +1,357 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card } from '@/components/ui/card'
-import { Search, MapPin, Calendar, Users } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Combobox } from '@/components/ui/combobox'
+import { AlertCircle, Calendar, ArrowLeftRight, Users } from 'lucide-react'
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
+import '@/styles/datepicker.css'
+import { format } from 'date-fns'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+interface SearchFormData {
+  from: string
+  to: string
+  date: Date | null
+  passengers: number | string
+}
+
+// Fallback cities list
+const fallbackCities = [
+  'Hanoi',
+  'Ho Chi Minh City',
+  'Da Nang',
+  'Hai Phong',
+  'Can Tho',
+  'Hue',
+  'Nha Trang',
+  'Da Lat',
+  'Sapa',
+]
 
 export const TripSearchForm = () => {
   const navigate = useNavigate()
-  const [origin, setOrigin] = useState('')
-  const [destination, setDestination] = useState('')
-  const [date, setDate] = useState('')
-  const [passengers, setPassengers] = useState(1)
+  const [formData, setFormData] = useState<SearchFormData>({
+    from: '',
+    to: '',
+    date: null,
+    passengers: 1,
+  })
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isLoading, setIsLoading] = useState(false)
+  const [cities, setCities] = useState<string[]>(fallbackCities)
+  const [citiesLoading, setCitiesLoading] = useState(true)
+  const [citiesError, setCitiesError] = useState<string | null>(null)
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
+  const fetchCities = async () => {
+    try {
+      setCitiesLoading(true)
+      setCitiesError(null)
 
-    if (!origin || !destination || !date) {
-      return
+      const response = await fetch('/cities.json')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      const data = (await response.json()) as Array<{ NameEn: string }>
+      const cityNames = data
+        .map((province) => {
+          const name = province.NameEn
+          switch (name) {
+            case 'Ha Noi':
+              return 'Hanoi'
+            case 'Ho Chi Minh':
+              return 'Ho Chi Minh City'
+            case 'Da Nang':
+              return 'Da Nang'
+            case 'Hai Phong':
+              return 'Hai Phong'
+            case 'Can Tho':
+              return 'Can Tho'
+            case 'Thua Thien Hue':
+              return 'Hue'
+            case 'Khanh Hoa':
+              return 'Nha Trang'
+            case 'Lam Dong':
+              return 'Da Lat'
+            case 'Lao Cai':
+              return 'Sapa'
+            default:
+              return name
+          }
+        })
+        .sort()
+      setCities(cityNames)
+    } catch (error) {
+      console.error('Failed to load cities:', error)
+      setCitiesError('Failed to load cities. Using default list.')
+      setCities(fallbackCities)
+    } finally {
+      setCitiesLoading(false)
     }
-
-    const searchParams = new URLSearchParams({
-      origin,
-      destination,
-      date,
-      passengers: passengers.toString(),
-    })
-
-    navigate(`/trips/search?${searchParams.toString()}`)
   }
 
-  // Get today's date in YYYY-MM-DD format for min attribute
-  const today = new Date().toISOString().split('T')[0]
+  useEffect(() => {
+    fetchCities()
+  }, [])
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.from) newErrors.from = 'Please select a departure city'
+    if (!formData.to) newErrors.to = 'Please select a destination city'
+    if (!formData.date) newErrors.date = 'Please select a date'
+    if (formData.from === formData.to && formData.from)
+      newErrors.from = 'Departure and destination must be different'
+
+    if (formData.date) {
+      const selectedDate = new Date(formData.date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (selectedDate < today) {
+        newErrors.date = 'Date must be today or later'
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
+    const passengerCount =
+      typeof formData.passengers === 'string'
+        ? parseInt(formData.passengers) || 1
+        : formData.passengers
+
+    setIsLoading(true)
+
+    const searchParams = new URLSearchParams({
+      origin: formData.from,
+      destination: formData.to,
+      date: formData.date ? format(formData.date, 'yyyy-MM-dd') : '',
+      passengers: passengerCount.toString(),
+    })
+
+    navigate(`/trip-search-results?${searchParams.toString()}`)
+    setIsLoading(false)
+  }
 
   return (
-    <Card className="p-6">
-      <form onSubmit={handleSearch} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Origin */}
-          <div className="space-y-2">
-            <Label htmlFor="origin" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              From
-            </Label>
-            <Input
-              id="origin"
-              type="text"
-              placeholder="e.g., Ho Chi Minh City"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              required
-            />
+    <Card className="shadow-lg border">
+      <CardContent className="p-6 md:p-8">
+        <form onSubmit={handleSearch} className="space-y-6">
+          {/* From/Date and To/Passengers in 2 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4">
+            {/* Left Column: From and Date */}
+            <div className="space-y-4">
+              {/* From */}
+              <div className="space-y-2">
+                <Label htmlFor="from" className="text-base font-medium">
+                  From
+                </Label>
+                <Combobox
+                  options={cities}
+                  value={formData.from}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, from: value })
+                    setErrors({ ...errors, from: '' })
+                  }}
+                  placeholder={
+                    citiesLoading
+                      ? 'Loading cities...'
+                      : 'Select departure city'
+                  }
+                  disabled={citiesLoading}
+                />
+                {errors.from && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.from}
+                  </div>
+                )}
+              </div>
+
+              {/* Date */}
+              <div className="space-y-2">
+                <Label htmlFor="date" className="text-base font-medium">
+                  Date
+                </Label>
+                <div className="relative">
+                  <div
+                    id="datepicker-portal"
+                    className="absolute top-full left-0 z-50 mt-2"
+                  ></div>
+                  <DatePicker
+                    selected={formData.date}
+                    onChange={(date) => {
+                      setFormData({ ...formData, date })
+                      setErrors({ ...errors, date: '' })
+                    }}
+                    minDate={new Date()}
+                    dateFormat="EEEE, MMMM d, yyyy"
+                    placeholderText="Select departure date"
+                    className="w-full h-12 px-3 py-2 pr-10 text-base bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+                    wrapperClassName="w-full"
+                    calendarClassName="!bg-card !border !border-border !rounded-md !shadow-xl !w-80"
+                    dayClassName={(date) => {
+                      const today = new Date()
+                      today.setHours(0, 0, 0, 0)
+                      const isToday = date.getTime() === today.getTime()
+                      const isSelected =
+                        formData.date &&
+                        date.getTime() === formData.date.getTime()
+
+                      let classes =
+                        'cursor-pointer hover:bg-muted hover:text-foreground transition-colors'
+
+                      if (isSelected) {
+                        classes +=
+                          ' bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground'
+                      } else if (isToday) {
+                        classes += ' font-bold ring-2 ring-primary/50'
+                      }
+
+                      return classes
+                    }}
+                    popperClassName="!z-50"
+                    popperPlacement="bottom-start"
+                    portalId="datepicker-portal"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      const input =
+                        e.currentTarget.previousElementSibling?.querySelector(
+                          'input'
+                        )
+                      if (input) input.focus()
+                    }}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none p-0.5"
+                  >
+                    <Calendar className="w-5 h-5" />
+                  </button>
+                </div>
+                {errors.date && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.date}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Switch Button */}
+            <div className="flex justify-center items-start pt-9">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  const newFrom = formData.to
+                  const newTo = formData.from
+                  setFormData({
+                    ...formData,
+                    from: newFrom,
+                    to: newTo,
+                  })
+                  setErrors({ ...errors, from: '', to: '' })
+                }}
+                className="h-10 w-10 rounded-full hover:bg-primary hover:text-primary-foreground transition-colors"
+                title="Swap departure and destination"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Right Column: To and Passengers */}
+            <div className="space-y-4">
+              {/* To */}
+              <div className="space-y-2">
+                <Label htmlFor="to" className="text-base font-medium">
+                  To
+                </Label>
+                <Combobox
+                  options={cities}
+                  value={formData.to}
+                  onValueChange={(value) => {
+                    setFormData({ ...formData, to: value })
+                    setErrors({ ...errors, to: '' })
+                  }}
+                  placeholder={
+                    citiesLoading
+                      ? 'Loading cities...'
+                      : 'Select destination city'
+                  }
+                  disabled={citiesLoading}
+                />
+                {errors.to && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="w-4 h-4" />
+                    {errors.to}
+                  </div>
+                )}
+                {citiesError && !errors.to && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertCircle className="w-4 h-4" />
+                    {citiesError}
+                  </div>
+                )}
+              </div>
+
+              {/* Passengers */}
+              <div className="space-y-2">
+                <Label htmlFor="passengers" className="text-base font-medium">
+                  Passengers
+                </Label>
+                <Select
+                  value={formData.passengers.toString()}
+                  onValueChange={(value) => {
+                    setFormData({
+                      ...formData,
+                      passengers: parseInt(value),
+                    })
+                  }}
+                >
+                  <SelectTrigger className="h-12">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <SelectValue placeholder="Select passengers" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                    <SelectItem value="3">3</SelectItem>
+                    <SelectItem value="4">4</SelectItem>
+                    <SelectItem value="5">5</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
-          {/* Destination */}
-          <div className="space-y-2">
-            <Label htmlFor="destination" className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              To
-            </Label>
-            <Input
-              id="destination"
-              type="text"
-              placeholder="e.g., Hanoi"
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Date */}
-          <div className="space-y-2">
-            <Label htmlFor="date" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              Date
-            </Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              min={today}
-              required
-            />
-          </div>
-
-          {/* Passengers */}
-          <div className="space-y-2">
-            <Label htmlFor="passengers" className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-600" />
-              Passengers
-            </Label>
-            <Input
-              id="passengers"
-              type="number"
-              value={passengers}
-              onChange={(e) => setPassengers(parseInt(e.target.value) || 1)}
-              min={1}
-              max={10}
-              required
-            />
-          </div>
-        </div>
-
-        <Button
-          type="submit"
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white gap-2"
-          size="lg"
-        >
-          <Search className="w-5 h-5" />
-          Search Trips
-        </Button>
-      </form>
+          {/* Search Button */}
+          <Button
+            type="submit"
+            className="w-full h-12 text-lg font-medium"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Searching...' : 'Search Trips'}
+          </Button>
+        </form>
+      </CardContent>
     </Card>
   )
 }

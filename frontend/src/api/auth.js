@@ -81,21 +81,23 @@ export async function request(
       data?.error?.code === 'AUTH_004' &&
       data?.error?.action === 'FORCE_LOGOUT'
     ) {
-      console.error('[Auth] Old JWT token detected - forcing logout');
+      console.error('[Auth] Old JWT token detected - forcing logout')
       clearTokens()
       localStorage.removeItem('user')
-      
+
       // Show alert to user
-      alert('Your session is outdated. Please login again to continue.');
-      
+      alert('Your session is outdated. Please login again to continue.')
+
       // Redirect to login
       window.location.href = '/login'
-      
-      const error = new Error(data.error.message || 'Session expired - please login again')
+
+      const error = new Error(
+        data.error.message || 'Session expired - please login again'
+      )
       error.code = 'AUTH_004'
       throw error
     }
-    
+
     // If unauthorized and we have a refresh token, try to refresh
     if (
       response.status === 401 &&

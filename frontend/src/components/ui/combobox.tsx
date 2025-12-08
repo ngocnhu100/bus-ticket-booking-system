@@ -74,7 +74,7 @@ export function Combobox({
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="h-12 pl-10 pr-10"
+          className="h-12 pl-10 pr-9"
           disabled={disabled}
         />
         <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -82,17 +82,24 @@ export function Combobox({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-8 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-7 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
           >
             <X className="w-4 h-4" />
           </button>
         )}
-        <ChevronDown
-          className={cn(
-            'absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground transition-transform duration-200',
-            isOpen && 'rotate-180'
-          )}
-        />
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none p-0.5"
+          disabled={disabled}
+        >
+          <ChevronDown
+            className={cn(
+              'w-4 h-4 transition-transform duration-200',
+              isOpen && 'rotate-180'
+            )}
+          />
+        </button>
       </div>
 
       {isOpen && (
