@@ -210,6 +210,29 @@ class BookingController {
     } catch (err) {
       console.error('Error getting user bookings:', err);
 
+      // Handle old JWT token error
+      if (err.message.includes('OLD_JWT_TOKEN_DETECTED')) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'AUTH_004',
+            message: 'Your session is outdated. Please logout and login again to continue.',
+            action: 'FORCE_LOGOUT'
+          }
+        });
+      }
+
+      // Handle invalid user ID
+      if (err.message.includes('INVALID_USER_ID')) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VAL_002',
+            message: 'Invalid user ID format'
+          }
+        });
+      }
+
       return res.status(500).json({
         success: false,
         error: {

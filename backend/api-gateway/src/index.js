@@ -112,8 +112,9 @@ app.use('/bookings', async (req, res) => {
   try {
     const bookingServiceUrl = process.env.BOOKING_SERVICE_URL || 'http://localhost:3004';
     
-    // req.path is already stripped of /bookings prefix by app.use, so we need to add it back
-    const fullPath = '/bookings' + req.path;
+    // req.path is already stripped of /bookings prefix by app.use
+    // Just use req.path directly - NO need to add '/bookings' back
+    const fullPath = req.path;
     
     // Query string is already in req.originalUrl, extract it properly
     const queryString = req.originalUrl.includes('?') 
@@ -191,52 +192,6 @@ app.use('/trips', async (req, res) => {
       res.status(503).json({
         success: false,
         error: { code: 'GATEWAY_003', message: 'Trip service currently unavailable' },
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-});
-
-// Booking service routes
-app.use('/bookings', async (req, res) => {
-  try {
-    const bookingServiceUrl = process.env.BOOKING_SERVICE_URL || 'http://booking-service:3004';
-    const queryString = Object.keys(req.query).length 
-      ? '?' + new URLSearchParams(req.query).toString() 
-      : '';
-    
-    console.log(`🔄 Proxying ${req.method} ${req.originalUrl} → ${bookingServiceUrl}${req.path}${queryString}`);
-
-    const response = await axios({
-      method: req.method,
-      url: `${bookingServiceUrl}${req.path}${queryString}`,
-      data: req.body,
-      headers: {
-        'authorization': req.headers.authorization,
-        'content-type': 'application/json',
-      },
-      timeout: 15000,
-    });
-
-    console.log(`✅ Booking service responded with status ${response.status}`);
-
-    // Forward headers
-    Object.keys(response.headers).forEach(key => {
-      if (key !== 'transfer-encoding') res.setHeader(key, response.headers[key]);
-    });
-
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error(`❌ Booking service error:`, error.message);
-
-    if (error.response) {
-      console.log(`❌ Booking service responded with error status ${error.response.status}`);
-      res.status(error.response.status).json(error.response.data);
-    } else {
-      console.log(`❌ Booking service unavailable or timeout`);
-      res.status(503).json({
-        success: false,
-        error: { code: 'GATEWAY_004', message: 'Booking service currently unavailable' },
         timestamp: new Date().toISOString()
       });
     }
