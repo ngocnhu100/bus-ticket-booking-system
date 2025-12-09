@@ -1,12 +1,19 @@
 /**
  * Test script for Guest Booking Lookup API
  * 
+ * SETUP: First create a test booking in database:
+ * docker exec bus-ticket-postgres psql -U postgres -d bus_ticket_dev -c "
+ * INSERT INTO bookings (booking_reference, trip_id, user_id, contact_email, contact_phone, status, locked_until, subtotal, service_fee, total_price, currency) 
+ * VALUES ('BK20251209001', '7195f79f-c867-407c-b8bc-31ad6794951b', NULL, 'test@example.com', '+84973994154', 'confirmed', NOW() + INTERVAL '10 minutes', 500000, 25000, 525000, 'VND');"
+ * 
  * Tests various scenarios:
- * 1. Lookup with phone number
- * 2. Lookup with email
- * 3. Invalid booking reference
+ * 1. Lookup with phone number (BK20251209001)
+ * 2. Lookup with email (BK20251209001)
+ * 3. Invalid booking reference format
  * 4. Contact mismatch
  * 5. Missing parameters
+ * 
+ * Format: BKYYYYMMDDXXX (e.g., BK20251209001, BK20251209042)
  */
 
 const axios = require('axios');
@@ -55,7 +62,7 @@ async function testGuestLookup() {
   try {
     const response = await axios.get(`${BASE_URL}/guest/lookup`, {
       params: {
-        bookingReference: 'ABC123',
+        bookingReference: 'BK20251209001',
         phone: '+84973994154'
       }
     });
@@ -64,7 +71,7 @@ async function testGuestLookup() {
       logSuccess('Successfully retrieved booking with phone');
       logInfo(`Booking Reference: ${response.data.data.bookingReference}`);
       logInfo(`Contact Phone: ${response.data.data.contactPhone}`);
-      logInfo(`Total Price: ${response.data.data.totalPrice} ${response.data.data.currency}`);
+      logInfo(`Total Price: ${response.data.data.pricing.total} ${response.data.data.pricing.currency}`);
       passedTests++;
     } else {
       logError('Unexpected response structure');
@@ -72,10 +79,10 @@ async function testGuestLookup() {
     }
   } catch (error) {
     if (error.response?.status === 404) {
-      logInfo('Booking not found (expected if no test data exists)');
-      logInfo('Status: 404 - Booking not found');
+      logError('Booking not found - Please create test booking first!');
+      logInfo('Run setup command from file header');
       logInfo('Response: ' + JSON.stringify(error.response.data, null, 2));
-      passedTests++; // This is expected behavior
+      failedTests++;
     } else {
       logError(`Test failed: ${error.message}`);
       if (error.response) {
@@ -90,13 +97,15 @@ async function testGuestLookup() {
   try {
     const response = await axios.get(`${BASE_URL}/guest/lookup`, {
       params: {
-        bookingReference: 'ABC123',
-        email: 'guest@example.com'
+        bookingReference: 'BK20251209001',
+        email: 'test@example.com'
       }
     });
 
     if (response.status === 200 && response.data.success) {
       logSuccess('Successfully retrieved booking with email');
+      logInfo(`Booking Reference: ${response.data.data.bookingReference}`);
+      logInfo(`Contact Email: ${response.data.data.contactEmail}`);
       passedTests++;
     } else {
       logError('Unexpected response structure');
@@ -104,8 +113,8 @@ async function testGuestLookup() {
     }
   } catch (error) {
     if (error.response?.status === 404) {
-      logInfo('Booking not found (expected if no test data exists)');
-      passedTests++;
+      logError('Booking not found - Please create test booking first!');
+      failedTests++;
     } else {
       logError(`Test failed: ${error.message}`);
       failedTests++;
@@ -160,7 +169,7 @@ async function testGuestLookup() {
   try {
     const response = await axios.get(`${BASE_URL}/guest/lookup`, {
       params: {
-        bookingReference: 'INVALID', // Only 7 chars, should be 6
+        bookingReference: 'INVALID123', // Wrong format, should be BKYYYYMMDDXXX
         phone: '+84973994154'
       }
     });
@@ -169,6 +178,28 @@ async function testGuestLookup() {
   } catch (error) {
     if (error.response?.status === 400) {
       logSuccess('Correctly returned 400 for invalid format');
+      logInfo('Error message: ' + error.response.data.error.message);
+      passedTests++;
+    } else {
+      logError(`Unexpected error: ${error.message}`);
+      failedTests++;
+    }
+  }
+
+  // Test 6: Contact information mismatch (403)
+  logTest('Test 6: Contact Information Mismatch');
+  try {
+    const response = await axios.get(`${BASE_URL}/guest/lookup`, {
+      params: {
+        bookingReference: 'BK20251209001',
+        phone: '+84999999999' // Wrong phone
+      }
+    });
+    logError('Should have returned 403 error');
+    failedTests++;
+  } catch (error) {
+    if (error.response?.status === 403) {
+      logSuccess('Correctly returned 403 for contact mismatch');
       logInfo('Error message: ' + error.response.data.error.message);
       passedTests++;
     } else {

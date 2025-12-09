@@ -18,14 +18,19 @@ import axios from 'axios'
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 interface BookingData {
-  booking_id: string
-  booking_reference: string
-  trip_id: string
-  contact_email: string
-  contact_phone: string
-  total_price: string
+  bookingId: string
+  bookingReference: string
+  tripId: string
+  contactEmail: string
+  contactPhone: string
   status: string
-  created_at: string
+  createdAt: string
+  pricing: {
+    subtotal: number
+    serviceFee: number
+    total: number
+    currency: string
+  }
   passengers: Array<{
     full_name: string
     seat_code: string
@@ -33,7 +38,20 @@ interface BookingData {
   }>
   eTicket?: {
     ticketUrl: string | null
-    qrCode: string | null
+    qrCodeUrl: string | null
+  }
+  tripDetails?: {
+    route: {
+      origin: string
+      destination: string
+    }
+    operator: {
+      name: string
+    }
+    schedule: {
+      departure_time: string
+      arrival_time: string
+    }
   }
 }
 
@@ -85,23 +103,6 @@ export function BookingLookup() {
       if (response.data.success) {
         const bookingData = response.data.data
         console.log('Raw booking data:', JSON.stringify(bookingData, null, 2))
-        console.log('Has eTicket?', bookingData.eTicket)
-        console.log('ticket_url:', bookingData.ticket_url)
-        console.log('qr_code_url:', bookingData.qr_code_url)
-
-        // Map eTicket - backend might return both formats
-        if (!bookingData.eTicket || !bookingData.eTicket.ticketUrl) {
-          if (bookingData.ticket_url || bookingData.qr_code_url) {
-            bookingData.eTicket = {
-              ticketUrl: bookingData.ticket_url,
-              qrCode: bookingData.qr_code_url,
-            }
-            console.log(
-              'Created eTicket from snake_case fields:',
-              bookingData.eTicket
-            )
-          }
-        }
 
         setBooking(bookingData)
       } else {
@@ -174,14 +175,14 @@ export function BookingLookup() {
               <Input
                 id="bookingReference"
                 type="text"
-                placeholder="Ex: BK202512064939"
+                placeholder="Ex: BK20251209001"
                 value={bookingReference}
                 onChange={(e) => setBookingReference(e.target.value)}
                 className="mt-2"
                 disabled={loading}
               />
               <p className="text-sm text-muted-foreground mt-1">
-                Booking reference has 16 characters, starts with BK
+                Format: BKYYYYMMDDXXX (13 characters)
               </p>
             </div>
 
@@ -211,12 +212,15 @@ export function BookingLookup() {
               <Input
                 id="contactPhone"
                 type="tel"
-                placeholder="0901234567"
+                placeholder="+84973994154 or 0973994154"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 className="mt-2"
                 disabled={loading}
               />
+              <p className="text-sm text-muted-foreground mt-1">
+                Vietnamese format: +84xxxxxxxxx or 0xxxxxxxxx
+              </p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
@@ -266,7 +270,7 @@ export function BookingLookup() {
                     Booking Information
                   </h2>
                   <p className="text-muted-foreground">
-                    Booking Reference: {booking.booking_reference}
+                    Booking Reference: {booking.bookingReference}
                   </p>
                 </div>
                 <Badge className={getStatusColor(booking.status)}>
@@ -278,33 +282,32 @@ export function BookingLookup() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Trip ID</p>
-                  <p className="font-medium">{booking.trip_id}</p>
+                  <p className="font-medium">{booking.tripId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
                     Total Amount
                   </p>
                   <p className="font-bold text-lg text-green-600">
-                    {parseFloat(booking.total_price).toLocaleString('vi-VN')}{' '}
-                    VND
+                    {booking.pricing.total.toLocaleString('vi-VN')} VND
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Email</p>
-                  <p className="font-medium">{booking.contact_email}</p>
+                  <p className="font-medium">{booking.contactEmail}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
                     Phone Number
                   </p>
-                  <p className="font-medium">{booking.contact_phone}</p>
+                  <p className="font-medium">{booking.contactPhone}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
                     Booking Date
                   </p>
                   <p className="font-medium">
-                    {new Date(booking.created_at).toLocaleString('vi-VN')}
+                    {new Date(booking.createdAt).toLocaleString('vi-VN')}
                   </p>
                 </div>
               </div>
@@ -319,11 +322,11 @@ export function BookingLookup() {
 
                   <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
                     {/* QR Code Display */}
-                    {booking.eTicket.qrCode && (
+                    {booking.eTicket.qrCodeUrl && (
                       <div className="flex flex-col items-center gap-4 pb-4 border-b border-white/50">
                         <div className="bg-white p-4 rounded-lg shadow-sm">
                           <img
-                            src={booking.eTicket.qrCode}
+                            src={booking.eTicket.qrCodeUrl}
                             alt="Boarding QR Code"
                             className="w-40 h-40"
                           />
@@ -351,7 +354,7 @@ export function BookingLookup() {
                       Download PDF Ticket
                     </Button>
                     <p className="text-xs text-center text-muted-foreground">
-                      Ticket sent to {booking.contact_email}
+                      Ticket sent to {booking.contactEmail}
                     </p>
                   </div>
                 </div>
@@ -415,27 +418,16 @@ export function BookingLookup() {
             <h3 className="font-semibold mb-3">💡 Test Instructions</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <strong>Step 1:</strong> Create new booking at{' '}
-                <a
-                  href="/booking-demo"
-                  className="text-blue-600 hover:underline"
-                >
-                  /booking-demo
-                </a>
+                <strong>Step 1:</strong> Enter booking reference below
               </p>
               <p>
-                <strong>Step 2:</strong> Copy booking reference (Ex:
-                BK202512064939)
+                <strong>Step 2:</strong> Enter email OR phone used when booking
               </p>
               <p>
-                <strong>Step 3:</strong> Enter reference + email/phone used when
-                booking
+                <strong>Step 3:</strong> Click "Look Up Booking"
               </p>
               <p>
-                <strong>Step 4:</strong> Click "Look Up Booking"
-              </p>
-              <p>
-                <strong>Step 5:</strong> View booking details with E-Ticket (QR
+                <strong>Step 4:</strong> View booking details with E-Ticket (QR
                 code, PDF download)
               </p>
               <div className="mt-4 p-3 bg-white rounded border">
@@ -444,22 +436,23 @@ export function BookingLookup() {
                 </p>
                 <code className="text-xs block space-y-1">
                   <span className="block">
-                    Reference: <strong>BK20251207058</strong>
+                    Reference: <strong>BK20251209001</strong>
                   </span>
                   <span className="block">
-                    Email: <strong>nguyenvana@example.com</strong>
+                    Email: <strong>test@example.com</strong>
                   </span>
                   <span className="block">
-                    Phone: <strong>0901234567</strong>
+                    Phone: <strong>+84973994154</strong> or{' '}
+                    <strong>0973994154</strong>
                   </span>
                   <span className="block mt-2 text-green-600">
-                    ✅ This booking includes E-Ticket
+                    ✅ This booking is available for testing
                   </span>
                   <span className="block text-muted-foreground">
-                    • QR code for boarding verification
+                    • Format: BKYYYYMMDDXXX (13 characters)
                   </span>
                   <span className="block text-muted-foreground">
-                    • PDF ticket download available
+                    • Case-insensitive lookup supported
                   </span>
                 </code>
               </div>
