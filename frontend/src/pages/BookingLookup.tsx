@@ -529,6 +529,10 @@ export function BookingLookup() {
                 <strong>Step 4:</strong> View booking details with E-Ticket (QR
                 code, PDF download)
               </p>
+              <p>
+                <strong>Step 5:</strong> Share E-Ticket via email (for confirmed
+                bookings)
+              </p>
               <div className="mt-4 p-3 bg-white rounded border">
                 <p className="font-medium mb-2">
                   Sample test case (with E-Ticket):
@@ -538,7 +542,7 @@ export function BookingLookup() {
                     Reference: <strong>BK20251209001</strong>
                   </span>
                   <span className="block">
-                    Email: <strong>test@example.com</strong>
+                    Email: <strong>phamminh0973@gmail.com</strong>
                   </span>
                   <span className="block">
                     Phone: <strong>+84973994154</strong> or{' '}
@@ -546,6 +550,9 @@ export function BookingLookup() {
                   </span>
                   <span className="block mt-2 text-green-600">
                     ✅ This booking is available for testing
+                  </span>
+                  <span className="block text-blue-600">
+                    📧 Test share: Enter any email to receive e-ticket
                   </span>
                   <span className="block text-muted-foreground">
                     • Format: BKYYYYMMDDXXX (13 characters)
