@@ -1,13 +1,19 @@
 import type { Trip } from './trip.types'
 
 export interface Passenger {
-  fullName: string
-  name?: string // alias for fullName
-  idNumber?: string
-  phone?: string
-  seatNumber: string
+  ticketId?: string
+  bookingId?: string
+  seatCode: string
+  seatNumber?: string // deprecated - use seatCode
   price?: number
-  passengerType?: string
+  fullName?: string
+  phone?: string
+  passenger?: {
+    fullName: string
+    phone?: string
+    documentId?: string
+  }
+  createdAt?: string
 }
 
 export interface User {
@@ -40,14 +46,38 @@ export interface Booking {
   contactEmail: string
   contactPhone: string
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded'
-  totalPrice: number
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded'
+  totalPrice?: number
   serviceFee?: number
   lockedUntil: string | null
   createdAt: string
   updatedAt: string
   passengers: Passenger[]
+  pricing?: {
+    subtotal: number
+    serviceFee: number
+    total: number
+    currency: string
+  }
+  payment?: {
+    method: string | null
+    status: string
+    paidAt: string | null
+  }
   eTicket?: ETicket
+  tripDetails?: {
+    route: {
+      origin: string
+      destination: string
+    }
+    operator: {
+      name: string
+    }
+    schedule: {
+      departure_time: string
+      arrival_time: string
+    }
+  }
   trip?: Trip
   user?: User
 }

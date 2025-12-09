@@ -15,6 +15,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { cancelBooking } from '@/api/bookings'
+import type { Booking } from '@/types/booking.types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -87,6 +88,7 @@ export function BookingReview() {
         const pendingBooking = sessionStorage.getItem('pendingBooking')
         if (pendingBooking) {
           const bookingData = JSON.parse(pendingBooking)
+          console.log('📋 Booking loaded from sessionStorage:', bookingData)
           setBooking(bookingData)
           setLoading(false)
           return
@@ -108,6 +110,7 @@ export function BookingReview() {
         }
 
         const result = await response.json()
+        console.log('📋 Booking loaded from API:', result.data)
         setBooking(result.data)
       } catch (err) {
         console.error('Error loading booking:', err)
@@ -125,7 +128,7 @@ export function BookingReview() {
     if (!booking?.lockedUntil) return
 
     const interval = setInterval(() => {
-      const remaining = getTimeRemaining(booking.lockedUntil)
+      const remaining = getTimeRemaining(booking.lockedUntil || undefined)
       setTimeRemaining(remaining)
 
       // If time expired, navigate to home
@@ -210,7 +213,10 @@ export function BookingReview() {
   }
 
   const seatCodes =
-    booking.passengers?.map((p) => p.seatCode).join(', ') || 'N/A'
+    booking.passengers
+      ?.map((p) => p.seatCode)
+      .filter(Boolean)
+      .join(', ') || 'N/A'
 
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
@@ -355,24 +361,34 @@ export function BookingReview() {
               <div className="pt-4 border-t">
                 <h3 className="font-semibold mb-3">Payment Summary</h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>
-                      {booking.pricing.subtotal.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Service Fee</span>
-                    <span>
-                      {booking.pricing.serviceFee.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t">
-                    <span className="font-semibold">Total</span>
-                    <span className="text-xl font-bold text-primary">
-                      {booking.pricing.total.toLocaleString('vi-VN')}đ
-                    </span>
-                  </div>
+                  {booking.pricing ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>
+                          {booking.pricing.subtotal.toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Service Fee
+                        </span>
+                        <span>
+                          {booking.pricing.serviceFee.toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t">
+                        <span className="font-semibold">Total</span>
+                        <span className="text-xl font-bold text-primary">
+                          {booking.pricing.total.toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Pricing information not available
+                    </p>
+                  )}
                 </div>
               </div>
 

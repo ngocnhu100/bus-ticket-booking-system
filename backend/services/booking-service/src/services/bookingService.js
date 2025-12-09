@@ -365,6 +365,23 @@ class BookingService {
     // Clear expiration from Redis
     await redisClient.del(`booking:expiration:${bookingId}`);
 
+    // Release seat locks since booking is cancelled
+    try {
+      const passengers = await passengerRepository.findByBookingId(bookingId);
+      const seatCodes = passengers.map((p) => p.seatCode);
+
+      if (seatCodes.length > 0) {
+        console.log(`🔓 Attempting to release locks for seats: ${seatCodes.join(', ')}`);
+        await this.releaseLocksForCancelledBooking(booking.tripId, seatCodes, booking.userId);
+        console.log(`✅ Released locks for cancelled booking seats: ${seatCodes.join(', ')}`);
+      } else {
+        console.log('⚠️ No seat codes found for cancelled booking');
+      }
+    } catch (error) {
+      console.error('Error releasing locks for cancelled booking:', error);
+      // Don't fail cancellation if lock release fails
+    }
+
     // Send cancellation notification
     await this.sendCancellationNotification(cancelledBooking);
 
@@ -423,7 +440,7 @@ class BookingService {
    * @param {object} booking - Booking object
    * @returns {number} Refund percentage
    */
-  calculateRefundPercentage(booking) {
+  calculateRefundPercentage() {
     // Similar logic as calculateRefund but return percentage
     return 80; // Default for now
   }
@@ -439,12 +456,32 @@ class BookingService {
 
     for (const booking of expiredBookings) {
       try {
+        // Get passengers before cancelling to know which seats to release
+        const passengers = await passengerRepository.findByBookingId(booking.bookingId);
+        const seatCodes = passengers.map((p) => p.seatCode);
+
         await bookingRepository.cancel(booking.bookingId, {
           reason: 'Booking expired - payment not received',
           refundAmount: 0,
         });
 
         await redisClient.del(`booking:expiration:${booking.bookingId}`);
+
+        // Release seat locks for expired booking
+        if (seatCodes.length > 0) {
+          try {
+            console.log(
+              `🔓 Attempting to release locks for expired booking seats: ${seatCodes.join(', ')}`
+            );
+            await this.releaseLocksForCancelledBooking(booking.tripId, seatCodes, booking.userId);
+            console.log(`✅ Released locks for expired booking seats: ${seatCodes.join(', ')}`);
+          } catch (error) {
+            console.error('❌ Error releasing locks for expired booking:', error);
+          }
+        } else {
+          console.log('⚠️ No seat codes found for expired booking');
+        }
+
         cancelledCount++;
       } catch (error) {
         console.error(`Failed to cancel expired booking ${booking.bookingId}:`, error);
@@ -623,6 +660,69 @@ class BookingService {
     } catch (error) {
       console.error(`❌ Error sharing ticket:`, error.message);
       throw error;
+    }
+  }
+
+  /**
+   * Release seat locks for cancelled booking
+   * @param {string} tripId - Trip ID
+   * @param {string[]} seatCodes - Array of seat codes to release
+   * @param {string|null} userId - User ID (null for guests)
+   */
+  async releaseLocksForCancelledBooking(tripId, seatCodes, userId) {
+    try {
+      const tripServiceUrl = process.env.TRIP_SERVICE_URL || 'http://localhost:3002';
+
+      // For authenticated users, try to release with userId as sessionId
+      if (userId) {
+        try {
+          const response = await axios.post(
+            `${tripServiceUrl}/${tripId}/seats/release`,
+            {
+              seatCodes,
+              sessionId: userId, // For auth users, sessionId = userId
+              isGuest: false,
+            },
+            {
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 5000,
+            }
+          );
+
+          if (response.data.success) {
+            console.log(`✅ Released locks for authenticated user seats: ${seatCodes.join(', ')}`);
+            return response.data.data;
+          }
+        } catch (error) {
+          console.error('❌ Failed to release locks for authenticated user:', error.message);
+        }
+      }
+
+      // For guests or as fallback, use service call without auth (releases locks without ownership validation)
+      try {
+        const response = await axios.post(
+          `${tripServiceUrl}/${tripId}/seats/release`,
+          {
+            seatCodes,
+            isGuest: true, // This triggers the service call path
+          },
+          {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 5000,
+          }
+        );
+
+        if (response.data.success) {
+          console.log(
+            `✅ Released locks for guest seats via service call: ${seatCodes.join(', ')}`
+          );
+          return response.data.data;
+        }
+      } catch (error) {
+        console.error('❌ Failed to release locks via service call:', error.message);
+      }
+    } catch (error) {
+      console.error('❌ Error in releaseLocksForCancelledBooking:', error.message);
     }
   }
 }
