@@ -181,8 +181,8 @@ export function SearchForm() {
     setTimeout(() => {
       const passengerCount = searchItem.passengers
       const searchParams = new URLSearchParams({
-        from: searchItem.origin,
-        to: searchItem.destination,
+        origin: searchItem.origin,
+        destination: searchItem.destination,
         date: searchItem.date,
         passengers: passengerCount.toString(),
       })

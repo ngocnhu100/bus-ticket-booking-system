@@ -61,6 +61,8 @@ export function SeatSelection() {
   const [seatMapLoading, setSeatMapLoading] = useState(false)
   const seatMapDataRef = useRef<SeatMapData | null>(null)
   const hasCompletedTransferRef = useRef(false)
+  const isUserActionRef = useRef(false) // Track if user just made a selection/deselection
+  const lockExpirationInProgressRef = useRef(false) // Track if lock expiration is being handled
 
   // Generate or load session ID for guest users
   const [guestSessionId] = useState<string | null>(() => {
@@ -186,6 +188,11 @@ export function SeatSelection() {
       clearTimeout(refreshTimeoutRef.current)
     }
     refreshTimeoutRef.current = setTimeout(async () => {
+      // Skip if lock expiration is in progress
+      if (lockExpirationInProgressRef.current) {
+        return
+      }
+
       try {
         await refreshLocks(tripId!)
       } catch (err) {
@@ -202,6 +209,9 @@ export function SeatSelection() {
     async (seatCode: string) => {
       console.log('Lock expired for seat:', seatCode)
 
+      // Mark that lock expiration is in progress
+      lockExpirationInProgressRef.current = true
+
       // Immediately remove the expired seat from selectedSeats
       if (seatMapDataRef.current) {
         const expiredSeat = seatMapDataRef.current.seats.find(
@@ -214,8 +224,18 @@ export function SeatSelection() {
         }
       }
 
+      // Add a small delay to ensure lock expiration is processed on backend
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
       // Refresh both seat map and user locks when a lock expires
       await Promise.all([fetchSeatMap(), refreshLocks(tripId!)])
+
+      // Add another small delay and refresh again to ensure UI is fully updated
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      await fetchSeatMap()
+
+      // Clear the lock expiration flag
+      lockExpirationInProgressRef.current = false
     },
     [fetchSeatMap, refreshLocks, tripId]
   )
@@ -392,8 +412,19 @@ export function SeatSelection() {
     }
   }, [selectedSeats, seatMapData])
 
-  // Restore selectedSeats from userLocks on mount/refresh (but not after transfer)
+  // Restore selectedSeats from userLocks on mount/refresh (but not after user deselection or lock expiration)
   useEffect(() => {
+    // Skip restoration if user just made an action and deselected everything
+    if (isUserActionRef.current && selectedSeats.length === 0) {
+      isUserActionRef.current = false
+      return
+    }
+
+    // Skip restoration if lock expiration is in progress
+    if (lockExpirationInProgressRef.current) {
+      return
+    }
+
     if (userLocks.length > 0 && selectedSeats.length === 0 && seatMapData) {
       const lockedSeatIds = userLocks
         .map(
@@ -409,9 +440,6 @@ export function SeatSelection() {
   const handleSeatSelect = async (seat: Seat, isSelected: boolean) => {
     if (!seat.seat_id || !tripId) return
 
-    // Prevent concurrent operations
-    if (operationInProgress) return
-
     // Check if this seat is already being processed
     const isAlreadySelected = selectedSeats.includes(seat.seat_id)
     if (isSelected && isAlreadySelected) return // Already selected
@@ -422,6 +450,12 @@ export function SeatSelection() {
       setError(`Maximum ${MAX_SELECTABLE_SEATS} seats can be selected`)
       return
     }
+
+    // Only prevent concurrent SELECTION operations, allow deselection anytime
+    if (operationInProgress && isSelected) return
+
+    // Mark that user is making an action
+    isUserActionRef.current = true
 
     setOperationInProgress(true)
 
@@ -461,6 +495,8 @@ export function SeatSelection() {
         // Immediately refresh locks without debounce for deselection
         await refreshLocks(tripId)
         setOperationInProgress(false)
+        // Clear user action flag after deselection
+        isUserActionRef.current = false
       }
     } catch (err) {
       console.error('Error managing seat lock:', err)

@@ -230,7 +230,7 @@ export function TripResultsCard({
         </div>
 
         {/* Expanded Details */}
-        {isExpanded && <TripDetails trip={trip} onSelectTrip={onSelectTrip} />}
+        {isExpanded && <TripDetails trip={trip} />}
       </div>
     </Card>
   )

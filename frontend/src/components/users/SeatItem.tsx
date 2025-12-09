@@ -51,14 +51,20 @@ export function SeatItem({
     onLockExpire?.(seat.seat_code)
   }, [onLockExpire, seat.seat_code])
 
+  // Check if the lock has expired
+  const isLockExpired = userLock
+    ? new Date(userLock.expires_at).getTime() <= new Date().getTime()
+    : false
+
   // Determine seat status class
   const getSeatStatusClass = () => {
     // Selected takes precedence over all other statuses
     if (isSelected) return 'seat-selected'
     // User has a lock on this seat (but not selected) - treat as selected
-    if (userLock) return 'seat-selected'
+    // But not if the lock has already expired
+    if (userLock && !isLockExpired) return 'seat-selected'
     // Fallback: check if seat is locked by current user
-    if (currentUserId && seat.locked_by === currentUserId)
+    if (currentUserId && seat.locked_by === currentUserId && !isLockExpired)
       return 'seat-selected'
     if (seat.status === 'available') return 'seat-available'
     if (seat.status === 'occupied') return 'seat-occupied'

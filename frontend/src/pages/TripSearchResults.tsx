@@ -60,8 +60,10 @@ export function TripSearchResults() {
 
   const searchParams = new URLSearchParams(location.search)
 
-  const origin = searchParams.get('origin') || 'Ho Chi Minh'
-  const destination = searchParams.get('destination') || 'Lam Dong'
+  const origin =
+    searchParams.get('from') || searchParams.get('origin') || 'Ho Chi Minh'
+  const destination =
+    searchParams.get('to') || searchParams.get('destination') || 'Lam Dong'
   const date =
     searchParams.get('date') || new Date().toISOString().split('T')[0]
   const passengers = searchParams.get('passengers') || '1'

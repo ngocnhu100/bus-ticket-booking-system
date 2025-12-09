@@ -96,7 +96,7 @@ export function SeatMap({
   }, [seatMapData])
 
   const handleSeatClick = (seat: Seat) => {
-    if (readOnly || operationInProgress) return
+    if (readOnly) return
     const isCurrentlySelected = localSelectedSeats.includes(seat.seat_id!)
 
     // Allow clicking if:
@@ -111,7 +111,8 @@ export function SeatMap({
 
     if (!canToggleSeat) return
 
-    // Check if we can add more seats
+    // Don't allow selecting if already at max capacity (but allow deselection)
+    if (!isCurrentlySelected && operationInProgress) return
     if (!isCurrentlySelected && localSelectedSeats.length >= maxSelectable) {
       setSelectionError(`You can only select up to ${maxSelectable} seats.`)
       // Clear error after 3 seconds

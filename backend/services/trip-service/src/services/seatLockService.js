@@ -52,9 +52,35 @@ class SeatLockService {
     const pipeline = this.redis.pipeline();
     const userLockKey = this._getUserLockKey(userId, tripId);
 
-    // Check current lock count
-    const currentLocks = await this.redis.scard(userLockKey);
-    if (currentLocks + seatCodes.length > this.maxSeats) {
+    // Get current user locks and check which ones are still valid (not expired)
+    const currentSeatCodes = await this.redis.smembers(userLockKey);
+    let validLockCount = 0;
+    const now = new Date().getTime();
+
+    for (const seatCode of currentSeatCodes) {
+      const lockKey = this._getLockKey(tripId, seatCode);
+      const lockValue = await this.redis.get(lockKey);
+      
+      // Only count as valid if lock still exists (not expired)
+      if (lockValue) {
+        const lockInfo = JSON.parse(lockValue);
+        const expiresAt = new Date(lockInfo.expiresAt).getTime();
+        
+        // If lock hasn't expired, count it
+        if (expiresAt > now) {
+          validLockCount++;
+        } else {
+          // Remove expired lock from user's lock set
+          await this.redis.srem(userLockKey, seatCode);
+        }
+      } else {
+        // Lock key doesn't exist but is in user lock set, remove it
+        await this.redis.srem(userLockKey, seatCode);
+      }
+    }
+
+    // Check if adding new seats would exceed limit (only count valid locks)
+    if (validLockCount + seatCodes.length > this.maxSeats) {
       throw new Error(`Cannot lock seats: would exceed maximum ${this.maxSeats} seats per user`);
     }
 
@@ -377,7 +403,7 @@ class SeatLockService {
     const existingUserSeats = await this.redis.smembers(authLockKey);
 
     if (guestSeatCodes.length === 0) {
-      return { success: true, transferredSeats: [], rejectedSeats: [] };
+      return { success: true, transferred_seats: [], rejected_seats: [] };
     }
 
     // Check if user already has locks
@@ -385,11 +411,41 @@ class SeatLockService {
     const availableSlots = Math.max(0, maxSeats - currentLockCount);
 
     if (availableSlots === 0) {
-      // User already has max seats locked, reject all transfers
+      // User already has max seats locked, reject all transfers and release all guest locks
+      const pipeline = this.redis.pipeline();
+      
+      // Get all guest lock details to release them
+      for (const seatCode of guestSeatCodes) {
+        const lockKey = this._getLockKey(tripId, seatCode);
+        pipeline.get(lockKey);
+      }
+      
+      const results = await pipeline.exec();
+      
+      // Release all guest locks since they're all rejected
+      const releasePipeline = this.redis.pipeline();
+      for (let i = 0; i < guestSeatCodes.length; i++) {
+        const seatCode = guestSeatCodes[i];
+        const existingLock = results[i][1];
+        
+        if (existingLock) {
+          const lockInfo = JSON.parse(existingLock);
+          // Only release if it's actually owned by this guest
+          if (lockInfo.userId === guestUserId && lockInfo.sessionId === guestSessionId) {
+            const lockKey = this._getLockKey(tripId, seatCode);
+            releasePipeline.del(lockKey);
+          }
+        }
+      }
+      
+      // Delete the guest lock set
+      releasePipeline.del(guestLockKey);
+      await releasePipeline.exec();
+      
       return {
         success: true,
-        transferredSeats: [],
-        rejectedSeats: guestSeatCodes,
+        transferred_seats: [],
+        rejected_seats: guestSeatCodes,
         message: `Cannot transfer guest locks: user already has maximum ${maxSeats} seats locked`
       };
     }
@@ -432,6 +488,9 @@ class SeatLockService {
           // Check if we've hit the max seats limit
           if (transferredSeats.length >= availableSlots) {
             rejectedSeats.push(seatCode);
+            // Release the rejected lock immediately
+            const lockKey = this._getLockKey(tripId, seatCode);
+            transferPipeline.del(lockKey);
             continue;
           }
 
