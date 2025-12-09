@@ -46,7 +46,7 @@ export interface Booking {
   tripDetails?: {
     route?: { origin: string; destination: string }
     operator?: { name: string }
-    schedule?: { departureTime: string; arrivalTime: string }
+    schedule?: { departure_time: string; arrival_time: string }
   }
   cancellation?: {
     reason?: string

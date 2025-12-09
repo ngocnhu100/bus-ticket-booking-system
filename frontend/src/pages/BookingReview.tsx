@@ -198,7 +198,7 @@ export function BookingReview() {
     booking.passengers?.map((p) => p.seatCode).join(', ') || 'N/A'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
@@ -270,12 +270,12 @@ export function BookingReview() {
                     <div>
                       <p className="font-semibold text-sm">
                         {formatDate(
-                          booking.tripDetails?.schedule?.departureTime
+                          booking.tripDetails?.schedule?.departure_time
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatTime(
-                          booking.tripDetails?.schedule?.departureTime
+                          booking.tripDetails?.schedule?.departure_time
                         )}
                       </p>
                     </div>
@@ -288,10 +288,14 @@ export function BookingReview() {
                     <Calendar className="w-4 h-4 text-muted-foreground" />
                     <div>
                       <p className="font-semibold text-sm">
-                        {formatDate(booking.tripDetails?.schedule?.arrivalTime)}
+                        {formatDate(
+                          booking.tripDetails?.schedule?.arrival_time
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatTime(booking.tripDetails?.schedule?.arrivalTime)}
+                        {formatTime(
+                          booking.tripDetails?.schedule?.arrival_time
+                        )}
                       </p>
                     </div>
                   </div>

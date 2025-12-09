@@ -22,37 +22,37 @@ export interface Amenity {
 }
 
 export interface Bus {
-  busId: string
-  busType: string
-  licensePlate: string
-  totalSeats: number
+  bus_id: string
+  bus_type: string
+  license_plate: string
+  total_seats: number
   amenities: Amenity[]
 }
 
 export interface Operator {
-  operatorId: string
+  operator_id: string
   name: string
   rating?: number
   logo?: string
 }
 
 export interface Route {
-  routeId: string
+  route_id: string
   origin: string
   destination: string
   distance: number
-  estimatedDuration: number
+  estimated_duration: number
 }
 
 export interface Schedule {
-  scheduleId: string
-  departureTime: string
-  arrivalTime: string
+  schedule_id: string
+  departure_time: string
+  arrival_time: string
   frequency: string
 }
 
 export interface Pricing {
-  basePrice: number
+  base_price: number
   currency: string
   discounts?: {
     type: string
@@ -61,15 +61,15 @@ export interface Pricing {
 }
 
 export interface Trip {
-  tripId: string
+  trip_id: string
   route: Route
   operator: Operator
   bus: Bus
   schedule: Schedule
   pricing: Pricing
   availability: {
-    availableSeats: number
-    totalSeats: number
+    available_seats: number
+    total_seats: number
   }
 }
 

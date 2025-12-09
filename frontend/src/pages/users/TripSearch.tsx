@@ -299,7 +299,7 @@ const TripSearch = () => {
                 <div className="space-y-4">
                   {trips.map((trip) => (
                     <TripResultCard
-                      key={trip.tripId}
+                      key={trip.trip_id}
                       trip={trip}
                       onSelectSeats={handleSelectSeats}
                     />

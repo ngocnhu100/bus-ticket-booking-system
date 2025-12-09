@@ -23,7 +23,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 interface BookingData {
   bookingId: string
   bookingReference: string
-  tripId: string
+  trip_id: string
   contactEmail: string
   contactPhone: string
   status: string
@@ -334,7 +334,7 @@ export function BookingLookup() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Trip ID</p>
-                  <p className="font-medium">{booking.tripId}</p>
+                  <p className="font-medium">{booking.trip_id}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">
@@ -372,7 +372,7 @@ export function BookingLookup() {
                     <h3 className="font-semibold">E-Ticket</h3>
                   </div>
 
-                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
+                  <div className="bg-linear-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
                     {/* QR Code Display */}
                     {booking.eTicket.qrCodeUrl && (
                       <div className="flex flex-col items-center gap-4 pb-4 border-b border-white/50">

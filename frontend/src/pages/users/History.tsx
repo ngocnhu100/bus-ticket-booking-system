@@ -406,7 +406,8 @@ const History = () => {
                               Departure:
                             </span>{' '}
                             {formatDate(
-                              selectedBooking.tripDetails.schedule.departureTime
+                              selectedBooking.tripDetails.schedule
+                                .departure_time
                             )}
                           </p>
                           <p>
@@ -414,7 +415,7 @@ const History = () => {
                               Arrival:
                             </span>{' '}
                             {formatDate(
-                              selectedBooking.tripDetails.schedule.arrivalTime
+                              selectedBooking.tripDetails.schedule.arrival_time
                             )}
                           </p>
                         </>

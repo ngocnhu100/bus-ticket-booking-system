@@ -366,7 +366,8 @@ export function TripDetails({ trip }: TripDetailsProps) {
             navigate(`/booking/${trip.trip_id}/seats`)
           }}
         >
-          Book This Trip - {trip.pricing.base_price.toLocaleString('vi-VN')}đ
+          Book This Trip -{' '}
+          {(trip.pricing?.base_price || 0).toLocaleString('vi-VN')}đ
         </Button>
       </div>
     </div>
