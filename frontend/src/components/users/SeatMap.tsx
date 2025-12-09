@@ -197,12 +197,26 @@ export function SeatMap({
                           const userLock = userLocks.find(
                             (lock) => lock.seat_code === seat.seat_code
                           )
+
+                          // Check if the lock is expired
+                          const isLockExpired = userLock
+                            ? new Date(userLock.expires_at).getTime() <=
+                              new Date().getTime()
+                            : false
+
+                          // Only pass userLock if it hasn't expired
+                          const validUserLock =
+                            userLock && !isLockExpired ? userLock : undefined
+
                           // Check if seat is locked by current user:
-                          // 1. Primary: Check if seat_code exists in userLocks array
+                          // 1. Primary: Check if seat_code exists in userLocks array AND lock hasn't expired
                           // 2. Fallback: Check if seat.locked_by matches currentUserId
                           const isLockedByUser =
                             userLocks.some(
-                              (lock) => lock.seat_code === seat.seat_code
+                              (lock) =>
+                                lock.seat_code === seat.seat_code &&
+                                new Date(lock.expires_at).getTime() >
+                                  new Date().getTime()
                             ) ||
                             (currentUserId && seat.locked_by === currentUserId)
                           const isCurrentlySelected = !!(
@@ -228,7 +242,7 @@ export function SeatMap({
                                 operationInProgress ||
                                 !canToggleSeat
                               }
-                              userLock={userLock}
+                              userLock={validUserLock}
                               onLockExpire={onLockExpire}
                               currentUserId={currentUserId}
                             />

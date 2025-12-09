@@ -414,18 +414,25 @@ export function SeatSelection() {
 
   // Restore selectedSeats from userLocks on mount/refresh (but not after user deselection or lock expiration)
   useEffect(() => {
+    // Skip restoration if lock expiration is in progress
+    // This check must come FIRST before any other checks to ensure lock expiration is handled completely
+    if (lockExpirationInProgressRef.current) {
+      return
+    }
+
     // Skip restoration if user just made an action and deselected everything
+    // (but only after confirming lock expiration is not in progress)
     if (isUserActionRef.current && selectedSeats.length === 0) {
       isUserActionRef.current = false
       return
     }
 
-    // Skip restoration if lock expiration is in progress
-    if (lockExpirationInProgressRef.current) {
+    // Skip if operation is in progress to avoid interfering with optimistic updates
+    if (operationInProgress) {
       return
     }
 
-    if (userLocks.length > 0 && selectedSeats.length === 0 && seatMapData) {
+    if (userLocks.length > 0 && seatMapData) {
       const lockedSeatIds = userLocks
         .map(
           (lock) =>
@@ -433,9 +440,18 @@ export function SeatSelection() {
               ?.seat_id
         )
         .filter(Boolean) as string[]
-      setSelectedSeats(lockedSeatIds)
+
+      // Only update if the locked seats don't match selectedSeats
+      const sortedLocked = lockedSeatIds.sort()
+      const sortedSelected = selectedSeats.sort()
+      if (JSON.stringify(sortedLocked) !== JSON.stringify(sortedSelected)) {
+        setSelectedSeats(lockedSeatIds)
+      }
     }
-  }, [userLocks, seatMapData, selectedSeats.length])
+    // Never auto-clear selectedSeats when locks are empty
+    // Locks may be empty during initial load or transient states
+    // User selections should only be cleared by explicit user deselection or lock expiration
+  }, [userLocks, seatMapData, operationInProgress]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSeatSelect = async (seat: Seat, isSelected: boolean) => {
     if (!seat.seat_id || !tripId) return
@@ -525,9 +541,15 @@ export function SeatSelection() {
   }
 
   const getSelectedSeatCodes = () => {
+    console.log('called getSelectedSeatCodes: seatMapData: ', seatMapData)
+
     if (!seatMapData?.seats) return '-'
     const selectedSeatObjects = seatMapData.seats.filter(
       (seat) => seat.seat_id && selectedSeats.includes(seat.seat_id)
+    )
+    console.log(
+      'called getSelectedSeatCodes: selectedSeatObjects: ',
+      selectedSeatObjects
     )
     return selectedSeatObjects.length > 0
       ? selectedSeatObjects.map((seat) => seat.seat_code).join(', ')

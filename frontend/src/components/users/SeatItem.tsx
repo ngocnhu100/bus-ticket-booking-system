@@ -52,20 +52,30 @@ export function SeatItem({
   }, [onLockExpire, seat.seat_code])
 
   // Check if the lock has expired
+  // Note: SeatMap already filters out expired locks, so this is a safety check
   const isLockExpired = userLock
     ? new Date(userLock.expires_at).getTime() <= new Date().getTime()
     : false
 
   // Determine seat status class
   const getSeatStatusClass = () => {
-    // Selected takes precedence over all other statuses
+    // Priority 1: If seat is explicitly selected by user, show selected
     if (isSelected) return 'seat-selected'
-    // User has a lock on this seat (but not selected) - treat as selected
-    // But not if the lock has already expired
-    if (userLock && !isLockExpired) return 'seat-selected'
-    // Fallback: check if seat is locked by current user
-    if (currentUserId && seat.locked_by === currentUserId && !isLockExpired)
+    // Priority 2: Only show as selected if lock exists AND hasn't expired
+    // AND the seat status from backend confirms it's locked
+    if (userLock && !isLockExpired && seat.status === 'locked') {
       return 'seat-selected'
+    }
+    // Fallback: check if seat is locked by current user (from backend seat data)
+    if (
+      currentUserId &&
+      seat.locked_by === currentUserId &&
+      !isLockExpired &&
+      seat.status === 'locked'
+    ) {
+      return 'seat-selected'
+    }
+    // Use seat status from backend as source of truth
     if (seat.status === 'available') return 'seat-available'
     if (seat.status === 'occupied') return 'seat-occupied'
     if (seat.status === 'locked') return 'seat-locked'
@@ -77,15 +87,20 @@ export function SeatItem({
 
   // Get seat icon based on status
   const getSeatIcon = () => {
-    // Show checkmark for selected seats (regardless of underlying status)
+    // Show checkmark for selected seats
     if (isSelected) {
       return <Check className="w-4 h-4" />
     }
-    // Show checkmark for seats locked by current user (even if not selected)
-    if (currentUserId && seat.locked_by === currentUserId && !isLockExpired) {
+    // Show checkmark for seats locked by current user (only if lock is valid and backend agrees)
+    if (
+      currentUserId &&
+      seat.locked_by === currentUserId &&
+      !isLockExpired &&
+      seat.status === 'locked'
+    ) {
       return <Check className="w-4 h-4" />
     }
-    // Show alert icon for locked seats (not selected by current user)
+    // Show alert icon for locked/occupied seats
     if (seat.status === 'locked' || seat.status === 'occupied') {
       return <AlertCircle className="w-4 h-4" />
     }
