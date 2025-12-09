@@ -81,6 +81,10 @@ export function SeatItem({
     if (isSelected) {
       return <Check className="w-4 h-4" />
     }
+    // Show checkmark for seats locked by current user (even if not selected)
+    if (currentUserId && seat.locked_by === currentUserId && !isLockExpired) {
+      return <Check className="w-4 h-4" />
+    }
     // Show alert icon for locked seats (not selected by current user)
     if (seat.status === 'locked' || seat.status === 'occupied') {
       return <AlertCircle className="w-4 h-4" />
@@ -118,8 +122,11 @@ export function SeatItem({
         <span className="seat-code">{seat.seat_code}</span>
 
         {/* Countdown Timer for selected seats with locks */}
-        {(userLock || (currentUserId && seat.locked_by === currentUserId)) &&
-          isSelected && (
+        {((userLock && !isLockExpired) ||
+          (currentUserId &&
+            seat.locked_by === currentUserId &&
+            !isLockExpired)) &&
+          (userLock?.expires_at || seat.locked_until) && (
             <div className="seat-countdown">
               <CountdownTimer
                 expiresAt={userLock?.expires_at || seat.locked_until || ''}
