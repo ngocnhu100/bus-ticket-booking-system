@@ -11,14 +11,14 @@ const createBookingSchema = Joi.object({
     }),
   
   seats: Joi.array()
-    .items(Joi.string().pattern(/^[A-Z]\d{1,2}$/))
+    .items(Joi.string().pattern(/^([A-Z]\d{1,2}|\d{1,2}[A-Z])$/))
     .min(1)
     .max(10)
     .required()
     .messages({
       'array.min': 'At least one seat must be selected',
       'array.max': 'Cannot book more than 10 seats at once',
-      'string.pattern.base': 'Invalid seat code format (e.g., A1, B2)',
+      'string.pattern.base': 'Invalid seat code format (e.g., A1, B2, 1A, 2B)',
       'any.required': 'Seats are required'
     }),
   
@@ -47,7 +47,7 @@ const createBookingSchema = Joi.object({
           }),
         
         seatCode: Joi.string()
-          .pattern(/^[A-Z]\d{1,2}$/)
+          .pattern(/^([A-Z]\d{1,2}|\d{1,2}[A-Z])$/)
           .required()
           .messages({
             'string.pattern.base': 'Invalid seat code format',
