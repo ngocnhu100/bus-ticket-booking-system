@@ -190,10 +190,41 @@ const getBookingsQuerySchema = Joi.object({
     .default('desc')
 });
 
+/**
+ * Validation schema for guest booking lookup
+ */
+const guestLookupSchema = Joi.object({
+  bookingReference: Joi.string()
+    .pattern(/^[A-Z0-9]{6}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'Booking reference must be 6 alphanumeric characters',
+      'any.required': 'Booking reference is required'
+    }),
+  
+  phone: Joi.string()
+    .pattern(/^(\+84|0)[0-9]{9,10}$/)
+    .optional()
+    .messages({
+      'string.pattern.base': 'Invalid Vietnamese phone number format'
+    }),
+  
+  email: Joi.string()
+    .email()
+    .optional()
+    .messages({
+      'string.email': 'Invalid email format'
+    })
+}).or('phone', 'email')
+  .messages({
+    'object.missing': 'Either phone or email must be provided'
+  });
+
 module.exports = {
   createBookingSchema,
   updateBookingStatusSchema,
   cancelBookingSchema,
   confirmPaymentSchema,
-  getBookingsQuerySchema
+  getBookingsQuerySchema,
+  guestLookupSchema
 };

@@ -42,13 +42,35 @@ class BookingService {
     const serviceFee = calculateServiceFee(subtotal);
     const totalPrice = subtotal + serviceFee;
     
-    // 4. Generate booking reference
-    let bookingReference = generateBookingReference();
+    // 4. Generate unique booking reference with retry logic
+    let bookingReference;
     let attempts = 0;
-    while (await bookingRepository.findByReference(bookingReference) && attempts < 5) {
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
       bookingReference = generateBookingReference();
+      
+      // Check if reference already exists
+      const existingBooking = await bookingRepository.findByReference(bookingReference);
+      
+      if (!existingBooking) {
+        // Reference is unique, break the loop
+        break;
+      }
+      
       attempts++;
+      console.warn(`[BookingService] Duplicate booking reference generated: ${bookingReference}, attempt ${attempts}/${maxAttempts}`);
+      
+      // Add small delay to avoid collision in high concurrency
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
+    
+    if (attempts >= maxAttempts) {
+      console.error('[BookingService] Failed to generate unique booking reference after max attempts');
+      throw new Error('BOOKING_REFERENCE_GENERATION_FAILED: Unable to generate unique reference. Please try again.');
+    }
+    
+    console.log(`[BookingService] Generated unique booking reference: ${bookingReference} (attempts: ${attempts + 1})`);
     
     // 5. Create booking record
     const booking = await bookingRepository.create({
@@ -167,6 +189,58 @@ class BookingService {
       ...booking,
       passengers,
       tripDetails: trip
+    };
+  }
+
+  /**
+   * Guest booking lookup (accepts phone OR email)
+   * @param {string} bookingReference - Booking reference (6-char code)
+   * @param {string|null} phone - Contact phone for verification
+   * @param {string|null} email - Contact email for verification
+   * @returns {Promise<object>} Booking details
+   */
+  async guestLookupBooking(bookingReference, phone = null, email = null) {
+    // Find booking by reference
+    const booking = await bookingRepository.findByReference(bookingReference);
+    
+    if (!booking) {
+      throw new Error('BOOKING_NOT_FOUND');
+    }
+    
+    // Verify contact information (phone OR email must match)
+    let isVerified = false;
+    
+    if (phone && booking.contactPhone) {
+      // Normalize phone numbers for comparison (remove spaces, handle +84/0 prefix)
+      const normalizePhone = (p) => p.replace(/\s+/g, '').replace(/^0/, '+84');
+      isVerified = normalizePhone(booking.contactPhone) === normalizePhone(phone);
+    }
+    
+    if (!isVerified && email && booking.contactEmail) {
+      // Case-insensitive email comparison
+      isVerified = booking.contactEmail.toLowerCase() === email.toLowerCase();
+    }
+    
+    if (!isVerified) {
+      throw new Error('CONTACT_MISMATCH');
+    }
+    
+    // Get passengers
+    const passengers = await passengerRepository.findByBookingId(booking.bookingId);
+    
+    // Get trip details
+    const trip = await this.getTripById(booking.tripId);
+    
+    return {
+      ...booking,
+      passengers,
+      tripDetails: trip ? {
+        tripId: trip.tripId,
+        route: trip.route,
+        operator: trip.operator,
+        bus: trip.bus,
+        schedule: trip.schedule
+      } : null
     };
   }
 

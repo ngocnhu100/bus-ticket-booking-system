@@ -21,6 +21,10 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/health', bookingController.healthCheck);
 
+// Public routes (no authentication required)
+// Guest booking lookup - accepts phone OR email
+app.get('/guest/lookup', bookingController.guestLookup);
+
 // Public routes (guest checkout) - MUST come before /:id route
 app.get('/reference/:reference', bookingController.getByReference);
 

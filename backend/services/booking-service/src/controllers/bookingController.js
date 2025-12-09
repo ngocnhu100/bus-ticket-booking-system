@@ -3,7 +3,8 @@ const {
   createBookingSchema,
   cancelBookingSchema,
   confirmPaymentSchema,
-  getBookingsQuerySchema
+  getBookingsQuerySchema,
+  guestLookupSchema
 } = require('../validators/bookingValidators');
 
 class BookingController {
@@ -61,6 +62,16 @@ class BookingController {
           error: {
             code: 'BOOKING_002',
             message: err.message
+          }
+        });
+      }
+
+      if (err.message.includes('BOOKING_REFERENCE_GENERATION_FAILED')) {
+        return res.status(500).json({
+          success: false,
+          error: {
+            code: 'BOOKING_003',
+            message: 'Unable to generate unique booking reference. Please try again.'
           }
         });
       }
@@ -167,6 +178,79 @@ class BookingController {
           code: 'SYS_001',
           message: 'Failed to retrieve booking'
         }
+      });
+    }
+  }
+
+  /**
+   * Guest booking lookup (accepts phone OR email)
+   * GET /bookings/guest/lookup
+   * Query params: bookingReference (required), phone OR email (one required)
+   */
+  async guestLookup(req, res) {
+    try {
+      // Validate query parameters
+      const { error, value } = guestLookupSchema.validate(req.query);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: error.details.map(d => d.message).join(', ')
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const { bookingReference, phone, email } = value;
+
+      // Lookup booking with phone or email verification
+      const booking = await bookingService.guestLookupBooking(
+        bookingReference,
+        phone,
+        email
+      );
+
+      return res.json({
+        success: true,
+        data: booking,
+        message: 'Booking retrieved successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error in guest booking lookup:', err);
+
+      // Handle specific error cases
+      if (err.message === 'BOOKING_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOKING_404',
+            message: 'Booking not found with the provided reference'
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      if (err.message === 'CONTACT_MISMATCH') {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'BOOKING_403',
+            message: 'Contact information does not match booking records. Please verify your phone number or email.'
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Generic error
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to retrieve booking'
+        },
+        timestamp: new Date().toISOString()
       });
     }
   }
