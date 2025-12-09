@@ -103,7 +103,17 @@ BEGIN
          {"floor": 1, "row": 1, "seats": ["H1A","H1B"]},
          {"floor": 1, "row": 2, "seats": ["H2A","H2B"]},
          {"floor": 1, "row": 3, "seats": ["H3A","H3B"]},
-         -- ... (keep the rest as in original file 016, assuming match with 019)
+         {"floor": 1, "row": 4, "seats": ["H4A","H4B"]},
+         {"floor": 1, "row": 5, "seats": ["H5A","H5B"]},
+         {"floor": 1, "row": 6, "seats": ["H6A","H6B"]},
+         {"floor": 1, "row": 7, "seats": ["H7A","H7B"]},
+         {"floor": 1, "row": 8, "seats": ["H8A","H8B"]},
+         {"floor": 1, "row": 9, "seats": ["H9A","H9B"]},
+         {"floor": 2, "row": 1, "seats": ["H10A","H10B"]},
+         {"floor": 2, "row": 2, "seats": ["H11A","H11B"]},
+         {"floor": 2, "row": 3, "seats": ["H12A","H12B"]},
+         {"floor": 2, "row": 4, "seats": ["H13A","H13B"]},
+         {"floor": 2, "row": 5, "seats": ["H14A","H14B"]}
        ]
      }') RETURNING seat_layout_id INTO v_seat_layout_thaco;
   END IF;
@@ -130,16 +140,12 @@ BEGIN
 
   -- Add similar for other routes
 
-  -- 5. Route Stops (insert only if none exist for the route)
-  SELECT COUNT(*) INTO v_count FROM route_stops WHERE route_id = v_route_hcmc_dalat;
-  IF v_count = 0 THEN
-    INSERT INTO route_stops (route_id, stop_name, sequence, arrival_offset_minutes, departure_offset_minutes, address, is_pickup, is_dropoff) VALUES
-    (v_route_hcmc_dalat, 'Bến xe Miền Đông', 1, 0, 0, '292 Đinh Bộ Lĩnh, Bình Thạnh, HCM', TRUE, FALSE),
-    -- ... (keep original stops)
-    ;
-  END IF;
-
-  -- Add similar for other route stops
+        -- 5. Route Stops (insert only if none exist for the route)
+        SELECT COUNT(*) INTO v_count FROM route_stops WHERE route_id = v_route_hcmc_dalat;
+        IF v_count = 0 THEN
+          INSERT INTO route_stops (route_id, stop_name, sequence, arrival_offset_minutes, departure_offset_minutes, address, is_pickup, is_dropoff) VALUES
+          (v_route_hcmc_dalat, 'Bến xe Miền Đông', 1, 0, 0, '292 Đinh Bộ Lĩnh, Bình Thạnh, HCM', TRUE, FALSE);
+        END IF;  -- Add similar for other route stops
 
   -- 6. Buses (insert if not exists, based on license_plate)
   SELECT bus_id INTO v_bus_hyundai FROM buses WHERE license_plate = '29B-12345';
