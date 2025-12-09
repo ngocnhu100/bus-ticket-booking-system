@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent, ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -27,6 +27,7 @@ interface StatusState {
 const initialState: FormState = { email: '' }
 
 export default function ForgotPassword() {
+  const navigate = useNavigate()
   const [form, setForm] = useState<FormState>(initialState)
   const [error, setError] = useState<string>('')
   const [status, setStatus] = useState<StatusState>({
