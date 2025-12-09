@@ -109,6 +109,12 @@ export function BookingLookup() {
       if (response.data.success) {
         const bookingData = response.data.data
         console.log('Raw booking data:', JSON.stringify(bookingData, null, 2))
+        console.log('Share section check:', {
+          status: bookingData.status,
+          hasETicket: !!bookingData.eTicket,
+          hasTicketUrl: !!bookingData.eTicket?.ticketUrl,
+          eTicket: bookingData.eTicket,
+        })
 
         setBooking(bookingData)
       } else {
