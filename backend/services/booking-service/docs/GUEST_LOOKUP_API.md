@@ -17,11 +17,20 @@ The Guest Booking Lookup system allows non-registered users to retrieve their bo
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `bookingReference` | string | Yes | 6-character alphanumeric booking reference (e.g., ABC123) |
+| `bookingReference` | string | Yes | 13-character booking reference (format: BKYYYYMMDDXXX, e.g., BK20251209042) |
 | `phone` | string | Conditional* | Vietnamese phone number (+84XXXXXXXXX or 0XXXXXXXXX) |
 | `email` | string | Conditional* | Email address used during booking |
 
 **Note:** Either `phone` OR `email` must be provided (at least one is required).
+
+### Booking Reference Format
+- **Pattern:** `BKYYYYMMDDXXX`
+- **Example:** `BK20251209042`
+- **Length:** 13 characters
+- **Structure:**
+  - `BK`: Prefix (2 letters)
+  - `20251209`: Date (YYYYMMDD - 8 digits)
+  - `042`: Sequence number (XXX - 3 digits)
 
 ### Phone Number Formats Accepted
 - `+84973994154` (international format)
@@ -32,21 +41,21 @@ The Guest Booking Lookup system allows non-registered users to retrieve their bo
 
 **Using phone number:**
 ```bash
-GET /guest/lookup?bookingReference=ABC123&phone=0973994154
+GET /guest/lookup?bookingReference=BK20251209042&phone=0973994154
 ```
 
 **Using email:**
 ```bash
-GET /guest/lookup?bookingReference=ABC123&email=guest@example.com
+GET /guest/lookup?bookingReference=BK20251209042&email=guest@example.com
 ```
 
 **Using cURL:**
 ```bash
 # With phone
-curl -X GET "http://localhost:3004/guest/lookup?bookingReference=ABC123&phone=%2B84973994154"
+curl -X GET "http://localhost:3004/guest/lookup?bookingReference=BK20251209042&phone=%2B84973994154"
 
 # With email
-curl -X GET "http://localhost:3004/guest/lookup?bookingReference=ABC123&email=guest%40example.com"
+curl -X GET "http://localhost:3004/guest/lookup?bookingReference=BK20251209042&email=guest%40example.com"
 ```
 
 ## Response
@@ -58,7 +67,7 @@ curl -X GET "http://localhost:3004/guest/lookup?bookingReference=ABC123&email=gu
   "success": true,
   "data": {
     "bookingId": "123e4567-e89b-12d3-a456-426614174000",
-    "bookingReference": "ABC123",
+    "bookingReference": "BK20251209042",
     "tripId": "456e7890-e89b-12d3-a456-426614174001",
     "userId": null,
     "contactEmail": "guest@example.com",
@@ -121,7 +130,7 @@ curl -X GET "http://localhost:3004/guest/lookup?bookingReference=ABC123&email=gu
   "success": false,
   "error": {
     "code": "VAL_001",
-    "message": "Booking reference must be 6 alphanumeric characters"
+    "message": "Booking reference must be in format: BKYYYYMMDDXXX (e.g., BK20251209001)"
   },
   "timestamp": "2025-12-09T08:30:00.000Z"
 }
@@ -175,14 +184,16 @@ curl -X GET "http://localhost:3004/guest/lookup?bookingReference=ABC123&email=gu
 ## Validation Rules
 
 ### Booking Reference
-- **Format:** Exactly 6 alphanumeric characters (uppercase)
-- **Pattern:** `/^[A-Z0-9]{6}$/`
+- **Format:** 13 characters (2 letters + 11 digits)
+- **Pattern:** `/^[A-Z]{2}\d{11}$/i`
+- **Structure:** BKYYYYMMDDXXX
 - **Examples:** 
-  - ✅ `ABC123`
-  - ✅ `XYZ789`
-  - ❌ `abc123` (lowercase)
-  - ❌ `AB12` (too short)
-  - ❌ `ABC-123` (special characters)
+  - ✅ `BK20251209042`
+  - ✅ `BK20251209999`
+  - ✅ `bk20251209042` (case-insensitive)
+  - ❌ `BK20251209A3K` (contains letters in suffix)
+  - ❌ `BK20251209` (too short)
+  - ❌ `BK-20251209-042` (contains special characters)
 
 ### Phone Number
 - **Format:** Vietnamese phone number
