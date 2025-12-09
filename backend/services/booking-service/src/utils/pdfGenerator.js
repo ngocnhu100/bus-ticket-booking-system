@@ -4,7 +4,7 @@ const path = require('path');
 
 class PDFGenerator {
   /**
-   * Generate ticket PDF
+   * Generate ticket PDF matching frontend ETicket.tsx design
    * @param {object} bookingData - Complete booking data with trip and passenger info
    * @param {string} qrCodeDataUrl - QR code as base64 data URL
    * @returns {Promise<Buffer>} PDF buffer
@@ -14,7 +14,7 @@ class PDFGenerator {
       try {
         const doc = new PDFDocument({
           size: 'A4',
-          margins: { top: 50, bottom: 50, left: 50, right: 50 }
+          margins: { top: 30, bottom: 30, left: 35, right: 35 }
         });
 
         const buffers = [];
@@ -26,224 +26,398 @@ class PDFGenerator {
         });
         doc.on('error', reject);
 
-        // Header
-        doc
-          .fontSize(24)
-          .font('Helvetica-Bold')
-          .fillColor('#2563eb')
-          .text('BUS TICKET', { align: 'center' })
-          .font('Helvetica')
-          .moveDown(0.5);
+        const pageWidth = 595.28; // A4 width in points
+        const pageHeight = 841.89; // A4 height in points
+        const leftMargin = 35;
+        const rightMargin = 35;
+        const contentWidth = pageWidth - leftMargin - rightMargin;
 
-        doc
-          .fontSize(12)
-          .fillColor('#666666')
-          .text('Bus Ticket Booking System', { align: 'center' })
-          .moveDown(1);
+        // Draw outer border (2pt black) - height 770 to fit in one page
+        doc.roundedRect(leftMargin, 30, contentWidth, 770, 10)
+           .lineWidth(2)
+           .stroke('#000000');
 
-        // Booking Reference - Highlight
-        doc
-          .fontSize(10)
-          .fillColor('#000000')
-          .text('BOOKING REFERENCE', { align: 'center' })
-          .moveDown(0.3);
-
-        doc
-          .fontSize(20)
-          .font('Helvetica-Bold')
-          .fillColor('#2563eb')
-          .text(bookingData.booking_reference, { align: 'center' })
-          .font('Helvetica')
-          .moveDown(1);
-
-        // Divider line
-        doc
-          .moveTo(50, doc.y)
-          .lineTo(545, doc.y)
-          .stroke('#cccccc')
-          .moveDown(1);
-
-        // Trip Information Section
-        doc
-          .fontSize(14)
-          .fillColor('#000000')
-          .font('Helvetica-Bold')
-          .text('TRIP INFORMATION')
-          .font('Helvetica')
-          .moveDown(0.5);
-
-        const tripInfoY = doc.y;
+        // ===== BLACK HEADER =====
+        const headerHeight = 60;
+        doc.save();
         
-        // Left column
-        doc
-          .fontSize(10)
-          .fillColor('#666666')
-          .text('Trip ID:', 50, tripInfoY);
+        // Draw black header background with rounded top corners
+        doc.roundedRect(leftMargin + 2, 32, contentWidth - 4, headerHeight, 8)
+           .fillAndStroke('#000000', '#000000');
+
+        // Header text in white
+        doc.fillColor('#FFFFFF')
+           .fontSize(20)
+           .font('Helvetica-Bold')
+           .text('BUS E-TICKET', leftMargin + 70, 58);
+
+        // Removed operator name from header
+
+        doc.restore();
+
+        // ===== BOOKING REFERENCE BOX =====
+        let currentY = 32 + headerHeight + 20;
         
-        doc
-          .fillColor('#000000')
-          .text(bookingData.trip_id, 150, tripInfoY);
+        // Black border box
+        doc.roundedRect(leftMargin + 25, currentY, contentWidth - 50, 70, 8)
+           .lineWidth(2)
+           .stroke('#000000');
 
-        doc
-          .fillColor('#666666')
-          .text('Status:', 50, tripInfoY + 20);
+        // Booking Reference label
+        doc.fillColor('#000000')
+           .fontSize(8)
+           .font('Helvetica-Bold')
+           .text('BOOKING REFERENCE', leftMargin + 38, currentY + 15);
+
+        // Booking Reference number (large)
+        doc.fontSize(22)
+           .font('Helvetica-Bold')
+           .text(bookingData.booking_reference, leftMargin + 38, currentY + 32);
+
+        // Status badges (right side) - aligned and same width
+        const badgeWidth = 70;
+        const statusX = pageWidth - rightMargin - 40 - badgeWidth;
+        this.drawBadge(doc, bookingData.status, statusX, currentY + 22, badgeWidth);
+        this.drawBadge(doc, bookingData.payment_status, statusX, currentY + 45, badgeWidth);
+
+        currentY += 100;
+
+        // ===== TRIP INFORMATION SECTION =====
+        doc.fontSize(12)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text('TRIP INFORMATION', leftMargin + 30, currentY);
+        currentY += 25;
+
+        // Trip info box (Route + Schedule combined)
+        const tripBoxHeight = 110;
+        doc.roundedRect(leftMargin + 25, currentY, contentWidth - 50, tripBoxHeight, 8)
+           .lineWidth(2)
+           .stroke('#000000');
+
+        const tripBoxTop = currentY;
+        const tripBoxInnerMargin = 15;
+        const routeBoxWidth = contentWidth - 50 - (tripBoxInnerMargin * 2);
+        const colWidth = routeBoxWidth / 3;
+
+        // FROM city (left column)
+        doc.fillColor('#000000')
+           .fontSize(7)
+           .font('Helvetica-Bold')
+           .text('FROM', leftMargin + 25 + tripBoxInnerMargin, tripBoxTop + 12);
         
-        doc
-          .fillColor(this.getStatusColor(bookingData.status))
-          .text(bookingData.status.toUpperCase(), 150, tripInfoY + 20);
+        doc.fontSize(13)
+           .font('Helvetica-Bold')
+           .text(bookingData.origin_city || 'N/A', leftMargin + 25 + tripBoxInnerMargin, tripBoxTop + 25, {
+             width: colWidth - 10,
+             ellipsis: true
+           });
 
-        // Passenger Information
-        doc.y = tripInfoY + 60;
-        doc
-          .fontSize(14)
-          .fillColor('#000000')
-          .font('Helvetica-Bold')
-          .text('PASSENGER INFORMATION')
-          .font('Helvetica')
-          .moveDown(0.5);
+        // DISTANCE (center column)
+        const distanceX = leftMargin + 25 + tripBoxInnerMargin + colWidth;
+        doc.fontSize(7)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text('DISTANCE', distanceX, tripBoxTop + 12);
+        
+        doc.fontSize(13)
+           .font('Helvetica-Bold')
+           .text(`${bookingData.distance || 0} km`, distanceX, tripBoxTop + 25, {
+             width: colWidth - 10,
+             ellipsis: true
+           });
 
-        if (bookingData.passengers && bookingData.passengers.length > 0) {
-          bookingData.passengers.forEach((passenger, index) => {
-            const passengerY = doc.y;
-            
-            doc
-              .fontSize(11)
-              .fillColor('#000000')
-              .font('Helvetica-Bold')
-              .text(`Passenger ${index + 1}`, 50, passengerY);
-            
-            doc
-              .font('Helvetica')
-              .fontSize(10)
-              .text(`Name: ${passenger.full_name || 'N/A'}`, 50, passengerY + 20);
-            
-            doc
-              .text(`Seat: ${passenger.seat_code || 'N/A'}`, 50, passengerY + 35);
+        // TO city (right column - left aligned)
+        const toX = leftMargin + 25 + tripBoxInnerMargin + colWidth * 2;
+        doc.fontSize(7)
+           .font('Helvetica-Bold')
+           .text('TO', toX, tripBoxTop + 12);
+        
+        doc.fontSize(13)
+           .font('Helvetica-Bold')
+           .text(bookingData.destination_city || 'N/A', toX, tripBoxTop + 25, {
+             width: colWidth - 10,
+             ellipsis: true
+           });
 
-            if (passenger.document_id) {
-              doc.text(`ID: ${passenger.document_id}`, 50, passengerY + 50);
-            }
+        // Separator line
+        const separatorY = tripBoxTop + 58;
+        doc.moveTo(leftMargin + 25 + tripBoxInnerMargin, separatorY)
+           .lineTo(pageWidth - rightMargin - 25 - tripBoxInnerMargin, separatorY)
+           .lineWidth(1)
+           .stroke('#E5E7EB');
 
-            doc.moveDown(1.5);
-          });
+        // Schedule details (4 columns) - inside the same box
+        const scheduleY = separatorY + 10;
+        const scheduleWidth = contentWidth - 50 - (tripBoxInnerMargin * 2);
+        const scheduleColWidth = scheduleWidth / 4;
+        const scheduleStartX = leftMargin + 25 + tripBoxInnerMargin;
+        
+        // Departure Date
+        doc.fontSize(7)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text('Departure Date', scheduleStartX, scheduleY);
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text(this.formatDate(bookingData.departure_time), scheduleStartX, scheduleY + 12, {
+             width: scheduleColWidth - 5,
+             ellipsis: true
+           });
+
+        // Departure Time
+        doc.fontSize(7)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text('Departure Time', scheduleStartX + scheduleColWidth, scheduleY);
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text(this.formatTime(bookingData.departure_time), scheduleStartX + scheduleColWidth, scheduleY + 12);
+
+        // Arrival Time
+        doc.fontSize(7)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text('Estimated Arrival', scheduleStartX + scheduleColWidth * 2, scheduleY);
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text(this.formatTime(bookingData.arrival_time), scheduleStartX + scheduleColWidth * 2, scheduleY + 12);
+
+        // Bus Type
+        doc.fontSize(7)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text('Bus Type', scheduleStartX + scheduleColWidth * 3, scheduleY);
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text(bookingData.bus_type || 'Standard', scheduleStartX + scheduleColWidth * 3, scheduleY + 12, {
+             width: scheduleColWidth - 5,
+             ellipsis: true
+           });
+
+        currentY += tripBoxHeight + 15;
+
+        // ===== PASSENGERS SECTION =====
+        doc.fontSize(12)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text('PASSENGERS', leftMargin + 25, currentY);
+        currentY += 20;
+
+        // Parse passengers if it's a string
+        let passengers = bookingData.passengers;
+        if (typeof passengers === 'string') {
+          try {
+            passengers = JSON.parse(passengers);
+          } catch (e) {
+            passengers = [];
+          }
         }
 
-        // Payment Information
-        doc
-          .fontSize(14)
-          .fillColor('#000000')
-          .font('Helvetica-Bold')
-          .text('PAYMENT INFORMATION')
-          .font('Helvetica')
-          .moveDown(0.5);
+        // Passengers container box
+        const passengersBoxHeight = (passengers && Array.isArray(passengers) && passengers.length > 0 && passengers[0].full_name) 
+          ? Math.ceil(passengers.length / 2) * 60 + 20
+          : 50;
 
-        const paymentY = doc.y;
+        doc.roundedRect(leftMargin + 25, currentY, contentWidth - 50, passengersBoxHeight, 8)
+           .lineWidth(2)
+           .stroke('#000000');
+
+        if (passengers && Array.isArray(passengers) && passengers.length > 0 && passengers[0].full_name) {
+          const passengerBoxWidth = (contentWidth - 70) / 2;
+          let passengerX = leftMargin + 35;
+          let passengerY = currentY + 10;
+          
+          passengers.forEach((passenger, index) => {
+            // Passenger name
+            doc.fontSize(10)
+               .fillColor('#000000')
+               .font('Helvetica-Bold')
+               .text(passenger.full_name || `Passenger ${index + 1}`, passengerX, passengerY, {
+                 width: passengerBoxWidth - 65,
+                 ellipsis: true
+               });
+
+            // Passenger type
+            doc.fontSize(7)
+               .fillColor('#666666')
+               .font('Helvetica')
+               .text((passenger.passenger_type || 'ADULT').toUpperCase(), passengerX, passengerY + 18);
+
+            // Seat badge (right side) - inline
+            const seatX = passengerX + passengerBoxWidth - 60;
+            doc.roundedRect(seatX, passengerY, 50, 18, 4)
+               .lineWidth(1)
+               .stroke('#000000');
+            
+            doc.fontSize(8)
+               .fillColor('#000000')
+               .font('Helvetica-Bold')
+               .text(`Seat ${passenger.seat_code || 'N/A'}`, seatX, passengerY + 4, {
+                 width: 50,
+                 align: 'center'
+               });
+
+            // Move to next position (2 per row)
+            if (index % 2 === 0) {
+              passengerX += passengerBoxWidth + 10;
+            } else {
+              passengerX = leftMargin + 35;
+              passengerY += 45;
+            }
+          });
+
+          currentY += passengersBoxHeight + 15;
+        } else {
+          // No passengers - compact message in center of box
+          doc.fontSize(9)
+             .fillColor('#666666')
+             .font('Helvetica')
+             .text('No passenger information available', leftMargin + 25, currentY + 18, {
+               width: contentWidth - 50,
+               align: 'center'
+             });
+          currentY += passengersBoxHeight + 15;
+        }
+
+        // ===== CONTACT INFORMATION SECTION (if available) =====        // Skip contact section to save space - info already in booking
+
+        // ===== PRICE DETAILS SECTION =====
+        this.drawSectionHeader(doc, 'PRICE DETAILS', leftMargin + 25, currentY, contentWidth - 50);
+        currentY += 25;
 
         // Handle both snake_case and camelCase
         const subtotal = bookingData.subtotal || bookingData.pricing?.subtotal || 0;
         const serviceFee = bookingData.service_fee || bookingData.pricing?.serviceFee || 0;
         const totalPrice = bookingData.total_price || bookingData.pricing?.total || 0;
-        const currency = bookingData.currency || bookingData.pricing?.currency || 'VND';
         
-        doc
-          .fontSize(10)
-          .fillColor('#666666')
-          .text('Subtotal:', 50, paymentY);
-        
-        doc
-          .fillColor('#000000')
-          .text(`${parseFloat(subtotal).toLocaleString()} ${currency}`, 150, paymentY);
+        // Ticket Price
+        doc.fontSize(8)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text('Ticket Price', leftMargin + 25, currentY);
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .text(this.formatCurrency(subtotal), pageWidth - rightMargin - 90, currentY, {
+             width: 70,
+             align: 'right'
+           });
 
-        doc
-          .fillColor('#666666')
-          .text('Service Fee:', 50, paymentY + 20);
-        
-        doc
-          .fillColor('#000000')
-          .text(`${parseFloat(serviceFee).toLocaleString()} ${currency}`, 150, paymentY + 20);
+        currentY += 16;
 
-        doc
-          .fontSize(12)
-          .font('Helvetica-Bold')
-          .fillColor('#666666')
-          .text('Total:', 50, paymentY + 45);
-        
-        doc
-          .fillColor('#2563eb')
-          .text(`${parseFloat(totalPrice).toLocaleString()} ${currency}`, 150, paymentY + 45);
+        // Service Fee
+        doc.fontSize(8)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text('Service Fee', leftMargin + 25, currentY);
+        doc.fontSize(9)
+           .fillColor('#000000')
+           .text(this.formatCurrency(serviceFee), pageWidth - rightMargin - 90, currentY, {
+             width: 70,
+             align: 'right'
+           });
 
-        doc.font('Helvetica').moveDown(2);
+        currentY += 20;
 
-        // QR Code Section
+        // Separator line
+        doc.moveTo(leftMargin + 25, currentY)
+           .lineTo(pageWidth - rightMargin - 25, currentY)
+           .lineWidth(1)
+           .stroke('#E5E7EB');
+
+        currentY += 12;
+
+        // Total
+        doc.fontSize(11)
+           .fillColor('#000000')
+           .font('Helvetica-Bold')
+           .text('Total', leftMargin + 25, currentY);
+        doc.fontSize(12)
+           .fillColor('#6366F1')
+           .font('Helvetica-Bold')
+           .text(this.formatCurrency(totalPrice), pageWidth - rightMargin - 110, currentY, {
+             width: 90,
+             align: 'right'
+           });
+
+        currentY += 30;
+
+        currentY += 25;
+
+        // ===== QR CODE SECTION =====
         if (qrCodeDataUrl) {
-          // Add proper spacing before QR section
-          doc.moveDown(1);
-          
-          doc
-            .fontSize(12)
-            .fillColor('#000000')
-            .font('Helvetica-Bold');
-          
-          // Center the title properly
-          const titleY = doc.y;
-          doc.text('VERIFICATION QR CODE', 50, titleY, {
-            width: 495,
-            align: 'center'
-          });
-          
-          doc
-            .font('Helvetica')
-            .moveDown(1);
+          // Dashed border box
+          doc.roundedRect(leftMargin + 25, currentY, contentWidth - 50, 155, 8)
+             .lineWidth(2)
+             .dash(5, { space: 5 })
+             .stroke('#000000')
+             .undash();
 
           // Convert data URL to buffer
           const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
           const qrBuffer = Buffer.from(base64Data, 'base64');
 
           // Center QR code
-          const qrSize = 150;
-          const pageWidth = 595; // A4 width in points
+          const qrSize = 105;
           const qrX = (pageWidth - qrSize) / 2;
+          
+          // QR code with border
+          doc.save();
+          doc.roundedRect(qrX - 2, currentY + 18, qrSize + 4, qrSize + 4, 8)
+             .lineWidth(2)
+             .stroke('#000000');
+          doc.restore();
 
-          doc.image(qrBuffer, qrX, doc.y, {
+          doc.image(qrBuffer, qrX, currentY + 20, {
             width: qrSize,
             height: qrSize
           });
 
-          doc.y += qrSize + 20;
+          // QR Code labels - positioned below QR image
+          const labelY = currentY + 20 + qrSize + 8;
+          doc.fontSize(9)
+             .fillColor('#000000')
+             .font('Helvetica-Bold')
+             .text('BOARDING QR CODE', leftMargin + 25, labelY, {
+               width: contentWidth - 50,
+               align: 'center'
+             });
+
+          doc.fontSize(7)
+             .fillColor('#666666')
+             .font('Helvetica')
+             .text('Please present this code when boarding', leftMargin + 25, labelY + 13, {
+               width: contentWidth - 50,
+               align: 'center'
+             });
+
+          currentY += qrSize + 50;
         }
 
-        // Contact Information
-        doc
-          .fontSize(10)
-          .fillColor('#666666')
-          .text('Contact Information:', 50, doc.y)
-          .moveDown(0.3);
+        // ===== FOOTER =====
+        // Top border
+        doc.moveTo(leftMargin + 25, currentY)
+           .lineTo(pageWidth - rightMargin - 25, currentY)
+           .lineWidth(1)
+           .stroke('#E5E7EB');
 
-        if (bookingData.contact_email) {
-          doc.text(`Email: ${bookingData.contact_email}`, 50, doc.y);
-        }
+        currentY += 8;
 
-        if (bookingData.contact_phone) {
-          doc.text(`Phone: ${bookingData.contact_phone}`, 50, doc.y + 15);
-        }
-
-        // Footer
-        doc
-          .moveDown(2)
-          .fontSize(8)
-          .fillColor('#999999')
-          .text(
-            `Booking created: ${new Date(bookingData.created_at).toLocaleString()}`,
-            { align: 'center' }
-          )
-          .text(
-            'Please present this ticket at the boarding point',
-            { align: 'center' }
-          )
-          .text(
-            '© 2025 Bus Ticket Booking System. All rights reserved.',
-            { align: 'center' }
-          );
+        // Footer text - single block to prevent page breaks
+        const footerText = `E-ticket issued on ${this.formatDate(bookingData.created_at)}  |  Please arrive 15 minutes before departure time`;
+        
+        doc.fontSize(7)
+           .fillColor('#666666')
+           .font('Helvetica')
+           .text(footerText, leftMargin + 25, currentY, {
+             width: contentWidth - 50,
+             align: 'center',
+             lineBreak: false
+           });
 
         doc.end();
       } catch (error) {
@@ -254,16 +428,80 @@ class PDFGenerator {
   }
 
   /**
-   * Get color based on booking status
+   * Draw section header with icon and underline
    */
-  getStatusColor(status) {
-    const colors = {
-      'confirmed': '#10b981',
-      'pending': '#f59e0b',
-      'cancelled': '#ef4444',
-      'completed': '#6366f1'
+  drawSectionHeader(doc, title, x, y, width) {
+    doc.fontSize(12)
+       .fillColor('#000000')
+       .font('Helvetica-Bold')
+       .text(title, x, y);
+
+    doc.moveTo(x, y + 20)
+       .lineTo(x + width, y + 20)
+       .lineWidth(2)
+       .stroke('#000000');
+  }
+
+  /**
+   * Draw status or payment badge with fixed width
+   */
+  drawBadge(doc, status, x, y, width) {
+    const statusConfig = {
+      // Booking status
+      'confirmed': { label: 'Confirmed', color: '#6366F1', bg: '#E0E7FF' },
+      'pending': { label: 'Pending', color: '#64748B', bg: '#F1F5F9' },
+      'cancelled': { label: 'Cancelled', color: '#EF4444', bg: '#FEE2E2' },
+      'completed': { label: 'Completed', color: '#10B981', bg: '#D1FAE5' },
+      
+      // Payment status
+      'paid': { label: 'Paid', color: '#6366F1', bg: '#E0E7FF' },
+      'unpaid': { label: 'Unpaid', color: '#F59E0B', bg: '#FEF3C7' },
+      'payment_pending': { label: 'Pending', color: '#64748B', bg: '#F1F5F9' },
+      'failed': { label: 'Failed', color: '#EF4444', bg: '#FEE2E2' },
     };
-    return colors[status] || '#666666';
+
+    const config = statusConfig[status] || { label: status, color: '#64748B', bg: '#F1F5F9' };
+    const label = config.label.toUpperCase();
+
+    // Badge background with fixed width
+    doc.roundedRect(x, y, width, 18, 9)
+       .fill(config.bg);
+
+    // Badge text - centered
+    doc.fontSize(7)
+       .fillColor(config.color)
+       .font('Helvetica-Bold')
+       .text(label, x, y + 5.5, {
+         width: width,
+         align: 'center'
+       });
+  }
+
+  /**
+   * Format date to readable string
+   */
+  formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  }
+
+  /**
+   * Format time to HH:MM
+   */
+  formatTime(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  /**
+   * Format currency to VND without symbol (to avoid encoding issues)
+   */
+  formatCurrency(amount) {
+    const formatted = new Intl.NumberFormat('vi-VN').format(amount);
+    return `${formatted} VND`;
   }
 
   /**
@@ -296,17 +534,16 @@ class PDFGenerator {
 
   /**
    * Get public URL for ticket
-   * In production, this would return a CDN URL or cloud storage URL
+   * Returns API Gateway URL (port 3000) instead of direct service URL
    * @param {string} filepath - Local file path
    * @param {string} bookingReference - Booking reference
-   * @returns {string} Public URL
+   * @returns {string} Public URL via API Gateway
    */
   getPublicTicketUrl(filepath, bookingReference) {
-    // For development: local file path
-    // For production: this should return CDN/S3 URL
     const filename = path.basename(filepath);
-    const baseUrl = process.env.TICKET_BASE_URL || 'http://localhost:3004';
-    return `${baseUrl}/tickets/${filename}`;
+    // Always use API Gateway URL for client access (not direct service port 3004)
+    const baseUrl = process.env.TICKET_BASE_URL || 'http://localhost:3000';
+    return `${baseUrl}/bookings/tickets/${filename}`;
   }
 }
 

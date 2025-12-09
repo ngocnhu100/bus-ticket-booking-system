@@ -111,15 +111,24 @@ class TicketService {
     try {
       console.log(`🎫 Processing ticket generation for booking ID: ${bookingId}`);
 
-      // 1. Get complete booking data
+      // 1. Get complete booking data WITH trip details for PDF
       const booking = await bookingRepository.findById(bookingId);
       
       if (!booking) {
         throw new Error(`Booking not found: ${bookingId}`);
       }
 
-      // 2. Generate ticket (PDF + QR)
-      const ticket = await this.generateTicket(booking);
+      // Get booking with full trip details for PDF generation
+      const bookingWithTrip = await bookingRepository.findByReferenceWithTripDetails(
+        booking.booking_reference
+      );
+
+      if (!bookingWithTrip) {
+        throw new Error(`Booking details not found: ${booking.booking_reference}`);
+      }
+
+      // 2. Generate ticket (PDF + QR) with full trip details
+      const ticket = await this.generateTicket(bookingWithTrip);
 
       // 3. Update booking with ticket URLs
       await bookingRepository.updateTicketInfo(bookingId, {
@@ -132,7 +141,7 @@ class TicketService {
       
       if (recipientEmail) {
         // Fire and forget - don't await
-        this.sendTicketEmail(recipientEmail, booking, ticket)
+        this.sendTicketEmail(recipientEmail, bookingWithTrip, ticket)
           .then(success => {
             if (success) {
               console.log(`✅ Ticket email delivery confirmed for: ${booking.booking_reference}`);
