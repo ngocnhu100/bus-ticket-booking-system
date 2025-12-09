@@ -14,7 +14,7 @@ import {
   ArrowRight,
   Loader2,
 } from 'lucide-react'
-import type { Booking } from '@/api/bookings'
+import { cancelBooking } from '@/api/bookings'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -146,10 +146,25 @@ export function BookingReview() {
     // navigate(`/booking/${bookingId}/payment`)
   }
 
-  const handleCancel = () => {
-    // Clear pending booking and return to home
-    sessionStorage.removeItem('pendingBooking')
-    navigate('/')
+  const handleCancel = async () => {
+    if (!bookingId) return
+
+    try {
+      setLoading(true)
+      await cancelBooking(bookingId, {
+        reason: 'User cancelled',
+        requestRefund: true,
+      })
+      // Clear pending booking and return to home
+      sessionStorage.removeItem('pendingBooking')
+      alert('Booking cancelled successfully')
+      navigate('/')
+    } catch (error) {
+      console.error('Error cancelling booking:', error)
+      alert('Failed to cancel booking. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (loading) {
