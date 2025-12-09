@@ -64,16 +64,18 @@ export function BookingLookup() {
     setLoading(true)
 
     try {
-      // Build query params
+      // Build query params for new guest lookup endpoint
       const params = new URLSearchParams()
+      params.append('bookingReference', bookingReference.trim())
+
       if (contactEmail.trim()) {
-        params.append('contactEmail', contactEmail.trim())
+        params.append('email', contactEmail.trim())
       }
       if (contactPhone.trim()) {
-        params.append('contactPhone', contactPhone.trim())
+        params.append('phone', contactPhone.trim())
       }
 
-      const url = `${API_BASE_URL}/bookings/${bookingReference}?${params.toString()}`
+      const url = `${API_BASE_URL}/bookings/guest/lookup?${params.toString()}`
       console.log('Fetching:', url)
 
       const response = await axios.get(url)
