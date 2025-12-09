@@ -1,8 +1,47 @@
 # Guest Booking Lookup - Test Instructions
 
-## Setup Test Data
+## Quick Test Guide (Recommended)
 
-First, create a test booking with the new format `BKYYYYMMDDXXX`:
+### Step 1: Create New Booking
+Navigate to: `http://localhost:5173/booking-demo`
+- Select trip, seats, and fill passenger information
+- Complete the booking process
+
+### Step 2: Copy Booking Reference
+After successful booking, copy the reference number (Ex: `BK20251209439`)
+
+### Step 3: Go to Booking Lookup
+Click **"Track Booking"** button in header or navigate to: `http://localhost:5173/booking-lookup`
+
+### Step 4: Enter Booking Details
+- **Booking Reference:** Paste your reference (e.g., `BK20251209439`)
+- **Email:** Enter email used during booking
+- **OR Phone:** Enter phone used during booking
+
+### Step 5: Click "Look Up Booking"
+View your booking details with:
+- ✅ E-Ticket with QR code for boarding verification
+- ✅ PDF ticket download
+- ✅ Trip details (route, departure time, seats)
+- ✅ Passenger information
+- ✅ Payment status
+
+### Sample Test Case (with E-Ticket)
+
+**Reference:** `BK20251207058`  
+**Email:** `nguyenvana@example.com`  
+**Phone:** `0901234567`
+
+✅ This booking includes E-Ticket:
+- QR code for boarding verification
+- PDF ticket download available
+- Confirmed status
+
+---
+
+## Alternative: Manual Database Setup
+
+If you need to create test bookings directly in database:
 
 ```bash
 docker exec bus-ticket-postgres psql -U postgres -d bus_ticket_dev -c "

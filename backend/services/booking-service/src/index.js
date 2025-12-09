@@ -28,6 +28,9 @@ app.get('/guest/lookup', bookingController.guestLookup);
 // Public routes (guest checkout) - MUST come before /:id route
 app.get('/reference/:reference', bookingController.getByReference);
 
+// Share ticket (public endpoint with validation)
+app.post('/:bookingReference/share', bookingController.shareTicket);
+
 // Protected routes (require authentication)
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);

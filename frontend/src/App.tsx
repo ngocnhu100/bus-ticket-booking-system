@@ -28,7 +28,6 @@ import Landing from './pages/Landing'
 import TripSearchResults from './pages/TripSearchResults'
 import { SeatSelection } from './pages/users/SeatSelection'
 import { BookingConfirmation } from './pages/BookingConfirmation'
-import { BookingDemo } from './pages/BookingDemo'
 import { BookingLookup } from './pages/BookingLookup'
 import { BookingReview } from './pages/BookingReview'
 import ETicketPreview from './pages/ETicketPreview'
@@ -69,7 +68,6 @@ const App = () => (
                 path="/trip-search-results"
                 element={<TripSearchResults />}
               />
-              <Route path="/booking-demo" element={<BookingDemo />} />
               <Route path="/booking-lookup" element={<BookingLookup />} />
               <Route
                 path="/booking-confirmation/:bookingReference"
