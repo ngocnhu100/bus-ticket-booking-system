@@ -97,3 +97,27 @@ export async function getUserBookings(
 
   return response.json()
 }
+
+export async function shareTicket(
+  bookingReference: string,
+  email: string,
+  phone?: string
+): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(
+    `${API_BASE_URL}/bookings/${bookingReference}/share`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, phone }),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error?.message || 'Failed to share ticket')
+  }
+
+  return response.json()
+}

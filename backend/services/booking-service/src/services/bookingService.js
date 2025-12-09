@@ -528,6 +528,90 @@ class BookingService {
       console.error('Error sending cancellation notification:', error.message);
     }
   }
+
+  /**
+   * Share ticket via email
+   * @param {string} bookingReference - Booking reference
+   * @param {string} email - Recipient email
+   * @param {string} phone - Optional verification phone
+   * @returns {Promise<object>} Result
+   */
+  async shareTicket(bookingReference, email, phone = null) {
+    try {
+      console.log(`📧 Sharing ticket for booking: ${bookingReference} to ${email}`);
+
+      // 1. Find booking by reference (normalize to uppercase)
+      const normalizedRef = normalizeBookingReference(bookingReference);
+      const booking = await bookingRepository.findByReference(normalizedRef);
+
+      if (!booking) {
+        throw new Error('Booking not found');
+      }
+
+      // 2. Check booking status
+      if (booking.status !== 'confirmed') {
+        throw new Error('Booking is not confirmed. Only confirmed bookings can be shared.');
+      }
+
+      // 3. Optional phone verification for security
+      if (phone && booking.contactPhone) {
+        const normalizedInputPhone = phone.replace(/\s+/g, '');
+        const normalizedBookingPhone = booking.contactPhone.replace(/\s+/g, '');
+        
+        if (normalizedInputPhone !== normalizedBookingPhone) {
+          throw new Error('Phone number does not match booking records');
+        }
+      }
+
+      // 4. Check if ticket exists
+      if (!booking.ticketUrl) {
+        throw new Error('E-ticket not generated yet. Please try again later.');
+      }
+
+      // 5. Send ticket email via notification service
+      const notificationServiceUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+      
+      const emailPayload = {
+        type: 'booking-ticket',
+        to: email,
+        bookingData: {
+          reference: booking.bookingReference,
+          tripId: booking.tripId,
+          status: booking.status,
+          totalPrice: booking.totalPrice,
+          currency: booking.currency || 'VND',
+          passengers: booking.passengers || [],
+          contactEmail: booking.contactEmail,
+          contactPhone: booking.contactPhone
+        },
+        ticketUrl: booking.ticketUrl,
+        qrCode: booking.qrCodeUrl
+      };
+
+      const response = await axios.post(
+        `${notificationServiceUrl}/send-email`,
+        emailPayload,
+        {
+          timeout: 10000,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+
+      if (response.data.success) {
+        console.log(`✅ Ticket shared successfully to: ${email}`);
+        return {
+          sent: true,
+          recipient: email,
+          bookingReference: booking.bookingReference
+        };
+      } else {
+        throw new Error('Email service returned unsuccessful response');
+      }
+    } catch (error) {
+      console.error(`❌ Error sharing ticket:`, error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new BookingService();

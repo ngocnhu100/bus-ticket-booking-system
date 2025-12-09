@@ -50,7 +50,7 @@ class BookingController {
         return res.status(409).json({
           success: false,
           error: {
-            code: 'BOOKING_001',
+            code: 'BOOK_001',
             message: err.message
           }
         });
@@ -60,7 +60,7 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
+            code: 'BOOK_002',
             message: err.message
           }
         });
@@ -70,7 +70,7 @@ class BookingController {
         return res.status(500).json({
           success: false,
           error: {
-            code: 'BOOKING_003',
+            code: 'BOOK_003',
             message: 'Unable to generate unique booking reference. Please try again.'
           }
         });
@@ -108,7 +108,7 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
+            code: 'BOOK_002',
             message: 'Booking not found'
           }
         });
@@ -166,7 +166,7 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
+            code: 'BOOK_002',
             message: 'Booking not found or invalid credentials'
           }
         });
@@ -225,7 +225,7 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_404',
+            code: 'BOOK_002',
             message: 'Booking not found with the provided reference'
           },
           timestamp: new Date().toISOString()
@@ -236,7 +236,7 @@ class BookingController {
         return res.status(403).json({
           success: false,
           error: {
-            code: 'BOOKING_403',
+            code: 'AUTH_003',
             message: 'Contact information does not match booking records. Please verify your phone number or email.'
           },
           timestamp: new Date().toISOString()
@@ -365,7 +365,7 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
+            code: 'BOOK_002',
             message: 'Booking not found'
           }
         });
@@ -375,7 +375,7 @@ class BookingController {
         return res.status(409).json({
           success: false,
           error: {
-            code: 'BOOKING_003',
+            code: 'BOOK_003',
             message: err.message
           }
         });
@@ -426,7 +426,7 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
+            code: 'BOOK_002',
             message: 'Booking not found'
           }
         });
@@ -446,7 +446,7 @@ class BookingController {
         return res.status(409).json({
           success: false,
           error: {
-            code: 'BOOKING_004',
+            code: 'BOOK_004',
             message: err.message
           }
         });
@@ -498,6 +498,77 @@ class BookingController {
         error: {
           code: 'SYS_001',
           message: 'Failed to retrieve bookings'
+        }
+      });
+    }
+  }
+
+  /**
+   * Share ticket via email
+   * POST /bookings/:bookingReference/share
+   */
+  async shareTicket(req, res) {
+    try {
+      const { bookingReference } = req.params;
+      const { email, phone } = req.body;
+
+      if (!email) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Email is required'
+          }
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Invalid email format'
+          }
+        });
+      }
+
+      const result = await bookingService.shareTicket(bookingReference, email, phone);
+
+      return res.json({
+        success: true,
+        message: 'Ticket shared successfully',
+        data: result
+      });
+    } catch (err) {
+      console.error('Error sharing ticket:', err);
+
+      if (err.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found'
+          }
+        });
+      }
+
+      if (err.message.includes('not confirmed')) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'BOOK_004',
+            message: 'Only confirmed bookings can be shared'
+          }
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to share ticket'
         }
       });
     }

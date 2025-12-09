@@ -6,6 +6,7 @@ import {
   Ticket,
   AlertCircle,
   Download,
+  Share2,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Header } from '@/components/landing/Header'
+import { shareTicket } from '@/api/booking.api'
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -62,6 +64,10 @@ export function BookingLookup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [booking, setBooking] = useState<BookingData | null>(null)
+  const [shareEmail, setShareEmail] = useState('')
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareSuccess, setShareSuccess] = useState<string | null>(null)
+  const [shareError, setShareError] = useState<string | null>(null)
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -146,6 +152,45 @@ export function BookingLookup() {
         return 'Cancelled'
       default:
         return status
+    }
+  }
+
+  const handleShareTicket = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setShareError(null)
+    setShareSuccess(null)
+
+    if (!shareEmail.trim()) {
+      setShareError('Please enter an email address')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(shareEmail)) {
+      setShareError('Please enter a valid email address')
+      return
+    }
+
+    if (!booking) return
+
+    setShareLoading(true)
+
+    try {
+      await shareTicket(
+        booking.bookingReference,
+        shareEmail,
+        contactPhone || undefined
+      )
+      setShareSuccess(`Ticket sent successfully to ${shareEmail}`)
+      setShareEmail('')
+    } catch (err) {
+      if (err instanceof Error) {
+        setShareError(err.message)
+      } else {
+        setShareError('Failed to share ticket. Please try again.')
+      }
+    } finally {
+      setShareLoading(false)
     }
   }
 
@@ -386,6 +431,60 @@ export function BookingLookup() {
                   ))}
                 </div>
               </div>
+
+              {/* Share Ticket Section */}
+              {booking.status === 'confirmed' && booking.eTicket?.ticketUrl && (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Share2 className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold">Share E-Ticket</h3>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                    <p className="text-sm text-blue-800">
+                      Send this ticket to another email address
+                    </p>
+                    <form
+                      onSubmit={handleShareTicket}
+                      className="flex gap-2 items-start"
+                    >
+                      <div className="flex-1">
+                        <Input
+                          type="email"
+                          placeholder="recipient@example.com"
+                          value={shareEmail}
+                          onChange={(e) => setShareEmail(e.target.value)}
+                          disabled={shareLoading}
+                          className="bg-white"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={shareLoading}
+                        size="default"
+                      >
+                        {shareLoading ? (
+                          <>Sending...</>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Send
+                          </>
+                        )}
+                      </Button>
+                    </form>
+                    {shareSuccess && (
+                      <div className="bg-green-50 border border-green-200 rounded p-2 text-sm text-green-800">
+                        ✅ {shareSuccess}
+                      </div>
+                    )}
+                    {shareError && (
+                      <div className="bg-red-50 border border-red-200 rounded p-2 text-sm text-red-800">
+                        ❌ {shareError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="pt-4 border-t flex gap-3">
