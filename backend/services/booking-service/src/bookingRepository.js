@@ -180,6 +180,54 @@ class BookingRepository {
     return result.rows[0] || null;
   }
 
+  /**
+   * Get booking with full trip details for PDF generation
+   * Includes: trip, route, operator, bus, schedule info
+   */
+  async findByReferenceWithTripDetails(bookingReference) {
+    const query = `
+      SELECT 
+        b.*,
+        t.trip_id,
+        t.departure_time,
+        t.arrival_time,
+        t.base_price as price_per_seat,
+        r.origin as origin_city,
+        r.destination as destination_city,
+        r.distance_km as distance,
+        r.estimated_minutes,
+        o.name as operator_name,
+        o.logo_url as operator_logo,
+        COALESCE(bus.plate_number, bus.license_plate, 'N/A') as bus_number,
+        bm.name as bus_type,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'full_name', bp.full_name,
+              'document_id', bp.document_id,
+              'phone', bp.phone,
+              'seat_code', bp.seat_code,
+              'price', bp.price,
+              'passenger_type', 'adult'
+            )
+          ) FILTER (WHERE bp.ticket_id IS NOT NULL),
+          '[]'::json
+        ) as passengers
+      FROM bookings b
+      LEFT JOIN booking_passengers bp ON b.booking_id = bp.booking_id
+      LEFT JOIN trips t ON b.trip_id = t.trip_id
+      LEFT JOIN routes r ON t.route_id = r.route_id
+      LEFT JOIN operators o ON r.operator_id = o.operator_id
+      LEFT JOIN buses bus ON t.bus_id = bus.bus_id
+      LEFT JOIN bus_models bm ON bus.bus_model_id = bm.bus_model_id
+      WHERE b.booking_reference = $1
+      GROUP BY b.booking_id, t.trip_id, r.route_id, o.operator_id, bus.bus_id, bm.bus_model_id
+    `;
+
+    const result = await pool.query(query, [bookingReference]);
+    return result.rows[0] || null;
+  }
+
   async updateTicketInfo(bookingId, ticketData) {
     const { ticketUrl, qrCode } = ticketData;
     
