@@ -31,6 +31,8 @@ import { BookingConfirmation } from './pages/BookingConfirmation'
 import { BookingLookup } from './pages/BookingLookup'
 import { BookingReview } from './pages/BookingReview'
 import ETicketPreview from './pages/ETicketPreview'
+import GuestCheckout from '@/components/booking/GuestCheckout'
+import GuestConfirmation from './pages/GuestConfirmation'
 
 const queryClient = new QueryClient()
 
@@ -92,6 +94,11 @@ const App = () => (
               <Route
                 path="/booking/:bookingId/review"
                 element={<BookingReview />}
+              />
+              <Route path="/guest-checkout" element={<GuestCheckout />} />
+              <Route
+                path="/guest-confirmation"
+                element={<GuestConfirmation />}
               />
 
               {/* Passenger routes - protected */}

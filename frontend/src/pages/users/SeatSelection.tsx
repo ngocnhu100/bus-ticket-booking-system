@@ -11,7 +11,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { SeatMap } from '@/components/users/SeatMap'
-import { GuestCheckoutDialog } from '@/components/users/GuestCheckoutDialog'
+// import { GuestCheckoutDialog } from '@/components/users/GuestCheckoutDialog'
+import GuestCheckout from '@/components/booking/GuestCheckout'
 import { ChevronLeft, ArrowRight, Lock, Clock, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useSeatLocks } from '@/hooks/useSeatLocks'
@@ -527,18 +528,7 @@ export function SeatSelection() {
     }
   }
 
-  const handleContinue = () => {
-    if (selectedSeats.length === 0) {
-      alert('Please select at least one seat')
-      return
-    }
-
-    // Show guest checkout dialog for all users (guests and authenticated)
-    setShowGuestCheckout(true)
-
-    // TODO: For authenticated users, we can pre-fill the form with their data
-    // Or implement a different flow if needed
-  }
+  // handleContinue removed (was unused)
 
   const getSelectedSeatCodes = () => {
     console.log('called getSelectedSeatCodes: seatMapData: ', seatMapData)
@@ -591,7 +581,30 @@ export function SeatSelection() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950">
-      {/* Custom Header for Seat Selection */}
+      {/* Error Modal (always available) */}
+      {error && (
+        <Dialog open={true} onOpenChange={() => setError(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Error</DialogTitle>
+              <DialogDescription>{error}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setError(null)
+                  fetchSeatMap()
+                  refreshLocks(tripId!)
+                }}
+              >
+                Refresh
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Always show header */}
       <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm dark:bg-slate-950 dark:border-slate-800">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Back Button and Logo */}
@@ -649,195 +662,187 @@ export function SeatSelection() {
         </nav>
       </header>
 
-      <div className="bg-background p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Select Your Seats
-            </h1>
-          </div>
-
-          {/* Trip Details Header */}
-          {trip && (
-            <Card className="p-4 bg-card border border-border/50 mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">
-                    Trip Details:
-                  </span>
-                  <span className="text-sm font-semibold text-foreground">
-                    {trip.route?.origin || 'Unknown'}
-                  </span>
-                  <ArrowRight className="w-4 h-4 inline mx-1" />
-                  <span className="text-sm font-semibold text-foreground">
-                    {trip.route?.destination || 'Unknown'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>{trip.operator?.name || 'Unknown'}</span>
-                  <span>
-                    {formatTime(trip.schedule?.departure_time)}
-                    {' - '}
-                    {formatTime(trip.schedule?.arrival_time)}
-                  </span>
-                </div>
+      {/* Main content: show either seat selection UI or GuestCheckout (header always visible) */}
+      {showGuestCheckout ? (
+        <div className="bg-background p-4 md:p-8">
+          <GuestCheckout
+            selectedSeats={selectedSeats
+              .map((id) =>
+                seatMapData?.seats.find((seat) => seat.seat_id === id)
+              )
+              .filter(Boolean)
+              .map((seat) => ({
+                seat_id: seat.seat_id,
+                seat_code: seat.seat_code,
+              }))}
+            onBack={() => setShowGuestCheckout(false)}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="bg-background p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
+              {/* Page Header */}
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-foreground">
+                  Select Your Seats
+                </h1>
               </div>
-            </Card>
-          )}
 
-          {/* Main Content Layout */}
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Left Column - Seat Map */}
-            <div className="flex-1 space-y-4">
-              {/* Seat Map Component */}
-              {seatMapData && (
-                <div className="relative">
-                  {seatMapLoading && (
-                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center z-50">
-                      <div className="text-center">
-                        <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                        <p className="text-white text-sm font-medium">
-                          Updating seats...
+              {/* Trip Details Header */}
+              {trip && (
+                <Card className="p-4 bg-card border border-border/50 mb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        Trip Details:
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {trip.route?.origin || 'Unknown'}
+                      </span>
+                      <ArrowRight className="w-4 h-4 inline mx-1" />
+                      <span className="text-sm font-semibold text-foreground">
+                        {trip.route?.destination || 'Unknown'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>{trip.operator?.name || 'Unknown'}</span>
+                      <span>
+                        {formatTime(trip.schedule?.departure_time)}
+                        {' - '}
+                        {formatTime(trip.schedule?.arrival_time)}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Main Content Layout */}
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Left Column - Seat Map */}
+                <div className="flex-1 space-y-4">
+                  {/* Seat Map Component */}
+                  {seatMapData && (
+                    <div className="relative">
+                      {seatMapLoading && (
+                        <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center z-50">
+                          <div className="text-center">
+                            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                            <p className="text-white text-sm font-medium">
+                              Updating seats...
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      <SeatMap
+                        seatMapData={seatMapData}
+                        selectedSeats={selectedSeats}
+                        onSeatSelect={handleSeatSelect}
+                        maxSelectable={MAX_SELECTABLE_SEATS}
+                        operationInProgress={operationInProgress}
+                        userLocks={userLocks}
+                        onLockExpire={handleLockExpire}
+                        currentUserId={
+                          user?.userId.toString() || guestSessionId || undefined
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column - Booking Summary */}
+                <div className="lg:w-80 xl:w-96 shrink-0">
+                  <Card className="p-4 bg-card border border-border/50">
+                    <h3 className="text-base font-semibold text-foreground mb-3">
+                      BOOKING SUMMARY
+                    </h3>
+
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Selected Seats:</p>
+                        <p className="font-semibold text-foreground">
+                          {getSelectedSeatCodes()}
                         </p>
                       </div>
-                    </div>
-                  )}
-                  <SeatMap
-                    seatMapData={seatMapData}
-                    selectedSeats={selectedSeats}
-                    onSeatSelect={handleSeatSelect}
-                    maxSelectable={MAX_SELECTABLE_SEATS}
-                    operationInProgress={operationInProgress}
-                    userLocks={userLocks}
-                    onLockExpire={handleLockExpire}
-                    currentUserId={
-                      user?.userId.toString() || guestSessionId || undefined
-                    }
-                  />
-                </div>
-              )}
-            </div>
 
-            {/* Right Column - Booking Summary */}
-            <div className="lg:w-80 xl:w-96 shrink-0">
-              <Card className="p-4 bg-card border border-border/50">
-                <h3 className="text-base font-semibold text-foreground mb-3">
-                  BOOKING SUMMARY
-                </h3>
-
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Selected Seats:</p>
-                    <p className="font-semibold text-foreground">
-                      {getSelectedSeatCodes()}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-muted-foreground">Passengers:</p>
-                    <p className="font-semibold text-foreground">
-                      {selectedSeats.length}
-                    </p>
-                  </div>
-
-                  {/* Lock Status Information */}
-                  {selectedSeats.length > 0 && (
-                    <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Lock className="w-4 h-4 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                          Seats Locked
-                        </span>
+                      <div>
+                        <p className="text-muted-foreground">Passengers:</p>
+                        <p className="font-semibold text-foreground">
+                          {selectedSeats.length}
+                        </p>
                       </div>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        Your selected seats are temporarily reserved for 10
-                        minutes. Complete your booking before the time expires.
-                      </p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Clock className="w-3 h-3 text-blue-600" />
-                        <span className="text-xs text-blue-600">
-                          Auto-release in 10 minutes
-                        </span>
+
+                      {/* Lock Status Information */}
+                      {selectedSeats.length > 0 && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Lock className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                              Seats Locked
+                            </span>
+                          </div>
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Your selected seats are temporarily reserved for 10
+                            minutes. Complete your booking before the time
+                            expires.
+                          </p>
+                          <div className="flex items-center gap-1 mt-2">
+                            <Clock className="w-3 h-3 text-blue-600" />
+                            <span className="text-xs text-blue-600">
+                              Auto-release in 10 minutes
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-border/50">
+                        <p className="text-muted-foreground">Fare per seat:</p>
+                        <p className="font-semibold text-foreground">
+                          {trip?.pricing?.base_price
+                            ? trip.pricing.base_price.toLocaleString('vi-VN')
+                            : '0'}
+                          đ
+                        </p>
                       </div>
+
+                      <div>
+                        <p className="text-muted-foreground">Subtotal:</p>
+                        <p className="font-semibold text-foreground">
+                          {totalPrice.toLocaleString('vi-VN')}đ
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-muted-foreground">Service fee:</p>
+                        <p className="font-semibold text-foreground">0đ</p>
+                      </div>
+
+                      <div className="pt-2 border-t border-border/50 border-b">
+                        <p className="text-muted-foreground">Total:</p>
+                        <p className="text-lg font-bold text-primary">
+                          {totalPrice.toLocaleString('vi-VN')}đ
+                        </p>
+                      </div>
+
+                      {/* Removed Continue to Checkout button */}
+                      {/* Continue as Guest button for guest users */}
+                      {isGuest && selectedSeats.length > 0 && (
+                        <Button
+                          className="w-full mt-3 bg-primary text-white"
+                          size="sm"
+                          onClick={() => setShowGuestCheckout(true)}
+                        >
+                          Continue as Guest
+                        </Button>
+                      )}
                     </div>
-                  )}
-
-                  <div className="pt-2 border-t border-border/50">
-                    <p className="text-muted-foreground">Fare per seat:</p>
-                    <p className="font-semibold text-foreground">
-                      {trip?.pricing?.base_price
-                        ? trip.pricing.base_price.toLocaleString('vi-VN')
-                        : '0'}
-                      đ
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-muted-foreground">Subtotal:</p>
-                    <p className="font-semibold text-foreground">
-                      {totalPrice.toLocaleString('vi-VN')}đ
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-muted-foreground">Service fee:</p>
-                    <p className="font-semibold text-foreground">0đ</p>
-                  </div>
-
-                  <div className="pt-2 border-t border-border/50 border-b">
-                    <p className="text-muted-foreground">Total:</p>
-                    <p className="text-lg font-bold text-primary">
-                      {totalPrice.toLocaleString('vi-VN')}đ
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={handleContinue}
-                    disabled={selectedSeats.length === 0}
-                    className="w-full mt-3"
-                    size="sm"
-                  >
-                    Continue to Checkout
-                  </Button>
+                  </Card>
                 </div>
-              </Card>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Error Modal */}
-      {error && (
-        <Dialog open={true} onOpenChange={() => setError(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Error</DialogTitle>
-              <DialogDescription>{error}</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                onClick={() => {
-                  setError(null)
-                  fetchSeatMap()
-                  refreshLocks(tripId!)
-                }}
-              >
-                Refresh
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        </>
       )}
-      {/* Guest Checkout Dialog */}
-      <GuestCheckoutDialog
-        open={showGuestCheckout}
-        onOpenChange={setShowGuestCheckout}
-        tripId={tripId!}
-        selectedSeats={selectedSeats}
-        seatCodes={getSelectedSeatCodes().split(', ')}
-        totalPrice={totalPrice}
-      />
     </div>
   )
 }

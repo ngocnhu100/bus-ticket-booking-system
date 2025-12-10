@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,7 +6,7 @@ import { useBookingStore } from '@/store/bookingStore'
 import type { PassengerInfo } from '../../api/bookings'
 
 interface PassengerFormProps {
-  seatCodes?: string[] // Optional now - will get from store
+  seatInfos?: { seat_id: string; seat_code: string }[]
   onSubmit?: (passengers: PassengerInfo[]) => void // Optional - for backward compatibility
   onBack?: () => void
   isLoading?: boolean
@@ -27,44 +26,43 @@ interface PassengerFormData extends PassengerInfo {
  * Integrates with booking store for state management
  */
 export function PassengerInformationForm({
-  seatCodes: propSeatCodes,
+  seatInfos = [],
   onSubmit: propOnSubmit,
   onBack,
   isLoading = false,
 }: PassengerFormProps) {
-  const navigate = useNavigate()
-
-  // Get from store
-  const { selectedSeats, selectedTrip, setPassengers, setContactInfo } =
-    useBookingStore()
-
-  // Use props if provided, otherwise use store
-  const seatCodes = propSeatCodes || selectedSeats
+  const { setPassengers, setContactInfo } = useBookingStore()
 
   // Contact information state
-  const [contactEmail, setContactEmailState] = useState('')
-  const [contactPhone, setContactPhoneState] = useState('')
-  const [contactErrors, setContactErrors] = useState<{
-    email?: string
-    phone?: string
-  }>({})
+  const [contactEmail] = useState('')
+  const [contactPhone] = useState('')
+  // contactErrors is used for type only, not value
 
   const [passengers, setPassengersState] = useState<PassengerFormData[]>(
-    seatCodes.map((seatCode: string) => ({
+    seatInfos.map((info) => ({
       fullName: '',
       phone: '',
       documentId: '',
-      seatCode,
+      seatCode: info.seat_code,
       errors: {},
     }))
   )
 
-  // Redirect if no seats selected
+  // Sync passengers state when seatInfos changes
   useEffect(() => {
-    if (!selectedTrip || seatCodes.length === 0) {
-      navigate('/')
-    }
-  }, [selectedTrip, seatCodes, navigate])
+    setPassengersState(
+      seatInfos.map((info) => ({
+        fullName: '',
+        phone: '',
+        documentId: '',
+        seatCode: info.seat_code,
+        errors: {},
+      }))
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatInfos.length])
+
+  // No redirect or navigation logic allowed for guest mode
 
   const validateAllPassengers = (): boolean => {
     let allValid = true
@@ -173,12 +171,9 @@ export function PassengerInformationForm({
     setPassengers(cleanedPassengers)
     setContactInfo(contactEmail.trim(), contactPhone.trim())
 
-    // If custom onSubmit provided (backward compatibility), call it
+    // Only call onSubmit, never navigate
     if (propOnSubmit) {
       propOnSubmit(cleanedPassengers)
-    } else {
-      // Navigate to booking summary
-      navigate('/booking/summary')
     }
   }
 
@@ -193,99 +188,12 @@ export function PassengerInformationForm({
           </p>
 
           <form onSubmit={handleSubmit}>
-            {/* Contact Information Section */}
-            <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                Contact Information
-              </h3>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Contact Email */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Contact Email *
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={contactEmail}
-                    onChange={(e) => {
-                      setContactEmailState(e.target.value)
-                      setContactErrors((prev) => ({
-                        ...prev,
-                        email: undefined,
-                      }))
-                    }}
-                    className={
-                      contactErrors.email
-                        ? 'border-red-500 focus:ring-red-500'
-                        : ''
-                    }
-                    required
-                  />
-                  {contactErrors.email && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {contactErrors.email}
-                    </p>
-                  )}
-                </div>
-
-                {/* Contact Phone */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Contact Phone *
-                  </label>
-                  <Input
-                    type="tel"
-                    placeholder="0901234567"
-                    value={contactPhone}
-                    onChange={(e) => {
-                      setContactPhoneState(e.target.value)
-                      setContactErrors((prev) => ({
-                        ...prev,
-                        phone: undefined,
-                      }))
-                    }}
-                    className={
-                      contactErrors.phone
-                        ? 'border-red-500 focus:ring-red-500'
-                        : ''
-                    }
-                    required
-                  />
-                  {contactErrors.phone && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {contactErrors.phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground mt-2">
-                Booking confirmation and tickets will be sent to this email and
-                phone.
-              </p>
-            </div>
-
             {/* Passengers Section */}
             <div className="space-y-6">
               {passengers.map((passenger, index) => (
                 <div
                   key={passenger.seatCode}
-                  className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800"
+                  className="border rounded-lg p-4 bg-white dark:bg-white"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold">
@@ -378,8 +286,8 @@ export function PassengerInformationForm({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 mt-6">
-              {onBack && (
+            {onBack && (
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -389,15 +297,8 @@ export function PassengerInformationForm({
                 >
                   Back
                 </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 sm:flex-none"
-              >
-                {isLoading ? 'Processing...' : 'Continue to Summary'}
-              </Button>
-            </div>
+              </div>
+            )}
           </form>
         </div>
       </Card>
