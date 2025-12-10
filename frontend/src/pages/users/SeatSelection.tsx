@@ -88,14 +88,11 @@ export function SeatSelection() {
 
     try {
       const seatsResponse = await fetch(`${API_BASE_URL}/trips/${tripId}/seats`)
-      console.log('Seats API response:', seatsResponse)
       if (!seatsResponse.ok) {
         throw new Error('Failed to fetch seat map')
       }
       const seatsResult = await seatsResponse.json()
-      console.log('Seats API result:', seatsResult)
       const seatsData = seatsResult.data.seat_map || seatsResult
-      console.log('Processed seats data:', seatsData)
       setSeatMapData(seatsData)
       seatMapDataRef.current = seatsData
     } catch (err) {
@@ -118,12 +115,10 @@ export function SeatSelection() {
 
       // Fetch trip details
       const tripResponse = await fetch(`${API_BASE_URL}/trips/${tripId}`)
-      console.log('Trip API response:', tripResponse)
       if (!tripResponse.ok) {
         throw new Error('Failed to fetch trip details')
       }
       const tripResult = await tripResponse.json()
-      console.log('Trip API result:', tripResult)
       const tripData = tripResult.data || tripResult
       setTrip(tripData)
 
@@ -150,7 +145,6 @@ export function SeatSelection() {
   } = useSeatLocks({
     autoRefreshInterval: 30, // Refresh every 30 seconds
     onLocksExpire: (expiredLocks) => {
-      console.log('Locks expired:', expiredLocks)
       // Remove expired seats from selectedSeats
       if (expiredLocks.length > 0 && seatMapDataRef.current) {
         const expiredSeatIds = expiredLocks
@@ -207,7 +201,10 @@ export function SeatSelection() {
   // Memoized callback for when a lock expires
   const handleLockExpire = useCallback(
     async (seatCode: string) => {
-      console.log('Lock expired for seat:', seatCode)
+      console.log(
+        'LockExpire: Starting expiration handling for seat:',
+        seatCode
+      )
 
       // Mark that lock expiration is in progress
       lockExpirationInProgressRef.current = true
@@ -217,7 +214,12 @@ export function SeatSelection() {
         const expiredSeat = seatMapDataRef.current.seats.find(
           (s: Seat) => s.seat_code === seatCode
         )
+        console.log('LockExpire: Found expired seat object:', expiredSeat)
         if (expiredSeat?.seat_id) {
+          console.log(
+            'LockExpire: Removing seat_id from selectedSeats:',
+            expiredSeat.seat_id
+          )
           setSelectedSeats((prev) =>
             prev.filter((id) => id !== expiredSeat.seat_id)
           )
@@ -228,14 +230,19 @@ export function SeatSelection() {
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       // Refresh both seat map and user locks when a lock expires
+      console.log('LockExpire: Refreshing seat map and user locks')
       await Promise.all([fetchSeatMap(), refreshLocks(tripId!)])
 
       // Add another small delay and refresh again to ensure UI is fully updated
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      await fetchSeatMap()
+      //await new Promise((resolve) => setTimeout(resolve, 200))
+      //await fetchSeatMap()
 
       // Clear the lock expiration flag
       lockExpirationInProgressRef.current = false
+      console.log(
+        'LockExpire: Completed expiration handling for seat:',
+        seatCode
+      )
     },
     [fetchSeatMap, refreshLocks, tripId]
   )
@@ -277,7 +284,6 @@ export function SeatSelection() {
       setOperationInProgress(false)
       setSeatMapLoading(true)
       try {
-        console.log('User logged in, transferring guest locks...')
         const result = await transferGuestLocksApi(
           tripId,
           guestSessionId,
@@ -302,11 +308,8 @@ export function SeatSelection() {
         }
 
         // Show success message if seats were transferred
-        if (transferredSeats.length > 0 && rejectedSeats.length === 0) {
-          console.log(
-            `Successfully transferred ${transferredSeats.length} guest locks`
-          )
-        }
+        // if (transferredSeats.length > 0 && rejectedSeats.length === 0) {
+        // }
 
         // Then refresh seat map to show updated lock ownership
         if (tripId) {
@@ -327,43 +330,48 @@ export function SeatSelection() {
                   const seat = seatsData.seats.find(
                     (s: Seat) => s.seat_code === seatCode
                   )
+                  console.log(
+                    'Transfer: seatCode',
+                    seatCode,
+                    'found seat',
+                    seat
+                  )
                   return seat?.seat_id
                 })
                 .filter(Boolean) as string[]
 
+              console.log(
+                'Transfer: transferredSeats (codes)',
+                transferredSeats
+              )
+              console.log('Transfer: transferredSeatIds', transferredSeatIds)
+
               // Fetch current user locks from the API to ensure we have all locks
               try {
-                const locksResponse = await fetch(
-                  `${API_BASE_URL}/trips/${tripId}/seats/my-locks`
-                )
-                if (locksResponse.ok) {
-                  const locksResult = await locksResponse.json()
-                  const allUserLocks = locksResult.data?.locked_seats || []
+                // Use refreshLocks instead of direct fetch to include proper authentication
+                await refreshLocks(tripId)
+                const allUserLocks = userLocks
 
-                  const existingUserLockIds = allUserLocks
-                    .map(
-                      (lock: {
-                        seat_code: string
-                        locked_at: string
-                        expires_at: string
-                      }) => {
-                        const seat = seatsData.seats.find(
-                          (s: Seat) => s.seat_code === lock.seat_code
-                        )
-                        return seat?.seat_id
-                      }
-                    )
-                    .filter(Boolean) as string[]
+                const existingUserLockIds = allUserLocks
+                  .map(
+                    (lock: {
+                      seat_code: string
+                      locked_at: string
+                      expires_at: string
+                    }) => {
+                      const seat = seatsData.seats.find(
+                        (s: Seat) => s.seat_code === lock.seat_code
+                      )
+                      return seat?.seat_id
+                    }
+                  )
+                  .filter(Boolean) as string[]
 
-                  // Only include successfully transferred seats + existing user locks (not rejected ones)
-                  const allLockedSeatIds = [
-                    ...new Set([...transferredSeatIds, ...existingUserLockIds]),
-                  ]
-                  setSelectedSeats(allLockedSeatIds)
-                } else {
-                  // Fallback if fetch fails: only use transferred seats (backend should not have transferred rejected ones)
-                  setSelectedSeats(transferredSeatIds)
-                }
+                // Only include successfully transferred seats + existing user locks (not rejected ones)
+                const allLockedSeatIds = [
+                  ...new Set([...transferredSeatIds, ...existingUserLockIds]),
+                ]
+                setSelectedSeats(allLockedSeatIds)
               } catch (error) {
                 console.error('Error fetching user locks:', error)
                 // Fallback if fetch fails: only use transferred seats
@@ -380,7 +388,6 @@ export function SeatSelection() {
 
         // Clear the guest session ID after successful transfer
         sessionStorage.removeItem('guestSessionId')
-        console.log('Guest locks transferred successfully')
       } catch (error) {
         console.error('Failed to transfer guest locks:', error)
         setOperationInProgress(false)
@@ -541,15 +548,9 @@ export function SeatSelection() {
   }
 
   const getSelectedSeatCodes = () => {
-    console.log('called getSelectedSeatCodes: seatMapData: ', seatMapData)
-
     if (!seatMapData?.seats) return '-'
     const selectedSeatObjects = seatMapData.seats.filter(
       (seat) => seat.seat_id && selectedSeats.includes(seat.seat_id)
-    )
-    console.log(
-      'called getSelectedSeatCodes: selectedSeatObjects: ',
-      selectedSeatObjects
     )
     return selectedSeatObjects.length > 0
       ? selectedSeatObjects.map((seat) => seat.seat_code).join(', ')

@@ -43,6 +43,7 @@ export function CountdownTimer({
         // Only call onExpire once when expiration is reached
         if (!hasCalledExpire) {
           setHasCalledExpire(true)
+          console.log('CountdownTimer: Lock expired for', expiresAt)
           onExpire?.()
         }
         return
