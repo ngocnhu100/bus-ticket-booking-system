@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { Icon } from 'lucide-react'
 import { steeringWheel } from '@lucide/lab'
@@ -54,14 +54,8 @@ export function SeatMap({
   className = '',
   currentUserId,
 }: SeatMapProps) {
-  const [localSelectedSeats, setLocalSelectedSeats] =
-    useState<string[]>(selectedSeats)
+  // Use `selectedSeats` prop directly to avoid duplicated local state
   const [selectionError, setSelectionError] = useState<string>('')
-
-  // Sync local state with prop changes
-  useEffect(() => {
-    setLocalSelectedSeats(selectedSeats)
-  }, [selectedSeats])
 
   // Organize seats by row for easier rendering
   const seatsByRow = useMemo(() => {
@@ -97,7 +91,7 @@ export function SeatMap({
 
   const handleSeatClick = (seat: Seat) => {
     if (readOnly) return
-    const isCurrentlySelected = localSelectedSeats.includes(seat.seat_id!)
+    const isCurrentlySelected = selectedSeats.includes(seat.seat_id!)
 
     // Allow clicking if:
     // - Seat is available, OR
@@ -113,7 +107,7 @@ export function SeatMap({
 
     // Don't allow selecting if already at max capacity (but allow deselection)
     if (!isCurrentlySelected && operationInProgress) return
-    if (!isCurrentlySelected && localSelectedSeats.length >= maxSelectable) {
+    if (!isCurrentlySelected && selectedSeats.length >= maxSelectable) {
       setSelectionError(`You can only select up to ${maxSelectable} seats.`)
       // Clear error after 3 seconds
       setTimeout(() => setSelectionError(''), 3000)
@@ -220,8 +214,7 @@ export function SeatMap({
                             ) ||
                             (currentUserId && seat.locked_by === currentUserId)
                           const isCurrentlySelected = !!(
-                            seat.seat_id &&
-                            localSelectedSeats.includes(seat.seat_id)
+                            seat.seat_id && selectedSeats.includes(seat.seat_id)
                           )
                           // A seat should be clickable if:
                           // - It's available, OR

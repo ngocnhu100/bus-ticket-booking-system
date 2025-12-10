@@ -143,12 +143,11 @@ export function SeatItem({
         {/* Seat Code */}
         <span className="seat-code">{seat.seat_code}</span>
 
-        {/* Countdown Timer for selected seats with locks */}
-        {isSelected &&
-          ((userLock && !isLockExpired) ||
-            (currentUserId &&
-              seat.locked_by === currentUserId &&
-              !isLockExpired)) &&
+        {/* Countdown Timer for seats with valid locks (not just selected ones) */}
+        {((userLock && !isLockExpired) ||
+          (currentUserId &&
+            seat.locked_by === currentUserId &&
+            !isLockExpired)) &&
           (userLock?.expires_at || seat.locked_until) && (
             <div className="seat-countdown">
               <CountdownTimer
