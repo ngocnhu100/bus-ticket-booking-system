@@ -91,6 +91,10 @@ export function SeatMap({
 
   const handleSeatClick = (seat: Seat) => {
     if (readOnly) return
+
+    // Block interaction if seat is locked by booking
+    if (seat.locked_by === 'booking') return
+
     const isCurrentlySelected = selectedSeats.includes(seat.seat_id!)
 
     // Allow clicking if:
@@ -214,16 +218,20 @@ export function SeatMap({
                             ) ||
                             (currentUserId && seat.locked_by === currentUserId)
                           const isCurrentlySelected = !!(
-                            seat.seat_id && selectedSeats.includes(seat.seat_id)
+                            seat.seat_id &&
+                            selectedSeats.includes(seat.seat_id) &&
+                            seat.locked_by !== 'booking'
                           )
                           // A seat should be clickable if:
                           // - It's available, OR
                           // - It's locked by the current user, OR
                           // - It's currently selected by the user (allows deselection)
+                          // But NOT if it's locked by booking
                           const canToggleSeat =
-                            seat.status === 'available' ||
-                            isLockedByUser ||
-                            isCurrentlySelected
+                            seat.locked_by !== 'booking' &&
+                            (seat.status === 'available' ||
+                              isLockedByUser ||
+                              isCurrentlySelected)
                           return (
                             <SeatItem
                               key={seat.seat_id}

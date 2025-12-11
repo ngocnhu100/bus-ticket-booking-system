@@ -72,9 +72,13 @@ export function SeatItem({
       return 'seat-available'
     }
 
-    // Priority 1: If seat is explicitly selected by user, show selected
+    // Priority 1: If locked by "booking", always show as locked (pending booking state)
+    if (seat.locked_by === 'booking' && !hasExpiredLock) {
+      return 'seat-locked'
+    }
+    // Priority 2: If seat is explicitly selected by user, show selected
     if (isSelected) return 'seat-selected'
-    // Priority 2: Only show as selected if lock exists AND hasn't expired
+    // Priority 3: Only show as selected if lock exists AND hasn't expired
     // AND the seat status from backend confirms it's locked
     if (userLock && !isLockExpired && seat.status === 'locked') {
       return 'seat-selected'
@@ -125,8 +129,12 @@ export function SeatItem({
     ) {
       return <Check className="w-4 h-4" />
     }
-    // Show alert icon for locked/occupied seats
-    if (seat.status === 'locked' || seat.status === 'occupied') {
+    // Show alert icon for locked/occupied seats or seats locked by booking
+    if (
+      seat.status === 'locked' ||
+      seat.status === 'occupied' ||
+      seat.locked_by === 'booking'
+    ) {
       return <AlertCircle className="w-4 h-4" />
     }
     // Don't show icon for available seats
@@ -161,11 +169,14 @@ export function SeatItem({
         {/* Seat Code */}
         <span className="seat-code">{seat.seat_code}</span>
 
-        {/* Countdown Timer for seats with valid locks (not just selected ones) */}
+        {/* Countdown Timer for seats with valid locks or booking locks */}
         {((userLock && !isLockExpired) ||
           (currentUserId &&
             seat.locked_by === currentUserId &&
-            !isLockExpired)) &&
+            !isLockExpired) ||
+          (seat.locked_by === 'booking' &&
+            seat.locked_until &&
+            !hasExpiredLock)) &&
           (userLock?.expires_at || seat.locked_until) &&
           !hasExpiredLock && (
             <div className="seat-countdown">

@@ -40,6 +40,16 @@ function formatTime(dateString: string | undefined): string {
 }
 
 /**
+ * Format price in VND
+ */
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(price)
+}
+
+/**
  * SeatSelection Page
  * Allows users to select seats for their chosen trip
  */
@@ -52,6 +62,8 @@ export function SeatSelection() {
   const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<string[]>([])
   const [totalPrice, setTotalPrice] = useState(0)
+  const [serviceFee, setServiceFee] = useState(0)
+  const [totalWithFee, setTotalWithFee] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [operationInProgress, setOperationInProgress] = useState(false)
@@ -407,16 +419,27 @@ export function SeatSelection() {
     transferGuestLocksOnLogin()
   }, [user, tripId, guestSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Calculate total price based on selected seats
+  // Calculate total price based on selected seats (excluding booking-locked seats)
   useEffect(() => {
-    if (seatMapData && selectedSeats.length > 0) {
-      const total = selectedSeats.reduce((sum, seatId) => {
-        const seat = seatMapData.seats.find((s) => s.seat_id === seatId)
+    const filteredSeats =
+      seatMapData?.seats?.filter(
+        (seat) =>
+          seat.seat_id &&
+          selectedSeats.includes(seat.seat_id) &&
+          seat.locked_by !== 'booking'
+      ) || []
+    if (seatMapData && filteredSeats.length > 0) {
+      const subtotal = filteredSeats.reduce((sum, seat) => {
         return sum + (seat?.price || 0)
       }, 0)
-      setTotalPrice(total)
+      setTotalPrice(subtotal)
+      const fee = Math.max(subtotal * 0.02, 5000)
+      setServiceFee(fee)
+      setTotalWithFee(subtotal + fee)
     } else {
       setTotalPrice(0)
+      setServiceFee(0)
+      setTotalWithFee(0)
     }
   }, [selectedSeats, seatMapData])
 
@@ -551,12 +574,27 @@ export function SeatSelection() {
 
   const getSelectedSeatCodes = () => {
     if (!seatMapData?.seats) return '-'
+    // Filter out seats locked by "booking"
     const selectedSeatObjects = seatMapData.seats.filter(
-      (seat) => seat.seat_id && selectedSeats.includes(seat.seat_id)
+      (seat) =>
+        seat.seat_id &&
+        selectedSeats.includes(seat.seat_id) &&
+        seat.locked_by !== 'booking'
     )
     return selectedSeatObjects.length > 0
       ? selectedSeatObjects.map((seat) => seat.seat_code).join(', ')
       : '-'
+  }
+
+  // Helper to get filtered selected seats (excluding booking-locked seats)
+  const getFilteredSelectedSeats = () => {
+    if (!seatMapData?.seats) return []
+    return seatMapData.seats.filter(
+      (seat) =>
+        seat.seat_id &&
+        selectedSeats.includes(seat.seat_id) &&
+        seat.locked_by !== 'booking'
+    )
   }
 
   if (loading) {
@@ -740,12 +778,12 @@ export function SeatSelection() {
                   <div>
                     <p className="text-muted-foreground">Passengers:</p>
                     <p className="font-semibold text-foreground">
-                      {selectedSeats.length}
+                      {getFilteredSelectedSeats().length}
                     </p>
                   </div>
 
                   {/* Lock Status Information */}
-                  {selectedSeats.length > 0 && (
+                  {getFilteredSelectedSeats().length > 0 && (
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-2 mb-2">
                         <Lock className="w-4 h-4 text-blue-600" />
@@ -769,35 +807,34 @@ export function SeatSelection() {
                   <div className="pt-2 border-t border-border/50">
                     <p className="text-muted-foreground">Fare per seat:</p>
                     <p className="font-semibold text-foreground">
-                      {trip?.pricing?.base_price
-                        ? trip.pricing.base_price.toLocaleString('vi-VN')
-                        : '0'}
-                      đ
+                      {formatPrice(trip?.pricing?.base_price || 0)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-muted-foreground">Subtotal:</p>
                     <p className="font-semibold text-foreground">
-                      {totalPrice.toLocaleString('vi-VN')}đ
+                      {formatPrice(totalPrice)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-muted-foreground">Service fee:</p>
-                    <p className="font-semibold text-foreground">0đ</p>
+                    <p className="font-semibold text-foreground">
+                      {formatPrice(serviceFee)}
+                    </p>
                   </div>
 
                   <div className="pt-2 border-t border-border/50 border-b">
                     <p className="text-muted-foreground">Total:</p>
                     <p className="text-lg font-bold text-primary">
-                      {totalPrice.toLocaleString('vi-VN')}đ
+                      {formatPrice(totalWithFee)}
                     </p>
                   </div>
 
                   <Button
                     onClick={handleContinue}
-                    disabled={selectedSeats.length === 0}
+                    disabled={getFilteredSelectedSeats().length === 0}
                     className="w-full mt-3"
                     size="sm"
                   >
@@ -837,9 +874,9 @@ export function SeatSelection() {
         open={showGuestCheckout}
         onOpenChange={setShowGuestCheckout}
         tripId={tripId!}
-        selectedSeats={selectedSeats}
+        selectedSeats={getFilteredSelectedSeats().map((s) => s.seat_id!)}
         seatCodes={getSelectedSeatCodes().split(', ')}
-        totalPrice={totalPrice}
+        totalPrice={totalWithFee}
       />
     </div>
   )
