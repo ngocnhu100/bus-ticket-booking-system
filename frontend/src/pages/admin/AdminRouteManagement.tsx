@@ -16,7 +16,7 @@ import { useAdminRoutes } from '@/hooks/admin/useAdminRoutes'
 import { useToast } from '@/hooks/use-toast'
 import { RouteFormDrawer } from '@/components/admin/RouteFormDrawer'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 // Fallback mock data when API is unavailable
 const MOCK_ROUTES: RouteAdminData[] = [

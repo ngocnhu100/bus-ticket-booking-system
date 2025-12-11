@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { Check, AlertCircle } from 'lucide-react'
 import type { Seat } from '@/types/trip.types'
 import { CountdownTimer } from './CountdownTimer'
@@ -16,6 +17,8 @@ interface SeatItemProps {
   userLock?: { seat_code: string; expires_at: string }
   /** Callback when lock expires */
   onLockExpire?: (seatCode: string) => void
+  /** Current user ID (for fallback lock ownership check) */
+  currentUserId?: string
 }
 
 /**
@@ -41,12 +44,61 @@ export function SeatItem({
   disabled,
   userLock,
   onLockExpire,
+  currentUserId,
 }: SeatItemProps) {
+  // Memoize the expire callback to prevent CountdownTimer from restarting on every render
+  const handleExpire = useCallback(() => {
+    onLockExpire?.(seat.seat_code)
+  }, [onLockExpire, seat.seat_code])
+
+  // Check if the lock has expired
+  // Note: SeatMap already filters out expired locks, so this is a safety check
+  const isLockExpired = userLock
+    ? new Date(userLock.expires_at).getTime() <= new Date().getTime()
+    : false
+
+  // Check if the seat has an expired lock based on locked_until (for backend data)
+  const hasExpiredLock =
+    seat.locked_until && new Date(seat.locked_until) <= new Date()
+
   // Determine seat status class
   const getSeatStatusClass = () => {
+    // Check if the seat has an expired lock based on locked_until
+    const hasExpiredLock =
+      seat.locked_until && new Date(seat.locked_until) <= new Date()
+
+    // If lock has expired, treat as available regardless of backend status
+    if (hasExpiredLock) {
+      return 'seat-available'
+    }
+
+    // Priority 1: If locked by "booking", always show as locked (pending booking state)
+    if (seat.locked_by === 'booking' && !hasExpiredLock) {
+      return 'seat-locked'
+    }
+    // Priority 2: If seat is explicitly selected by user, show selected
     if (isSelected) return 'seat-selected'
+    // Priority 3: Only show as selected if lock exists AND hasn't expired
+    // AND the seat status from backend confirms it's locked
+    if (userLock && !isLockExpired && seat.status === 'locked') {
+      return 'seat-selected'
+    }
+    // Fallback: check if seat is locked by current user (from backend seat data)
+    if (
+      currentUserId &&
+      seat.locked_by === currentUserId &&
+      !isLockExpired &&
+      seat.status === 'locked'
+    ) {
+      return 'seat-selected'
+    }
+    // Use seat status from backend as source of truth, but only if lock is still valid
+    // Don't show locked status if we have no valid lock for this seat
     if (seat.status === 'available') return 'seat-available'
     if (seat.status === 'occupied') return 'seat-occupied'
+    // Treat any non-expired locked seat as locked visually so other-user locks
+    // use the same locked styling as booking locks. Interaction rules remain
+    // enforced elsewhere (SeatMap prevents toggling seats locked by others).
     if (seat.status === 'locked') return 'seat-locked'
     return 'seat-unavailable'
   }
@@ -56,12 +108,33 @@ export function SeatItem({
 
   // Get seat icon based on status
   const getSeatIcon = () => {
+    // If lock has expired, don't show any icon (treat as available)
+    if (hasExpiredLock) {
+      return null
+    }
+
+    // Show checkmark for selected seats
     if (isSelected) {
       return <Check className="w-4 h-4" />
     }
-    if (seat.status !== 'available') {
+    // Show checkmark for seats locked by current user (only if lock is valid and backend agrees)
+    if (
+      currentUserId &&
+      seat.locked_by === currentUserId &&
+      !isLockExpired &&
+      seat.status === 'locked'
+    ) {
+      return <Check className="w-4 h-4" />
+    }
+    // Show alert icon for locked/occupied seats or seats locked by booking
+    if (
+      seat.status === 'locked' ||
+      seat.status === 'occupied' ||
+      seat.locked_by === 'booking'
+    ) {
       return <AlertCircle className="w-4 h-4" />
     }
+    // Don't show icon for available seats
     return null
   }
 
@@ -73,7 +146,6 @@ export function SeatItem({
       className={`
         seat-item
         ${getSeatStatusClass()}
-        ${isSelected ? 'seat-item-selected' : ''}
         ${isClickable ? 'seat-item-interactive' : 'seat-item-disabled-btn'}
         ${seat.seat_type === 'vip' ? 'seat-vip' : ''}
       `}
@@ -94,17 +166,23 @@ export function SeatItem({
         {/* Seat Code */}
         <span className="seat-code">{seat.seat_code}</span>
 
-        {/* Countdown Timer for selected seats with locks */}
-        {userLock && isSelected && (
-          <div className="seat-countdown">
-            <CountdownTimer
-              expiresAt={userLock.expires_at}
-              onExpire={() => onLockExpire?.(seat.seat_code)}
-              showWarning={true}
-              warningThreshold={120}
-            />
-          </div>
-        )}
+        {/* Countdown Timer for seats with valid user locks or current-user locks. */}
+        {seat.locked_by !== 'booking' &&
+          ((userLock && !isLockExpired) ||
+            (currentUserId &&
+              seat.locked_by === currentUserId &&
+              !isLockExpired)) &&
+          (userLock?.expires_at || seat.locked_until) &&
+          !hasExpiredLock && (
+            <div className="seat-countdown">
+              <CountdownTimer
+                expiresAt={userLock?.expires_at || seat.locked_until || ''}
+                onExpire={handleExpire}
+                showWarning={true}
+                warningThreshold={120}
+              />
+            </div>
+          )}
       </div>
 
       {/* Status Indicator Dot */}

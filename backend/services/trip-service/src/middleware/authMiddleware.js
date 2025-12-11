@@ -43,6 +43,43 @@ const authenticate = async (req, res, next) => {
   }
 };
 
+/**
+ * Optional authentication - attach user if token is valid, but don't fail if missing
+ */
+const optionalAuthenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    req.user = null;
+    return next();
+  }
+
+  const token = authHeader.substring(7);
+
+  try {
+    // Gọi auth-service để verify token
+    const response = await axios.post(`${AUTH_SERVICE_URL}/auth/verify`, { token });
+
+    if (!response.data.success) {
+      req.user = null;
+      return next();
+    }
+
+    // Kiểm tra blacklist
+    const blacklistCheck = await axios.post(`${AUTH_SERVICE_URL}/auth/blacklist-check`, { token });
+    if (blacklistCheck.data.isBlacklisted) {
+      req.user = null;
+      return next();
+    }
+
+    req.user = response.data.user;
+  } catch (error) {
+    req.user = null;
+  }
+
+  next();
+};
+
 const authorize = (roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
@@ -56,4 +93,4 @@ const authorize = (roles) => {
   };
 };
 
-module.exports = { authenticate, authorize };
+module.exports = { authenticate, authorize, optionalAuthenticate };

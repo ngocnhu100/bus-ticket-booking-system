@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent, ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -27,6 +27,7 @@ interface StatusState {
 const initialState: FormState = { email: '' }
 
 export default function ForgotPassword() {
+  const navigate = useNavigate()
   const [form, setForm] = useState<FormState>(initialState)
   const [error, setError] = useState<string>('')
   const [status, setStatus] = useState<StatusState>({
@@ -82,9 +83,17 @@ export default function ForgotPassword() {
       >
         <Card className="w-full max-w-lg border-none shadow-2xl shadow-indigo-100">
           <CardHeader className="space-y-3 text-center">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              Bus Ticket Booking System
-            </p>
+            <div
+              className="flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => navigate('/')}
+            >
+              <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-xl">🚌</span>
+              </div>
+              <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                BusGo
+              </span>
+            </div>
             <CardTitle className="text-3xl font-semibold">
               Forgot your password?
             </CardTitle>

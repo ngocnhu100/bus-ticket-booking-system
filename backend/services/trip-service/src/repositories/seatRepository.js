@@ -62,7 +62,7 @@ class SeatRepository {
     `;
 
     const occupiedResult = await pool.query(occupiedSeatsQuery, [tripId]);
-    const occupiedSeatCodes = new Set(occupiedResult.rows.map(row => row.seat_code));
+    const occupiedSeatCodes = new Set(occupiedResult.rows.map((row) => row.seat_code));
 
     // Get locked seats (pending bookings not expired)
     const lockedSeatsQuery = `
@@ -94,7 +94,11 @@ class SeatRepository {
 
     const numRows = layoutData.rows.length;
     // Calculate max seats per row
-    const seatsPerRow = Math.max(...layoutData.rows.map(row => row.seats ? row.seats.filter(seat => seat !== null).length : 0));
+    const seatsPerRow = Math.max(
+      ...layoutData.rows.map((row) =>
+        row.seats ? row.seats.filter((seat) => seat !== null).length : 0
+      )
+    );
     const layout = `${seatsPerRow}-${numRows}`;
 
     // Extract driver and door information
@@ -102,21 +106,21 @@ class SeatRepository {
     const doors = layoutData.doors || [];
 
     // Transform seats data
-    const transformedSeats = seats.map(seat => {
+    const transformedSeats = seats.map((seat) => {
       let status = 'available';
-      let lockedUntil = null;
-      let lockedBy = null;
+      let locked_until = null;
+      let locked_by = null;
 
       if (occupiedSeatCodes.has(seat.seat_code)) {
         status = 'occupied';
       } else if (dbLockedSeats[seat.seat_code]) {
         status = 'locked';
-        lockedUntil = dbLockedSeats[seat.seat_code];
-        lockedBy = 'booking'; // Database booking lock
+        locked_until = dbLockedSeats[seat.seat_code];
+        locked_by = 'booking'; // Database booking lock
       } else if (redisLockedSeats[seat.seat_code]) {
-        status = 'locked';
-        lockedUntil = new Date(redisLockedSeats[seat.seat_code].expiresAt);
-        lockedBy = redisLockedSeats[seat.seat_code].userId;
+        // Redis locks are handled in tripService with expiration check
+        locked_until = new Date(redisLockedSeats[seat.seat_code].expiresAt);
+        locked_by = redisLockedSeats[seat.seat_code].userId;
       }
 
       // Use row_num and col_num from database
@@ -133,9 +137,9 @@ class SeatRepository {
         position: seat.position,
         price: parseFloat(trip.base_price) + parseFloat(seat.price || 0),
         status,
-        lockedUntil,
-        lockedBy,
-        created_at: seat.created_at
+        locked_until,
+        locked_by,
+        created_at: seat.created_at,
       };
     });
 
@@ -146,7 +150,7 @@ class SeatRepository {
       columns: seatsPerRow,
       driver,
       doors,
-      seats: transformedSeats
+      seats: transformedSeats,
     };
   }
 }

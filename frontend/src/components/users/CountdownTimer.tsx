@@ -29,6 +29,7 @@ export function CountdownTimer({
 }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0)
   const [isExpired, setIsExpired] = useState(false)
+  const [hasCalledExpire, setHasCalledExpire] = useState(false)
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -39,7 +40,12 @@ export function CountdownTimer({
       if (difference <= 0) {
         setIsExpired(true)
         setTimeLeft(0)
-        onExpire?.()
+        // Only call onExpire once when expiration is reached
+        if (!hasCalledExpire) {
+          setHasCalledExpire(true)
+          console.log('CountdownTimer: Lock expired for', expiresAt)
+          onExpire?.()
+        }
         return
       }
 
@@ -53,7 +59,7 @@ export function CountdownTimer({
     const timer = setInterval(calculateTimeLeft, 1000)
 
     return () => clearInterval(timer)
-  }, [expiresAt, onExpire])
+  }, [expiresAt, onExpire, hasCalledExpire])
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60)
@@ -82,7 +88,7 @@ export function CountdownTimer({
         ${className}
       `}
     >
-      <Clock className="w-3 h-3" />
+      {!isWarning && <Clock className="w-3 h-3" />}
       <span>{formatTime(timeLeft)}</span>
       {isWarning && <AlertTriangle className="w-3 h-3" />}
     </div>

@@ -64,18 +64,17 @@ class QRGenerator {
 
   /**
    * Generate booking verification QR code
-   * Contains booking reference and verification URL
+   * Contains booking reference only for simple scanning
    * @param {string} bookingReference - Booking reference number
-   * @param {string} bookingId - Booking UUID
+   * @param {string} bookingId - Booking UUID (optional, not used in simple mode)
    * @returns {Promise<string>} Base64 data URL
    */
   async generateBookingQR(bookingReference, bookingId) {
-    // QR code contains verification URL
-    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5174'}/verify-ticket?ref=${bookingReference}&id=${bookingId}`;
-    
-    return await this.generateQRCode(verificationUrl, {
-      width: 250,
-      errorCorrectionLevel: 'M'
+    // QR code contains only booking reference for simplicity
+    // Staff can scan this and look up the booking in their system
+    return await this.generateQRCode(bookingReference, {
+      width: 300,
+      errorCorrectionLevel: 'H'
     });
   }
 }

@@ -11,8 +11,9 @@ const busController = require('./controllers/busController');
 const adminOperatorController = require('./controllers/adminOperatorController');
 const seatLockController = require('./controllers/seatLockController');
 
-const { authenticate, authorize } = require('./middleware/authMiddleware');
+const { authenticate, authorize, optionalAuthenticate } = require('./middleware/authMiddleware');
 const lockCleanupService = require('./services/lockCleanupService');
+const { isRedisAvailable } = require('./redis');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -22,8 +23,21 @@ app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
 
-// Start lock cleanup service
-lockCleanupService.start(5); // Clean up every 5 minutes
+// Start lock cleanup service after Redis is ready
+(async () => {
+  try {
+    console.log('⏳ Waiting for Redis to be available...');
+    const redisReady = await isRedisAvailable();
+    if (redisReady) {
+      lockCleanupService.start(5); // Clean up every 5 minutes
+      console.log('✅ Lock cleanup service started');
+    } else {
+      console.error('❌ Redis not available, lock cleanup service not started');
+    }
+  } catch (error) {
+    console.error('❌ Error checking Redis availability:', error);
+  }
+})();
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
@@ -42,11 +56,12 @@ app.get('/:id/seats', tripController.getSeats);
 app.get('/:id', tripController.getById);
 
 // --- Seat lock management ---
-app.post('/:id/seats/lock', authenticate, seatLockController.lockSeats);
-app.post('/:id/seats/extend', authenticate, seatLockController.extendLocks);
-app.post('/:id/seats/release', authenticate, seatLockController.releaseLocks);
-app.post('/:id/seats/release-all', authenticate, seatLockController.releaseAllLocks);
-app.get('/:id/seats/my-locks', authenticate, seatLockController.getMyLocks);
+app.post('/:id/seats/lock', optionalAuthenticate, seatLockController.lockSeats);
+app.post('/:id/seats/extend', optionalAuthenticate, seatLockController.extendLocks);
+app.post('/:id/seats/release', optionalAuthenticate, seatLockController.releaseLocks);
+app.post('/:id/seats/release-all', optionalAuthenticate, seatLockController.releaseAllLocks);
+app.post('/:id/seats/transfer-guest-locks', authenticate, seatLockController.transferGuestLocks);
+app.get('/:id/seats/my-locks', optionalAuthenticate, seatLockController.getMyLocks);
 
 // --- Admin: Trip management ---
 app.post('/', authenticate, authorize(['admin']), tripController.create);

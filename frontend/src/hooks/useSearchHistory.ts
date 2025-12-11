@@ -3,7 +3,7 @@ import type { SearchHistoryItem } from '@/types/searchHistory.types'
 import { useAuth } from '@/context/AuthContext'
 
 const STORAGE_KEY_PREFIX = 'search_history_'
-const MAX_SEARCHES = 10
+const MAX_SEARCHES = 5
 
 export function useSearchHistory() {
   const { user } = useAuth()
@@ -34,23 +34,6 @@ export function useSearchHistory() {
     setIsLoaded(true)
   }, [user?.userId])
 
-  // Save searches to localStorage
-  const saveSearches = useCallback(
-    (newSearches: SearchHistoryItem[]) => {
-      const storageKey = user?.userId
-        ? `${STORAGE_KEY_PREFIX}${user.userId}`
-        : null
-      if (!storageKey) return
-
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(newSearches))
-      } catch (error) {
-        console.error('Failed to save search history:', error)
-      }
-    },
-    [user]
-  )
-
   // Add a new search to history
   const addSearch = useCallback(
     (search: Omit<SearchHistoryItem, 'id' | 'searchedAt'>) => {
@@ -59,39 +42,58 @@ export function useSearchHistory() {
         return
       }
 
+      const storageKey = `${STORAGE_KEY_PREFIX}${user.userId}`
+      const stored = localStorage.getItem(storageKey)
+      const currentSearches: SearchHistoryItem[] = stored
+        ? JSON.parse(stored)
+        : []
+
+      // Remove any existing search with the same parameters
+      const filteredSearches = currentSearches.filter(
+        (s) =>
+          !(
+            s.origin === search.origin &&
+            s.destination === search.destination &&
+            s.date === search.date &&
+            s.passengers === search.passengers
+          )
+      )
+
       const newSearch: SearchHistoryItem = {
         ...search,
         id: `search_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         searchedAt: Date.now(),
       }
 
-      // Add to beginning and keep only last MAX_SEARCHES
-      const updated = [newSearch, ...searches].slice(0, MAX_SEARCHES)
+      const updated = [newSearch, ...filteredSearches].slice(0, MAX_SEARCHES)
       setSearches(updated)
-      saveSearches(updated)
+      localStorage.setItem(storageKey, JSON.stringify(updated))
     },
-    [user, searches, saveSearches]
+    [user]
   )
 
   // Remove a specific search
   const removeSearch = useCallback(
     (id: string) => {
-      const updated = searches.filter((s) => s.id !== id)
+      if (!user?.userId) return
+      const storageKey = `${STORAGE_KEY_PREFIX}${user.userId}`
+      const stored = localStorage.getItem(storageKey)
+      const currentSearches: SearchHistoryItem[] = stored
+        ? JSON.parse(stored)
+        : []
+      const updated = currentSearches.filter((s) => s.id !== id)
       setSearches(updated)
-      saveSearches(updated)
+      localStorage.setItem(storageKey, JSON.stringify(updated))
     },
-    [searches, saveSearches]
+    [user]
   )
 
   // Clear all search history
   const clearHistory = useCallback(() => {
+    if (!user?.userId) return
     setSearches([])
-    const storageKey = user?.userId
-      ? `${STORAGE_KEY_PREFIX}${user.userId}`
-      : null
-    if (storageKey) {
-      localStorage.removeItem(storageKey)
-    }
+    const storageKey = `${STORAGE_KEY_PREFIX}${user.userId}`
+    localStorage.removeItem(storageKey)
   }, [user])
 
   return {

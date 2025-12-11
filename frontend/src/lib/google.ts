@@ -1,8 +1,8 @@
-type GoogleCredentialResponse = {
+export type GoogleCredentialResponse = {
   credential?: string
 }
 
-type GooglePromptNotification = {
+export type GooglePromptNotification = {
   isNotDisplayed?: () => boolean
   isSkippedMoment?: () => boolean
   isDismissedMoment?: () => boolean
@@ -26,6 +26,16 @@ declare global {
             context?: 'signin' | 'signup' | 'use'
             use_fedcm_for_prompt?: boolean
           }) => void
+          renderButton: (
+            element: HTMLElement,
+            options: {
+              theme?: 'outline' | 'filled_blue' | 'filled_black'
+              size?: 'large' | 'medium' | 'small'
+              width?: number
+              text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin'
+              shape?: 'rectangular' | 'pill' | 'circle' | 'square'
+            }
+          ) => void
           prompt: (
             callback?: (notification: GooglePromptNotification) => void
           ) => void

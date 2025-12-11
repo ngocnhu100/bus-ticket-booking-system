@@ -32,21 +32,21 @@ export interface Payment {
 }
 
 export interface Booking {
-  bookingId: string
-  bookingReference: string
-  tripId: string
-  userId?: string
-  contactEmail: string
-  contactPhone: string
+  booking_id: string
+  booking_reference: string
+  trip_id: string
+  user_id?: string
+  contact_email: string
+  contact_phone: string
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-  lockedUntil?: string
+  locked_until?: string
   pricing: Pricing
   payment: Payment
   passengers?: PassengerInfo[]
-  tripDetails?: {
+  trip_details?: {
     route?: { origin: string; destination: string }
     operator?: { name: string }
-    schedule?: { departureTime: string; arrivalTime: string }
+    schedule?: { departure_time: string; arrival_time: string }
   }
   cancellation?: {
     reason?: string

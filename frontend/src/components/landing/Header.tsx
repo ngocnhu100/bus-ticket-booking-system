@@ -45,6 +45,12 @@ export function Header() {
           >
             Routes
           </a>
+          <button
+            onClick={() => navigate('/booking-lookup')}
+            className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium transition"
+          >
+            Track Booking
+          </button>
           <a
             href="#why-us"
             className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium transition"
@@ -128,6 +134,15 @@ export function Header() {
             >
               Routes
             </a>
+            <button
+              onClick={() => {
+                navigate('/booking-lookup')
+                setIsMobileMenuOpen(false)
+              }}
+              className="block w-full text-left text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium py-2"
+            >
+              Track Booking
+            </button>
             <a
               href="#why-us"
               className="block text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium py-2"

@@ -79,7 +79,7 @@ export function BookingSummary({
       }
     }
 
-    const basePrice = trip.pricing.basePrice
+    const basePrice = trip.pricing.base_price
     const subtotal = basePrice * passengers.length
 
     // Service fee calculation (2% with min 5,000 VND)
@@ -104,14 +104,21 @@ export function BookingSummary({
   }
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('vi-VN', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    if (!dateString) return 'Unknown'
+    try {
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Unknown'
+      return date.toLocaleString('vi-VN', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return 'Unknown'
+    }
   }
 
   const handleConfirm = async () => {
@@ -132,7 +139,7 @@ export function BookingSummary({
     try {
       // Prepare booking data
       const bookingData = {
-        tripId: trip.tripId,
+        tripId: trip.trip_id,
         seats: passengers.map((p: PassengerInfo) => p.seatCode),
         passengers: passengers,
         contactEmail: contactEmail,
@@ -153,7 +160,7 @@ export function BookingSummary({
         // Show success and redirect to payment or booking details
         // For now, redirect to booking confirmation page
         alert(
-          `Booking created successfully! Reference: ${response.data.bookingReference}`
+          `Booking created successfully! Reference: ${response.data.booking_reference}`
         )
 
         // Redirect to user bookings/history
@@ -200,7 +207,7 @@ export function BookingSummary({
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <div className="flex items-start">
                 <svg
-                  className="w-5 h-5 text-red-600 dark:text-red-500 mr-2 mt-0.5 flex-shrink-0"
+                  className="w-5 h-5 text-red-600 dark:text-red-500 mr-2 mt-0.5 shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -266,7 +273,7 @@ export function BookingSummary({
                   Bus Type
                 </span>
                 <span className="font-medium capitalize">
-                  {trip.bus.busType}
+                  {trip.bus.bus_type}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -274,7 +281,7 @@ export function BookingSummary({
                   Departure
                 </span>
                 <span className="font-medium">
-                  {formatDateTime(trip.schedule.departureTime)}
+                  {formatDateTime(trip.schedule.departure_time)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -282,7 +289,7 @@ export function BookingSummary({
                   Arrival
                 </span>
                 <span className="font-medium">
-                  {formatDateTime(trip.schedule.arrivalTime)}
+                  {formatDateTime(trip.schedule.arrival_time)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -438,7 +445,7 @@ export function BookingSummary({
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
             <div className="flex items-start">
               <svg
-                className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mr-2 mt-0.5 flex-shrink-0"
+                className="w-5 h-5 text-yellow-600 dark:text-yellow-500 mr-2 mt-0.5 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

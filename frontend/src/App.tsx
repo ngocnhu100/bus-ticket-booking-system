@@ -26,11 +26,13 @@ import AdminSeatMapManagement from '@/pages/admin/AdminSeatMapManagement'
 import AdminOperatorManagement from '@/pages/admin/AdminOperatorManagement'
 import Landing from './pages/Landing'
 import TripSearchResults from './pages/TripSearchResults'
-import { SeatSelection } from './pages/users/SeatSelection'
+import SeatSelection from './pages/users/SeatSelection'
 import { BookingConfirmation } from './pages/BookingConfirmation'
-import { BookingDemo } from './pages/BookingDemo'
 import { BookingLookup } from './pages/BookingLookup'
+import { BookingReview } from './pages/BookingReview'
 import ETicketPreview from './pages/ETicketPreview'
+import GuestCheckout from '@/components/booking/GuestCheckout'
+import GuestConfirmation from './pages/GuestConfirmation'
 
 const queryClient = new QueryClient()
 
@@ -68,7 +70,6 @@ const App = () => (
                 path="/trip-search-results"
                 element={<TripSearchResults />}
               />
-              <Route path="/booking-demo" element={<BookingDemo />} />
               <Route path="/booking-lookup" element={<BookingLookup />} />
               <Route
                 path="/booking-confirmation/:bookingReference"
@@ -84,6 +85,21 @@ const App = () => (
                 path="/auth/google/callback"
                 element={<AuthGoogleCallback />}
               />
+              {/* Seat selection - accessible to both guests and authenticated users */}
+              <Route
+                path="/booking/:tripId/seats"
+                element={<SeatSelection />}
+              />
+              {/* Booking review/payment - accessible to both guests and authenticated users */}
+              <Route
+                path="/booking/:bookingId/review"
+                element={<BookingReview />}
+              />
+              <Route path="/guest-checkout" element={<GuestCheckout />} />
+              <Route
+                path="/guest-confirmation"
+                element={<GuestConfirmation />}
+              />
 
               {/* Passenger routes - protected */}
               <Route element={<PassengerRoute />}>
@@ -97,10 +113,6 @@ const App = () => (
                   element={<Notifications />}
                 />
                 <Route path="/trips/search" element={<TripSearch />} />
-                <Route
-                  path="/booking/:tripId/seats"
-                  element={<SeatSelection />}
-                />
               </Route>
 
               {/* Admin routes - protected */}
@@ -134,7 +146,7 @@ const App = () => (
                 {/* Operator Management */}
               </Route>
 
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </TooltipProvider>
         </ThemeProviderWithSuppress>

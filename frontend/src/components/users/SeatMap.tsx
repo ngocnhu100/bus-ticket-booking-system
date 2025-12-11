@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { Icon } from 'lucide-react'
 import { steeringWheel } from '@lucide/lab'
@@ -26,6 +26,8 @@ interface SeatMapProps {
   onLockExpire?: (seatCode: string) => void
   /** Custom class name */
   className?: string
+  /** Current user ID (for fallback lock ownership check) */
+  currentUserId?: string
 }
 
 /**
@@ -50,15 +52,10 @@ export function SeatMap({
   userLocks = [],
   onLockExpire,
   className = '',
+  currentUserId,
 }: SeatMapProps) {
-  const [localSelectedSeats, setLocalSelectedSeats] =
-    useState<string[]>(selectedSeats)
+  // Use `selectedSeats` prop directly to avoid duplicated local state
   const [selectionError, setSelectionError] = useState<string>('')
-
-  // Sync local state with prop changes
-  useEffect(() => {
-    setLocalSelectedSeats(selectedSeats)
-  }, [selectedSeats])
 
   // Organize seats by row for easier rendering
   const seatsByRow = useMemo(() => {
@@ -93,18 +90,28 @@ export function SeatMap({
   }, [seatMapData])
 
   const handleSeatClick = (seat: Seat) => {
-    if (readOnly || operationInProgress) return
+    if (readOnly) return
 
-    // Allow clicking if available or locked by current user
-    const isLockedByUser = userLocks.some(
-      (lock) => lock.seat_code === seat.seat_code
-    )
-    if (seat.status !== 'available' && !isLockedByUser) return
+    // Block interaction if seat is locked by booking
+    if (seat.locked_by === 'booking') return
 
-    const isCurrentlySelected = localSelectedSeats.includes(seat.seat_id!)
+    const isCurrentlySelected = selectedSeats.includes(seat.seat_id!)
 
-    // Check if we can add more seats
-    if (!isCurrentlySelected && localSelectedSeats.length >= maxSelectable) {
+    // Allow clicking if:
+    // - Seat is available, OR
+    // - Seat is locked by current user, OR
+    // - Seat is currently selected (allows deselection)
+    const isLockedByUser =
+      userLocks.some((lock) => lock.seat_code === seat.seat_code) ||
+      (currentUserId && seat.locked_by === currentUserId)
+    const canToggleSeat =
+      seat.status === 'available' || isLockedByUser || isCurrentlySelected
+
+    if (!canToggleSeat) return
+
+    // Don't allow selecting if already at max capacity (but allow deselection)
+    if (!isCurrentlySelected && operationInProgress) return
+    if (!isCurrentlySelected && selectedSeats.length >= maxSelectable) {
       setSelectionError(`You can only select up to ${maxSelectable} seats.`)
       // Clear error after 3 seconds
       setTimeout(() => setSelectionError(''), 3000)
@@ -188,26 +195,57 @@ export function SeatMap({
                           const userLock = userLocks.find(
                             (lock) => lock.seat_code === seat.seat_code
                           )
-                          const isLockedByUser = userLocks.some(
-                            (lock) => lock.seat_code === seat.seat_code
+
+                          // Check if the lock is expired
+                          const isLockExpired = userLock
+                            ? new Date(userLock.expires_at).getTime() <=
+                              new Date().getTime()
+                            : false
+
+                          // Only pass userLock if it hasn't expired
+                          const validUserLock =
+                            userLock && !isLockExpired ? userLock : undefined
+
+                          // Check if seat is locked by current user:
+                          // 1. Primary: Check if seat_code exists in userLocks array AND lock hasn't expired
+                          // 2. Fallback: Check if seat.locked_by matches currentUserId
+                          const isLockedByUser =
+                            userLocks.some(
+                              (lock) =>
+                                lock.seat_code === seat.seat_code &&
+                                new Date(lock.expires_at).getTime() >
+                                  new Date().getTime()
+                            ) ||
+                            (currentUserId && seat.locked_by === currentUserId)
+                          const isCurrentlySelected = !!(
+                            seat.seat_id &&
+                            selectedSeats.includes(seat.seat_id) &&
+                            seat.locked_by !== 'booking'
                           )
+                          // A seat should be clickable if:
+                          // - It's available, OR
+                          // - It's locked by the current user, OR
+                          // - It's currently selected by the user (allows deselection)
+                          // But NOT if it's locked by booking
+                          const canToggleSeat =
+                            seat.locked_by !== 'booking' &&
+                            (seat.status === 'available' ||
+                              isLockedByUser ||
+                              isCurrentlySelected)
                           return (
                             <SeatItem
                               key={seat.seat_id}
                               seat={seat}
-                              isSelected={
-                                seat.seat_id
-                                  ? localSelectedSeats.includes(seat.seat_id)
-                                  : false
-                              }
+                              isSelected={isCurrentlySelected}
                               onClick={() => handleSeatClick(seat)}
                               disabled={
                                 readOnly ||
                                 operationInProgress ||
-                                (seat.status !== 'available' && !isLockedByUser)
+                                !canToggleSeat
                               }
-                              userLock={userLock}
+                              userLock={validUserLock}
                               onLockExpire={onLockExpire}
+                              currentUserId={currentUserId}
                             />
                           )
                         } else {

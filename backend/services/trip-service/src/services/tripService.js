@@ -1,6 +1,6 @@
 // services/tripService.js
 const tripRepository = require('../repositories/tripRepository');
-const routeRepository = require('../repositories/routeRepository'); 
+const routeRepository = require('../repositories/routeRepository');
 const busRepository = require('../repositories/busRepository');
 const seatRepository = require('../repositories/seatRepository');
 const seatLockService = require('./seatLockService');
@@ -39,7 +39,8 @@ class TripService {
     if (tripData.departure_time || tripData.arrival_time) {
       const dep = tripData.departure_time || existing.schedule.departure_time;
       const arr = tripData.arrival_time || existing.schedule.arrival_time;
-      if (new Date(dep) >= new Date(arr)) throw new Error('Invalid times: Departure must be before Arrival');
+      if (new Date(dep) >= new Date(arr))
+        throw new Error('Invalid times: Departure must be before Arrival');
     }
 
     // Nếu update Bus hoặc Thời gian, check overlap
@@ -71,23 +72,23 @@ class TripService {
     const hasBookings = await bookingRepository.hasActiveBookingsForTrip(id);
     if (hasBookings) throw new Error('Cannot delete trip with active bookings');
     */
-    
+
     return await tripRepository.softDelete(id);
   }
 
   async getSeatMap(tripId) {
     const seatMapData = await seatRepository.getSeatMapForTrip(tripId);
-    
+
     // Get locked seats from Redis
     const lockedSeats = await seatLockService.getLockedSeats(tripId);
-    
+
     // Update seat statuses based on locks
-    seatMapData.seats.forEach(seat => {
+    seatMapData.seats.forEach((seat) => {
       if (lockedSeats[seat.seat_code]) {
         seat.status = 'locked';
       }
     });
-    
+
     return seatMapData;
   }
 }

@@ -15,14 +15,16 @@ import {
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 import type { Trip } from '@/types/trip.types'
 
 interface TripDetailsProps {
   trip: Trip
-  onSelectTrip?: (tripId: string) => void
 }
 
-export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
+export function TripDetails({ trip }: TripDetailsProps) {
+  const navigate = useNavigate()
+
   // Helper function to format time
   const formatTime = (timeString: string) => {
     try {
@@ -361,10 +363,11 @@ export function TripDetails({ trip, onSelectTrip }: TripDetailsProps) {
           size="lg"
           onClick={(e) => {
             e.stopPropagation()
-            onSelectTrip?.(trip.trip_id)
+            navigate(`/booking/${trip.trip_id}/seats`)
           }}
         >
-          Book This Trip - {trip.pricing.base_price.toLocaleString('vi-VN')}đ
+          Book This Trip -{' '}
+          {(trip.pricing?.base_price || 0).toLocaleString('vi-VN')}đ
         </Button>
       </div>
     </div>

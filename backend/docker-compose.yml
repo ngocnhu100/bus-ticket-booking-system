@@ -161,7 +161,6 @@ services:
       - TRIP_SERVICE_URL=http://trip-service:3002
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
       - BOOKING_SERVICE_URL=http://booking-service:3004
-      - BOOKING_SERVICE_URL=http://booking-service:3004
       - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
     ports:
       - "3000:3000"

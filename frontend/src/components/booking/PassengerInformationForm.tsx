@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,7 +6,7 @@ import { useBookingStore } from '@/store/bookingStore'
 import type { PassengerInfo } from '../../api/bookings'
 
 interface PassengerFormProps {
-  seatCodes?: string[] // Optional now - will get from store
+  seatInfos?: { seat_id: string; seat_code: string }[]
   onSubmit?: (passengers: PassengerInfo[]) => void // Optional - for backward compatibility
   onBack?: () => void
   isLoading?: boolean
@@ -27,109 +26,36 @@ interface PassengerFormData extends PassengerInfo {
  * Integrates with booking store for state management
  */
 export function PassengerInformationForm({
-  seatCodes: propSeatCodes,
+  seatInfos = [],
   onSubmit: propOnSubmit,
   onBack,
   isLoading = false,
 }: PassengerFormProps) {
-  const navigate = useNavigate()
-
-  // Get from store
-  const { selectedSeats, selectedTrip, setPassengers, setContactInfo } =
-    useBookingStore()
-
-  // Use props if provided, otherwise use store
-  const seatCodes = propSeatCodes || selectedSeats
-
-  // Contact information state
-  const [contactEmail, setContactEmailState] = useState('')
-  const [contactPhone, setContactPhoneState] = useState('')
-  const [contactErrors, setContactErrors] = useState<{
-    email?: string
-    phone?: string
-  }>({})
+  const { setPassengers } = useBookingStore()
 
   const [passengers, setPassengersState] = useState<PassengerFormData[]>(
-    seatCodes.map((seatCode: string) => ({
+    seatInfos.map((info) => ({
       fullName: '',
       phone: '',
       documentId: '',
-      seatCode,
+      seatCode: info.seat_code,
       errors: {},
     }))
   )
 
-  // Redirect if no seats selected
+  // Sync passengers state when seatInfos changes
   useEffect(() => {
-    if (!selectedTrip || seatCodes.length === 0) {
-      navigate('/')
-    }
-  }, [selectedTrip, seatCodes, navigate])
-
-  const validateAllPassengers = (): boolean => {
-    let allValid = true
-    const updatedPassengers = passengers.map((passenger) => {
-      const errors: PassengerFormData['errors'] = {}
-
-      if (!passenger.fullName || passenger.fullName.trim().length < 2) {
-        errors.fullName = 'Full name is required (min 2 characters)'
-        allValid = false
-      }
-
-      if (passenger.phone && passenger.phone.trim()) {
-        const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
-        if (!phoneRegex.test(passenger.phone.trim())) {
-          errors.phone = 'Invalid phone format (e.g., 0901234567)'
-          allValid = false
-        }
-      }
-
-      if (passenger.documentId && passenger.documentId.trim()) {
-        const documentRegex = /^[0-9]{9,12}$/
-        if (!documentRegex.test(passenger.documentId.trim())) {
-          errors.documentId = 'Document ID must be 9-12 digits'
-          allValid = false
-        }
-      }
-
-      return { ...passenger, errors }
-    })
-
-    setPassengersState(updatedPassengers)
-    return allValid
-  }
-
-  const validateContactInfo = (): boolean => {
-    const errors: typeof contactErrors = {}
-    let isValid = true
-
-    // Email validation
-    if (!contactEmail || !contactEmail.trim()) {
-      errors.email = 'Email is required'
-      isValid = false
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(contactEmail.trim())) {
-        errors.email = 'Invalid email format'
-        isValid = false
-      }
-    }
-
-    // Phone validation
-    if (!contactPhone || !contactPhone.trim()) {
-      errors.phone = 'Phone number is required'
-      isValid = false
-    } else {
-      const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
-      if (!phoneRegex.test(contactPhone.trim())) {
-        errors.phone = 'Invalid phone format (e.g., 0901234567)'
-        isValid = false
-      }
-    }
-
-    setContactErrors(errors)
-    return isValid
-  }
+    setPassengersState(
+      seatInfos.map((info) => ({
+        fullName: '',
+        phone: '',
+        documentId: '',
+        seatCode: info.seat_code,
+        errors: {},
+      }))
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seatInfos.length])
 
   const handleInputChange = (
     index: number,
@@ -150,145 +76,95 @@ export function PassengerInformationForm({
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Create stable dependency strings
+  const passengersKey = useMemo(
+    () =>
+      passengers
+        .map(
+          (p) =>
+            `${p.seatCode}:${p.fullName}:${p.phone || ''}:${p.documentId || ''}`
+        )
+        .join('|'),
+    [passengers]
+  )
 
-    // Validate both passengers and contact info
-    const passengersValid = validateAllPassengers()
-    const contactValid = validateContactInfo()
+  // Auto-sync passengers to parent when all have valid names
+  useEffect(() => {
+    // Only sync if all passengers have valid full names
+    if (
+      passengers.length > 0 &&
+      passengers.every((p) => p.fullName && p.fullName.trim().length >= 2)
+    ) {
+      const cleanedPassengers: PassengerInfo[] = passengers.map((p) => ({
+        fullName: p.fullName.trim(),
+        phone: p.phone?.trim() || undefined,
+        documentId: p.documentId?.trim() || undefined,
+        seatCode: p.seatCode,
+      }))
 
-    if (!passengersValid || !contactValid) {
-      return
+      // Save to store
+      setPassengers(cleanedPassengers)
+
+      // Call onSubmit to update parent
+      if (propOnSubmit) {
+        propOnSubmit(cleanedPassengers)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passengersKey])
+
+  // Prevent page (body) scrolling while this passenger form is mounted
+  // This avoids the double-scrollbar effect when the form is rendered
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+
+    const shouldLock = () => document.body.scrollHeight > window.innerHeight
+
+    // Only hide body scrollbar when page content actually overflows viewport
+    if (shouldLock()) {
+      document.body.style.overflow = 'hidden'
     }
 
-    // Clean up passengers data
-    const cleanedPassengers: PassengerInfo[] = passengers.map((p) => ({
-      fullName: p.fullName.trim(),
-      phone: p.phone?.trim() || undefined,
-      documentId: p.documentId?.trim() || undefined,
-      seatCode: p.seatCode,
-    }))
-
-    // Save to store
-    setPassengers(cleanedPassengers)
-    setContactInfo(contactEmail.trim(), contactPhone.trim())
-
-    // If custom onSubmit provided (backward compatibility), call it
-    if (propOnSubmit) {
-      propOnSubmit(cleanedPassengers)
-    } else {
-      // Navigate to booking summary
-      navigate('/booking/summary')
+    const onResize = () => {
+      if (shouldLock()) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = previousOverflow || ''
+      }
     }
-  }
+
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      // restore previous overflow
+      document.body.style.overflow = previousOverflow || ''
+      window.removeEventListener('resize', onResize)
+    }
+    // Only run on mount/unmount
+  }, [])
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
+    <div className="w-full">
       <Card>
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-2">Passenger Information</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
+        <div className="p-0 md:p-6">
+          <h2 className="text-2xl font-bold mb-2 text-foreground">
+            Passenger Information
+          </h2>
+          <p className="text-muted-foreground mb-6">
             Please provide information for each passenger. Fields marked with *
             are required.
           </p>
 
-          <form onSubmit={handleSubmit}>
-            {/* Contact Information Section */}
-            <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                Contact Information
-              </h3>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Contact Email */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Contact Email *
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="your.email@example.com"
-                    value={contactEmail}
-                    onChange={(e) => {
-                      setContactEmailState(e.target.value)
-                      setContactErrors((prev) => ({
-                        ...prev,
-                        email: undefined,
-                      }))
-                    }}
-                    className={
-                      contactErrors.email
-                        ? 'border-red-500 focus:ring-red-500'
-                        : ''
-                    }
-                    required
-                  />
-                  {contactErrors.email && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {contactErrors.email}
-                    </p>
-                  )}
-                </div>
-
-                {/* Contact Phone */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Contact Phone *
-                  </label>
-                  <Input
-                    type="tel"
-                    placeholder="0901234567"
-                    value={contactPhone}
-                    onChange={(e) => {
-                      setContactPhoneState(e.target.value)
-                      setContactErrors((prev) => ({
-                        ...prev,
-                        phone: undefined,
-                      }))
-                    }}
-                    className={
-                      contactErrors.phone
-                        ? 'border-red-500 focus:ring-red-500'
-                        : ''
-                    }
-                    required
-                  />
-                  {contactErrors.phone && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {contactErrors.phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-sm text-muted-foreground mt-2">
-                Booking confirmation and tickets will be sent to this email and
-                phone.
-              </p>
-            </div>
-
+          <div>
             {/* Passengers Section */}
             <div className="space-y-6">
               {passengers.map((passenger, index) => (
                 <div
                   key={passenger.seatCode}
-                  className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800"
+                  className="border rounded-lg p-4 bg-white dark:bg-slate-800"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">
+                    <h3 className="text-lg font-semibold text-foreground">
                       Passenger {index + 1}
                     </h3>
                     <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full text-sm font-medium">
@@ -299,7 +175,7 @@ export function PassengerInformationForm({
                   <div className="grid gap-4 md:grid-cols-2">
                     {/* Full Name */}
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-sm font-semibold mb-2 text-foreground">
                         Full Name *
                       </label>
                       <Input
@@ -325,7 +201,7 @@ export function PassengerInformationForm({
 
                     {/* Phone Number */}
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-sm font-semibold mb-2 text-foreground">
                         Phone Number (Optional)
                       </label>
                       <Input
@@ -350,7 +226,7 @@ export function PassengerInformationForm({
 
                     {/* Document ID */}
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-sm font-semibold mb-2 text-foreground">
                         ID/Passport Number (Optional)
                       </label>
                       <Input
@@ -378,8 +254,8 @@ export function PassengerInformationForm({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 mt-6">
-              {onBack && (
+            {onBack && (
+              <div className="flex flex-col sm:flex-row gap-3 mt-6">
                 <Button
                   type="button"
                   variant="outline"
@@ -389,16 +265,9 @@ export function PassengerInformationForm({
                 >
                   Back
                 </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 sm:flex-none"
-              >
-                {isLoading ? 'Processing...' : 'Continue to Summary'}
-              </Button>
-            </div>
-          </form>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
     </div>

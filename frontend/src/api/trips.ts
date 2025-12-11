@@ -22,37 +22,37 @@ export interface Amenity {
 }
 
 export interface Bus {
-  busId: string
-  busType: string
-  licensePlate: string
-  totalSeats: number
+  bus_id: string
+  bus_type: string
+  license_plate: string
+  total_seats: number
   amenities: Amenity[]
 }
 
 export interface Operator {
-  operatorId: string
+  operator_id: string
   name: string
   rating?: number
   logo?: string
 }
 
 export interface Route {
-  routeId: string
+  route_id: string
   origin: string
   destination: string
   distance: number
-  estimatedDuration: number
+  estimated_duration: number
 }
 
 export interface Schedule {
-  scheduleId: string
-  departureTime: string
-  arrivalTime: string
+  schedule_id: string
+  departure_time: string
+  arrival_time: string
   frequency: string
 }
 
 export interface Pricing {
-  basePrice: number
+  base_price: number
   currency: string
   discounts?: {
     type: string
@@ -61,15 +61,15 @@ export interface Pricing {
 }
 
 export interface Trip {
-  tripId: string
+  trip_id: string
   route: Route
   operator: Operator
   bus: Bus
   schedule: Schedule
   pricing: Pricing
   availability: {
-    availableSeats: number
-    totalSeats: number
+    available_seats: number
+    total_seats: number
   }
 }
 
@@ -157,12 +157,15 @@ export interface SeatLockApiRequest {
   tripId: string
   seatCodes: string[]
   sessionId?: string
+  isGuest?: boolean
 }
 
 export interface SeatLockResponse {
   success: boolean
   data: {
-    locked_seats: string[]
+    locked_seats?: string[]
+    transferred_seats?: string[]
+    rejected_seats?: string[]
     expires_at: string
   }
   message?: string
@@ -204,11 +207,14 @@ export interface UserLocksResponse {
 export async function lockSeats(
   request: SeatLockApiRequest
 ): Promise<SeatLockResponse> {
-  const body: { seatCodes: string[]; sessionId?: string } = {
+  const body: { seatCodes: string[]; sessionId?: string; isGuest?: boolean } = {
     seatCodes: request.seatCodes,
   }
   if (request.sessionId !== undefined) {
     body.sessionId = request.sessionId
+  }
+  if (request.isGuest !== undefined) {
+    body.isGuest = request.isGuest
   }
   return await apiRequest(`/trips/${request.tripId}/seats/lock`, {
     method: 'POST',
@@ -222,11 +228,14 @@ export async function lockSeats(
 export async function extendSeatLocks(
   request: SeatLockApiRequest
 ): Promise<SeatLockExtendResponse> {
-  const body: { seatCodes: string[]; sessionId?: string } = {
+  const body: { seatCodes: string[]; sessionId?: string; isGuest?: boolean } = {
     seatCodes: request.seatCodes,
   }
   if (request.sessionId !== undefined) {
     body.sessionId = request.sessionId
+  }
+  if (request.isGuest !== undefined) {
+    body.isGuest = request.isGuest
   }
   return await apiRequest(`/trips/${request.tripId}/seats/extend`, {
     method: 'POST',
@@ -240,11 +249,14 @@ export async function extendSeatLocks(
 export async function releaseSeatLocks(
   request: SeatLockApiRequest
 ): Promise<SeatLockReleaseResponse> {
-  const body: { seatCodes: string[]; sessionId?: string } = {
+  const body: { seatCodes: string[]; sessionId?: string; isGuest?: boolean } = {
     seatCodes: request.seatCodes,
   }
   if (request.sessionId !== undefined) {
     body.sessionId = request.sessionId
+  }
+  if (request.isGuest !== undefined) {
+    body.isGuest = request.isGuest
   }
   return await apiRequest(`/trips/${request.tripId}/seats/release`, {
     method: 'POST',
@@ -256,22 +268,58 @@ export async function releaseSeatLocks(
  * Release all locks for a user
  */
 export async function releaseAllSeatLocks(
-  tripId: string
+  tripId: string,
+  sessionId?: string,
+  isGuest?: boolean
 ): Promise<SeatLockReleaseResponse> {
+  const body: { sessionId?: string; isGuest?: boolean } = {}
+  if (sessionId !== undefined) {
+    body.sessionId = sessionId
+  }
+  if (isGuest !== undefined) {
+    body.isGuest = isGuest
+  }
   return await apiRequest(`/trips/${tripId}/seats/release-all`, {
     method: 'POST',
-    body: {},
+    body,
   })
 }
 
 /**
  * Get all active locks for a user for a specific trip
  */
-export async function getUserLocks(tripId: string): Promise<UserLocksResponse> {
-  return await apiRequest(
-    `/trips/${encodeURIComponent(tripId)}/seats/my-locks`,
-    {
-      method: 'GET',
-    }
-  )
+export async function getUserLocks(
+  tripId: string,
+  sessionId?: string,
+  isGuest?: boolean
+): Promise<UserLocksResponse> {
+  const queryParams = new URLSearchParams()
+  if (sessionId !== undefined) {
+    queryParams.append('sessionId', sessionId)
+  }
+  if (isGuest !== undefined) {
+    queryParams.append('isGuest', isGuest.toString())
+  }
+  const queryString = queryParams.toString()
+  const url = queryString
+    ? `/trips/${encodeURIComponent(tripId)}/seats/my-locks?${queryString}`
+    : `/trips/${encodeURIComponent(tripId)}/seats/my-locks`
+
+  return await apiRequest(url, {
+    method: 'GET',
+  })
+}
+
+/**
+ * Transfer guest locks to authenticated user
+ */
+export async function transferGuestLocks(
+  tripId: string,
+  guestSessionId: string,
+  maxSeats: number = 5
+): Promise<SeatLockResponse> {
+  return await apiRequest(`/trips/${tripId}/seats/transfer-guest-locks`, {
+    method: 'POST',
+    body: { guestSessionId, maxSeats },
+  })
 }

@@ -21,15 +21,22 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/health', bookingController.healthCheck);
 
+// Public routes (no authentication required)
+// Guest booking lookup - accepts phone OR email
+app.get('/guest/lookup', bookingController.guestLookup);
+
 // Public routes (guest checkout) - MUST come before /:id route
 app.get('/reference/:reference', bookingController.getByReference);
+
+// Share ticket (public endpoint with validation)
+app.post('/:bookingReference/share', bookingController.shareTicket);
 
 // Protected routes (require authentication)
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);
 app.get('/:id', authenticate, bookingController.getById);
 app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
-app.put('/:id/cancel', authenticate, bookingController.cancel);
+app.put('/:id/cancel', optionalAuthenticate, bookingController.cancel);
 
 // Admin routes
 app.get('/admin/bookings', authenticate, authorize(['admin']), bookingController.getAllBookings);
@@ -44,9 +51,9 @@ app.use((err, req, res, next) => {
     success: false,
     error: {
       code: 'SYS_001',
-      message: 'Internal server error'
+      message: 'Internal server error',
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -56,9 +63,9 @@ app.use((req, res) => {
     success: false,
     error: {
       code: 'ROUTE_001',
-      message: 'Route not found'
+      message: 'Route not found',
     },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -68,7 +75,7 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`🚀 Booking Service running on port ${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    
+
     // Start booking expiration job
     bookingExpirationJob.start();
   });

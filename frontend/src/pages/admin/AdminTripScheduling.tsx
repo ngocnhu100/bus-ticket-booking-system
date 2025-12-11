@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useAdminTripData } from '@/hooks/admin/useAdminTrip'
 import type { Trip, RouteAdminData, BusAdminData } from '../../types/trip.types'
 import '@/styles/admin.css'

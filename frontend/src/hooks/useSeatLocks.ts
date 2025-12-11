@@ -5,6 +5,7 @@ import {
   releaseSeatLocks,
   releaseAllSeatLocks,
   getUserLocks,
+  transferGuestLocks,
 } from '@/api/trips'
 import type {
   SeatLockRequest,
@@ -34,6 +35,12 @@ export interface UseSeatLocksOptions {
   tripId?: string
   /** Callback when locks are loaded */
   onLocksLoaded?: (locks: SeatLock[]) => void
+  /** Whether this is a guest user */
+  isGuest?: boolean
+  /** Session ID for guest users */
+  sessionId?: string
+  /** Maximum seats allowed per user */
+  maxSeats?: number
 }
 
 export interface UseSeatLocksReturn {
@@ -51,6 +58,12 @@ export interface UseSeatLocksReturn {
   releaseLocks: (request: SeatLockRequest) => Promise<SeatLockReleaseResponse>
   /** Release all user's locks */
   releaseAllLocks: (tripId: string) => Promise<SeatLockReleaseResponse>
+  /** Transfer guest locks to authenticated user */
+  transferGuestLocks: (
+    tripId: string,
+    guestSessionId: string,
+    maxSeats?: number
+  ) => Promise<SeatLockResponse>
   /** Refresh locks from server */
   refreshLocks: (tripId: string) => Promise<void>
   /** Clear error state */
@@ -73,6 +86,9 @@ export function useSeatLocks(
     userId,
     tripId,
     onLocksLoaded,
+    isGuest = false,
+    sessionId,
+    maxSeats = 5,
   } = options
 
   const [locks, setLocks] = useState<SeatLock[]>([])
@@ -121,7 +137,11 @@ export function useSeatLocks(
     async (tripId: string) => {
       try {
         setIsLoading(true)
-        const response: UserLocksResponse = await getUserLocks(tripId)
+        const response: UserLocksResponse = await getUserLocks(
+          tripId,
+          sessionId,
+          isGuest
+        )
         const loadedLocks = response.data.locked_seats.map((seat) => ({
           trip_id: response.data.trip_id,
           seat_code: seat.seat_code,
@@ -137,15 +157,15 @@ export function useSeatLocks(
         setIsLoading(false)
       }
     },
-    [handleError, onLocksLoaded]
+    [handleError, onLocksLoaded, sessionId, isGuest]
   )
 
-  // Load locks on mount if userId and tripId provided
+  // Load locks on mount if userId/sessionId and tripId provided
   useEffect(() => {
-    if (userId && tripId) {
+    if ((userId || (isGuest && sessionId)) && tripId) {
       refreshLocks(tripId)
     }
-  }, [userId, tripId, refreshLocks])
+  }, [userId, tripId, refreshLocks, isGuest, sessionId])
 
   // Lock seats
   const handleLockSeats = useCallback(
@@ -154,7 +174,13 @@ export function useSeatLocks(
         setIsLoading(true)
 
         // 1. Send the request to the backend
-        const response = await lockSeats(request)
+        const apiRequest = {
+          tripId: request.tripId,
+          seatCodes: request.seatCodes,
+          sessionId: request.sessionId,
+          isGuest,
+        }
+        const response = await lockSeats(apiRequest)
 
         // 2. Refresh state
         await refreshLocks(request.tripId)
@@ -168,7 +194,7 @@ export function useSeatLocks(
         setIsLoading(false)
       }
     },
-    [refreshLocks, handleError]
+    [refreshLocks, handleError, isGuest]
   )
 
   // Extend locks
@@ -176,14 +202,17 @@ export function useSeatLocks(
     async (request: SeatLockRequest): Promise<SeatLockExtendResponse> => {
       try {
         setIsLoading(true)
-        // Extract API payload (without userId)
-        const { userId, ...apiPayload } = request
+        // Add isGuest to payload
+        const apiRequest = {
+          ...request,
+          isGuest,
+        }
 
         // Send cleaned payload
-        const response = await extendSeatLocks(apiPayload)
+        const response = await extendSeatLocks(apiRequest)
 
-        // Use userId locally
-        await refreshLocks(userId)
+        // Use tripId for refresh
+        await refreshLocks(request.tripId)
         setError(null)
         return response
       } catch (err) {
@@ -193,7 +222,7 @@ export function useSeatLocks(
         setIsLoading(false)
       }
     },
-    [refreshLocks, handleError]
+    [refreshLocks, handleError, isGuest]
   )
 
   // Release locks
@@ -201,14 +230,17 @@ export function useSeatLocks(
     async (request: SeatLockRequest): Promise<SeatLockReleaseResponse> => {
       try {
         setIsLoading(true)
-        // Separate userId
-        const { userId, ...apiPayload } = request
+        // Add isGuest to payload
+        const apiRequest = {
+          ...request,
+          isGuest,
+        }
 
         // Send cleaned payload
-        const response = await releaseSeatLocks(apiPayload)
+        const response = await releaseSeatLocks(apiRequest)
 
-        // Use userId locally
-        await refreshLocks(userId)
+        // Use tripId for refresh
+        await refreshLocks(request.tripId)
         setError(null)
         return response
       } catch (err) {
@@ -218,7 +250,7 @@ export function useSeatLocks(
         setIsLoading(false)
       }
     },
-    [refreshLocks, handleError]
+    [refreshLocks, handleError, isGuest]
   )
 
   // Release all locks
@@ -226,7 +258,7 @@ export function useSeatLocks(
     async (tripId: string): Promise<SeatLockReleaseResponse> => {
       try {
         setIsLoading(true)
-        const response = await releaseAllSeatLocks(tripId)
+        const response = await releaseAllSeatLocks(tripId, sessionId, isGuest)
         // Clear all locks after successful release
         setLocks([])
         setError(null)
@@ -238,7 +270,35 @@ export function useSeatLocks(
         setIsLoading(false)
       }
     },
-    [handleError]
+    [handleError, sessionId, isGuest]
+  )
+
+  // Transfer guest locks to authenticated user
+  const handleTransferGuestLocks = useCallback(
+    async (
+      tripId: string,
+      guestSessionId: string,
+      maxSeatsOverride?: number
+    ): Promise<SeatLockResponse> => {
+      try {
+        setIsLoading(true)
+        const response = await transferGuestLocks(
+          tripId,
+          guestSessionId,
+          maxSeatsOverride ?? maxSeats
+        )
+        // Refresh locks after transfer
+        await refreshLocks(tripId)
+        setError(null)
+        return response
+      } catch (err) {
+        handleError(err as Error)
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [maxSeats, refreshLocks, handleError]
   )
 
   // Auto-refresh locks
@@ -260,6 +320,7 @@ export function useSeatLocks(
     extendLocks: handleExtendLocks,
     releaseLocks: handleReleaseLocks,
     releaseAllLocks: handleReleaseAllLocks,
+    transferGuestLocks: handleTransferGuestLocks,
     refreshLocks,
     clearError,
   }

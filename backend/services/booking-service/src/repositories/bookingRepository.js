@@ -181,20 +181,13 @@ class BookingRepository {
         console.error('   - Verify users.user_id is UUID in database');
         console.error('   - Ensure auth-service generates UUID tokens');
         console.error('═══════════════════════════════════════════════════════════');
+        
+        // Throw clear error instead of returning empty result
+        throw new Error('OLD_JWT_TOKEN_DETECTED: Please logout and login again to get a fresh token with UUID userId');
       } else {
         console.warn('[BookingRepository] Invalid userId provided:', userId);
+        throw new Error('INVALID_USER_ID: userId must be a valid UUID');
       }
-      
-      return { 
-        bookings: [], 
-        total: 0,
-        pagination: {
-          page: filters.page || 1,
-          limit: filters.limit || 20,
-          total: 0,
-          totalPages: 0
-        }
-      };
     }
     
     console.log('[BookingRepository] Searching bookings for userId:', sanitizedUserId, 'with filters:', filters);

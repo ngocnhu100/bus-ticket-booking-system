@@ -127,7 +127,7 @@ export function BookingConfirmation() {
             <h1 className="text-3xl font-bold">Booking Confirmed!</h1>
             <p className="text-muted-foreground">
               Your booking has been successfully created. We've sent a
-              confirmation to {booking.contactEmail || booking.contactPhone}.
+              confirmation to {booking.contact_email || booking.contact_phone}.
             </p>
           </Card>
 
@@ -136,7 +136,7 @@ export function BookingConfirmation() {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Booking Reference</p>
               <p className="text-3xl font-bold font-mono tracking-wider">
-                {booking.bookingReference}
+                {booking.booking_reference}
               </p>
               <p className="text-sm text-muted-foreground">
                 Please save this reference number for your records
@@ -165,10 +165,10 @@ export function BookingConfirmation() {
                 </p>
                 <span
                   className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(
-                    booking.paymentStatus
+                    booking.payment_status || 'pending'
                   )}`}
                 >
-                  {booking.paymentStatus.toUpperCase()}
+                  {(booking.payment_status || 'pending').toUpperCase()}
                 </span>
               </div>
             </div>
@@ -178,21 +178,21 @@ export function BookingConfirmation() {
           <Card className="p-6 space-y-4">
             <h2 className="text-xl font-semibold">Contact Information</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              {booking.contactEmail && (
+              {booking.contact_email && (
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium">{booking.contactEmail}</p>
+                    <p className="font-medium">{booking.contact_email}</p>
                   </div>
                 </div>
               )}
-              {booking.contactPhone && (
+              {booking.contact_phone && (
                 <div className="flex items-center gap-3">
                   <Mail className="h-5 w-5 text-muted-foreground" />
                   <div>
                     <p className="text-sm text-muted-foreground">Phone</p>
-                    <p className="font-medium">{booking.contactPhone}</p>
+                    <p className="font-medium">{booking.contact_phone}</p>
                   </div>
                 </div>
               )}
@@ -212,8 +212,8 @@ export function BookingConfirmation() {
                     <p className="font-medium">{passenger.fullName}</p>
                     <div className="text-sm text-muted-foreground space-x-4">
                       {passenger.phone && <span>{passenger.phone}</span>}
-                      {passenger.idNumber && (
-                        <span>ID: {passenger.idNumber}</span>
+                      {passenger.passenger?.documentId && (
+                        <span>ID: {passenger.passenger.documentId}</span>
                       )}
                     </div>
                   </div>
@@ -235,26 +235,26 @@ export function BookingConfirmation() {
             <div className="flex justify-between items-center">
               <span className="text-xl font-semibold">Total Amount</span>
               <span className="text-2xl font-bold">
-                {booking.totalPrice.toLocaleString('vi-VN')} VND
+                {(booking.total_price || 0).toLocaleString('vi-VN')} VND
               </span>
             </div>
           </Card>
 
           {/* E-Ticket Section */}
-          {booking.eTicket && booking.eTicket.ticketUrl && (
+          {booking.e_ticket && booking.e_ticket.ticket_url && (
             <Card className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-4">
                 <Ticket className="h-5 w-5 text-primary" />
                 <h2 className="text-xl font-semibold">Your E-Ticket</h2>
               </div>
 
-              <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
+              <div className="bg-linear-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
                 {/* QR Code Display */}
-                {booking.eTicket.qrCode && (
+                {booking.e_ticket.qr_code_url && (
                   <div className="flex flex-col items-center gap-4 pb-4 border-b">
                     <div className="bg-white p-4 rounded-lg shadow-sm">
                       <img
-                        src={booking.eTicket.qrCode}
+                        src={booking.e_ticket.qr_code_url}
                         alt="Ticket QR Code"
                         className="w-48 h-48"
                       />
@@ -276,14 +276,14 @@ export function BookingConfirmation() {
                     className="w-full"
                     size="lg"
                     onClick={() =>
-                      window.open(booking.eTicket!.ticketUrl!, '_blank')
+                      window.open(booking.e_ticket!.ticket_url!, '_blank')
                     }
                   >
                     <Download className="mr-2 h-5 w-5" />
                     Download PDF Ticket
                   </Button>
                   <p className="text-xs text-center text-muted-foreground">
-                    Your ticket has been sent to {booking.contactEmail}
+                    Your ticket has been sent to {booking.contact_email}
                   </p>
                 </div>
               </div>
@@ -296,16 +296,16 @@ export function BookingConfirmation() {
             <div className="grid gap-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Booking ID:</span>
-                <span className="font-mono">{booking.bookingId}</span>
+                <span className="font-mono">{booking.booking_id}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created:</span>
-                <span>{formatDate(booking.createdAt)}</span>
+                <span>{formatDate(booking.created_at)}</span>
               </div>
-              {booking.lockedUntil && (
+              {booking.locked_until && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Reserved Until:</span>
-                  <span>{formatDate(booking.lockedUntil)}</span>
+                  <span>{formatDate(booking.locked_until)}</span>
                 </div>
               )}
             </div>

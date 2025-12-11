@@ -6,6 +6,8 @@ import {
   Ticket,
   AlertCircle,
   Download,
+  Share2,
+  Loader2,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Header } from '@/components/landing/Header'
+import { shareTicket } from '@/api/booking.api'
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -23,18 +26,86 @@ interface BookingData {
   trip_id: string
   contact_email: string
   contact_phone: string
-  total_price: string
   status: string
   created_at: string
+  pricing: {
+    subtotal: number
+    service_fee: number
+    total: number
+    currency: string
+  }
   passengers: Array<{
     full_name: string
     seat_code: string
     phone: string
   }>
-  eTicket?: {
-    ticketUrl: string | null
-    qrCode: string | null
+  e_ticket?: {
+    ticket_url: string | null
+    qr_code_url: string | null
   }
+  // Support camelCase responses from some endpoints
+  eTicket?: {
+    ticketUrl?: string | null
+    qrCodeUrl?: string | null
+    qrCode?: string | null
+    ticket_url?: string | null
+    qr_code_url?: string | null
+  }
+  trip_details?: {
+    route: {
+      origin: string
+      destination: string
+    }
+    operator: {
+      name: string
+    }
+    schedule: {
+      departure_time: string
+      arrival_time: string
+    }
+  }
+}
+
+type RawBooking = Partial<BookingData> & {
+  bookingReference?: string
+  reference?: string
+  contactEmail?: string
+  contactPhone?: string
+  e_ticket?: {
+    ticket_url?: string | null
+    qr_code_url?: string | null
+  }
+  eTicket?: {
+    ticketUrl?: string | null
+    qrCodeUrl?: string | null
+    qrCode?: string | null
+    ticket_url?: string | null
+    qr_code_url?: string | null
+  }
+}
+
+// Normalize booking data coming from different API response shapes
+const normalizeBookingData = (data: RawBooking): BookingData => {
+  const rawETicket = data.e_ticket || data.eTicket || {}
+
+  // Access various possible key shapes safely using index access
+  const rt = rawETicket as Record<string, string | null | undefined>
+  const ticketUrl =
+    rt['ticket_url'] ?? rt['ticketUrl'] ?? rt['ticketurl'] ?? null
+  const qrCodeUrl = rt['qr_code_url'] ?? rt['qrCodeUrl'] ?? rt['qrCode'] ?? null
+
+  // Return normalized object. Cast to BookingData to satisfy TypeScript
+  return {
+    ...data,
+    booking_reference:
+      data.booking_reference ?? data.bookingReference ?? data.reference ?? '',
+    contact_email: data.contact_email ?? data.contactEmail ?? '',
+    contact_phone: data.contact_phone ?? data.contactPhone ?? '',
+    e_ticket: {
+      ticket_url: ticketUrl,
+      qr_code_url: qrCodeUrl,
+    },
+  } as BookingData
 }
 
 export function BookingLookup() {
@@ -44,6 +115,10 @@ export function BookingLookup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [booking, setBooking] = useState<BookingData | null>(null)
+  const [shareEmail, setShareEmail] = useState('')
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareSuccess, setShareSuccess] = useState<string | null>(null)
+  const [shareError, setShareError] = useState<string | null>(null)
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,16 +139,18 @@ export function BookingLookup() {
     setLoading(true)
 
     try {
-      // Build query params
+      // Build query params for new guest lookup endpoint
       const params = new URLSearchParams()
+      params.append('bookingReference', bookingReference.trim())
+
       if (contactEmail.trim()) {
-        params.append('contactEmail', contactEmail.trim())
+        params.append('email', contactEmail.trim())
       }
       if (contactPhone.trim()) {
-        params.append('contactPhone', contactPhone.trim())
+        params.append('phone', contactPhone.trim())
       }
 
-      const url = `${API_BASE_URL}/bookings/${bookingReference}?${params.toString()}`
+      const url = `${API_BASE_URL}/bookings/guest/lookup?${params.toString()}`
       console.log('Fetching:', url)
 
       const response = await axios.get(url)
@@ -81,25 +158,14 @@ export function BookingLookup() {
       console.log('API Response:', response.data)
 
       if (response.data.success) {
-        const bookingData = response.data.data
+        const bookingData = normalizeBookingData(response.data.data)
         console.log('Raw booking data:', JSON.stringify(bookingData, null, 2))
-        console.log('Has eTicket?', bookingData.eTicket)
-        console.log('ticket_url:', bookingData.ticket_url)
-        console.log('qr_code_url:', bookingData.qr_code_url)
-
-        // Map eTicket - backend might return both formats
-        if (!bookingData.eTicket || !bookingData.eTicket.ticketUrl) {
-          if (bookingData.ticket_url || bookingData.qr_code_url) {
-            bookingData.eTicket = {
-              ticketUrl: bookingData.ticket_url,
-              qrCode: bookingData.qr_code_url,
-            }
-            console.log(
-              'Created eTicket from snake_case fields:',
-              bookingData.eTicket
-            )
-          }
-        }
+        console.log('Share section check:', {
+          status: bookingData.status,
+          hasETicket: !!bookingData.e_ticket,
+          hasTicketUrl: !!bookingData.e_ticket?.ticket_url,
+          eTicket: bookingData.e_ticket,
+        })
 
         setBooking(bookingData)
       } else {
@@ -146,6 +212,45 @@ export function BookingLookup() {
     }
   }
 
+  const handleShareTicket = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setShareError(null)
+    setShareSuccess(null)
+
+    if (!shareEmail.trim()) {
+      setShareError('Please enter an email address')
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(shareEmail)) {
+      setShareError('Please enter a valid email address')
+      return
+    }
+
+    if (!booking) return
+
+    setShareLoading(true)
+
+    try {
+      await shareTicket(
+        booking.booking_reference,
+        shareEmail,
+        contactPhone || undefined
+      )
+      setShareSuccess(`Ticket sent successfully to ${shareEmail}`)
+      setShareEmail('')
+    } catch (err) {
+      if (err instanceof Error) {
+        setShareError(err.message)
+      } else {
+        setShareError('Failed to share ticket. Please try again.')
+      }
+    } finally {
+      setShareLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -172,14 +277,14 @@ export function BookingLookup() {
               <Input
                 id="bookingReference"
                 type="text"
-                placeholder="Ex: BK202512064939"
+                placeholder="Ex: BK20251209001"
                 value={bookingReference}
                 onChange={(e) => setBookingReference(e.target.value)}
                 className="mt-2"
                 disabled={loading}
               />
               <p className="text-sm text-muted-foreground mt-1">
-                Booking reference has 16 characters, starts with BK
+                Format: BKYYYYMMDDXXX (13 characters)
               </p>
             </div>
 
@@ -209,12 +314,15 @@ export function BookingLookup() {
               <Input
                 id="contactPhone"
                 type="tel"
-                placeholder="0901234567"
+                placeholder="+84973994154 or 0973994154"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 className="mt-2"
                 disabled={loading}
               />
+              <p className="text-sm text-muted-foreground mt-1">
+                Vietnamese format: +84xxxxxxxxx or 0xxxxxxxxx
+              </p>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
@@ -240,7 +348,7 @@ export function BookingLookup() {
             >
               {loading ? (
                 <>
-                  <Search className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Looking up...
                 </>
               ) : (
@@ -283,8 +391,7 @@ export function BookingLookup() {
                     Total Amount
                   </p>
                   <p className="font-bold text-lg text-green-600">
-                    {parseFloat(booking.total_price).toLocaleString('vi-VN')}{' '}
-                    VND
+                    {booking.pricing.total.toLocaleString('vi-VN')} VND
                   </p>
                 </div>
                 <div>
@@ -308,20 +415,20 @@ export function BookingLookup() {
               </div>
 
               {/* E-Ticket Section */}
-              {booking.eTicket && booking.eTicket.ticketUrl && (
+              {booking.e_ticket && booking.e_ticket.ticket_url && (
                 <div className="pt-4 border-t">
                   <div className="flex items-center gap-2 mb-4">
                     <Ticket className="h-5 w-5 text-primary" />
                     <h3 className="font-semibold">E-Ticket</h3>
                   </div>
 
-                  <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
+                  <div className="bg-linear-to-br from-primary/5 to-primary/10 rounded-lg p-6 space-y-4">
                     {/* QR Code Display */}
-                    {booking.eTicket.qrCode && (
+                    {booking.e_ticket.qr_code_url && (
                       <div className="flex flex-col items-center gap-4 pb-4 border-b border-white/50">
                         <div className="bg-white p-4 rounded-lg shadow-sm">
                           <img
-                            src={booking.eTicket.qrCode}
+                            src={booking.e_ticket.qr_code_url}
                             alt="Boarding QR Code"
                             className="w-40 h-40"
                           />
@@ -342,7 +449,7 @@ export function BookingLookup() {
                       className="w-full"
                       size="lg"
                       onClick={() =>
-                        window.open(booking.eTicket!.ticketUrl!, '_blank')
+                        window.open(booking.e_ticket!.ticket_url!, '_blank')
                       }
                     >
                       <Download className="mr-2 h-5 w-5" />
@@ -364,7 +471,7 @@ export function BookingLookup() {
                   {booking.passengers.map((passenger, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
                     >
                       <div>
                         <p className="font-medium">{passenger.full_name}</p>
@@ -381,6 +488,61 @@ export function BookingLookup() {
                   ))}
                 </div>
               </div>
+
+              {/* Share Ticket Section */}
+              {booking.status === 'confirmed' &&
+                booking.e_ticket?.ticket_url && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Share2 className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold">Share E-Ticket</h3>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <p className="text-sm text-blue-800">
+                        Send this ticket to another email address
+                      </p>
+                      <form
+                        onSubmit={handleShareTicket}
+                        className="flex gap-2 items-start"
+                      >
+                        <div className="flex-1">
+                          <Input
+                            type="email"
+                            placeholder="recipient@example.com"
+                            value={shareEmail}
+                            onChange={(e) => setShareEmail(e.target.value)}
+                            disabled={shareLoading}
+                            className="bg-white"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          disabled={shareLoading}
+                          size="default"
+                        >
+                          {shareLoading ? (
+                            <>Sending...</>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4 mr-2" />
+                              Send
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                      {shareSuccess && (
+                        <div className="bg-green-50 border border-green-200 rounded p-2 text-sm text-green-800">
+                          ✅ {shareSuccess}
+                        </div>
+                      )}
+                      {shareError && (
+                        <div className="bg-red-50 border border-red-200 rounded p-2 text-sm text-red-800">
+                          ❌ {shareError}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               {/* Actions */}
               <div className="pt-4 border-t flex gap-3">
@@ -409,32 +571,25 @@ export function BookingLookup() {
 
         {/* Demo Instructions */}
         {!booking && (
-          <Card className="p-6 bg-gray-50 mt-6">
+          <Card className="p-6 bg-gray-50 dark:bg-gray-800 mt-6">
             <h3 className="font-semibold mb-3">💡 Test Instructions</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
               <p>
-                <strong>Step 1:</strong> Create new booking at{' '}
-                <a
-                  href="/booking-demo"
-                  className="text-blue-600 hover:underline"
-                >
-                  /booking-demo
-                </a>
+                <strong>Step 1:</strong> Enter booking reference below
               </p>
               <p>
-                <strong>Step 2:</strong> Copy booking reference (Ex:
-                BK202512064939)
+                <strong>Step 2:</strong> Enter email OR phone used when booking
               </p>
               <p>
-                <strong>Step 3:</strong> Enter reference + email/phone used when
-                booking
+                <strong>Step 3:</strong> Click "Look Up Booking"
               </p>
               <p>
-                <strong>Step 4:</strong> Click "Look Up Booking"
-              </p>
-              <p>
-                <strong>Step 5:</strong> View booking details with E-Ticket (QR
+                <strong>Step 4:</strong> View booking details with E-Ticket (QR
                 code, PDF download)
+              </p>
+              <p>
+                <strong>Step 5:</strong> Share E-Ticket via email (for confirmed
+                bookings)
               </p>
               <div className="mt-4 p-3 bg-white rounded border">
                 <p className="font-medium mb-2">
@@ -442,22 +597,26 @@ export function BookingLookup() {
                 </p>
                 <code className="text-xs block space-y-1">
                   <span className="block">
-                    Reference: <strong>BK20251207058</strong>
+                    Reference: <strong>BK20260115001</strong>
                   </span>
                   <span className="block">
-                    Email: <strong>nguyenvana@example.com</strong>
+                    Email: <strong>passenger@bus-ticket.com</strong>
                   </span>
                   <span className="block">
-                    Phone: <strong>0901234567</strong>
+                    Phone: <strong>+84901234567</strong> or{' '}
+                    <strong>0901234567</strong>
                   </span>
                   <span className="block mt-2 text-green-600">
-                    ✅ This booking includes E-Ticket
+                    ✅ This booking is available for testing
+                  </span>
+                  <span className="block text-blue-600">
+                    📧 Test share: Enter any email to receive e-ticket
                   </span>
                   <span className="block text-muted-foreground">
-                    • QR code for boarding verification
+                    • Format: BKYYYYMMDDXXX (13 characters)
                   </span>
                   <span className="block text-muted-foreground">
-                    • PDF ticket download available
+                    • Case-insensitive lookup supported
                   </span>
                 </code>
               </div>

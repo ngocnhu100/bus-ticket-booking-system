@@ -2,11 +2,21 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { SeatMap } from '@/components/users/SeatMap'
-import { ChevronLeft, ArrowRight, Lock, Clock } from 'lucide-react'
+import GuestCheckout from '@/components/booking/GuestCheckout'
+import { ChevronLeft, ArrowRight, Lock, Clock, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useSeatLocks } from '@/hooks/useSeatLocks'
 import { useAuth } from '@/context/AuthContext'
+import { useBookingStore } from '@/store/bookingStore'
 import type { Seat, SeatMapData, Trip } from '@/types/trip.types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -31,22 +41,61 @@ function formatTime(dateString: string | undefined): string {
 }
 
 /**
+ * Format price in VND
+ */
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(price)
+}
+
+/**
  * SeatSelection Page
  * Allows users to select seats for their chosen trip
  */
 export function SeatSelection() {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const { setSelectedTrip, setSelectedSeats: setBookingSeats } =
+    useBookingStore()
 
   const [trip, setTrip] = useState<Trip | null>(null)
   const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<string[]>([])
   const [totalPrice, setTotalPrice] = useState(0)
+  const [serviceFee, setServiceFee] = useState(0)
+  const [totalWithFee, setTotalWithFee] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [operationInProgress, setOperationInProgress] = useState(false)
+  const [showGuestCheckout, setShowGuestCheckout] = useState(false)
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const transferInProgressRef = useRef(false)
+  const [seatMapLoading, setSeatMapLoading] = useState(false)
+  const seatMapDataRef = useRef<SeatMapData | null>(null)
+  const hasCompletedTransferRef = useRef(false)
+  const isUserActionRef = useRef(false) // Track if user just made a selection/deselection
+  const lockExpirationInProgressRef = useRef(false) // Track if lock expiration is being handled
+
+  // Generate or load session ID for guest users
+  const [guestSessionId] = useState<string | null>(() => {
+    if (!user) {
+      // Try to load existing session ID from sessionStorage
+      const stored = sessionStorage.getItem('guestSessionId')
+      if (stored) {
+        return stored
+      }
+      // Generate new session ID and store it
+      const newSessionId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      sessionStorage.setItem('guestSessionId', newSessionId)
+      return newSessionId
+    }
+    return null
+  })
+
+  const isGuest = !user
 
   // Separate function to fetch seat map
   const fetchSeatMap = useCallback(async () => {
@@ -54,20 +103,51 @@ export function SeatSelection() {
 
     try {
       const seatsResponse = await fetch(`${API_BASE_URL}/trips/${tripId}/seats`)
-      console.log('Seats API response:', seatsResponse)
       if (!seatsResponse.ok) {
         throw new Error('Failed to fetch seat map')
       }
       const seatsResult = await seatsResponse.json()
-      console.log('Seats API result:', seatsResult)
       const seatsData = seatsResult.data.seat_map || seatsResult
-      console.log('Processed seats data:', seatsData)
       setSeatMapData(seatsData)
+      seatMapDataRef.current = seatsData
     } catch (err) {
       console.error('Error fetching seat map:', err)
       setError(err instanceof Error ? err.message : 'Failed to load seat map')
     }
   }, [tripId])
+
+  // Function to fetch trip details and seat map
+  const fetchTripAndSeats = useCallback(async () => {
+    if (!tripId) {
+      setError('Trip ID is missing')
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Fetch trip details
+      const tripResponse = await fetch(`${API_BASE_URL}/trips/${tripId}`)
+      if (!tripResponse.ok) {
+        throw new Error('Failed to fetch trip details')
+      }
+      const tripResult = await tripResponse.json()
+      const tripData = tripResult.data || tripResult
+      setTrip(tripData)
+
+      // Fetch seat map
+      await fetchSeatMap()
+    } catch (err) {
+      console.error('Error fetching trip/seats:', err)
+      setError(
+        err instanceof Error ? err.message : 'Failed to load trip details'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [tripId, fetchSeatMap])
 
   // Seat locking functionality
   const {
@@ -75,11 +155,26 @@ export function SeatSelection() {
     lockSeats: lockSeatsApi,
     releaseLocks: releaseLocksApi,
     releaseAllLocks: releaseAllLocksApi,
+    transferGuestLocks: transferGuestLocksApi,
     refreshLocks,
   } = useSeatLocks({
     autoRefreshInterval: 30, // Refresh every 30 seconds
     onLocksExpire: (expiredLocks) => {
-      console.log('Locks expired:', expiredLocks)
+      // Remove expired seats from selectedSeats
+      if (expiredLocks.length > 0 && seatMapDataRef.current) {
+        const expiredSeatIds = expiredLocks
+          .map((lock) => {
+            const seat = seatMapDataRef.current!.seats.find(
+              (s: Seat) => s.seat_code === lock.seat_code
+            )
+            return seat?.seat_id
+          })
+          .filter(Boolean) as string[]
+
+        setSelectedSeats((prev) =>
+          prev.filter((id) => !expiredSeatIds.includes(id))
+        )
+      }
       // Refresh seat map when locks expire
       if (tripId) {
         fetchSeatMap()
@@ -91,6 +186,9 @@ export function SeatSelection() {
     },
     userId: user?.userId.toString(),
     tripId,
+    isGuest,
+    sessionId: user ? user.userId.toString() : guestSessionId || undefined,
+    maxSeats: MAX_SELECTABLE_SEATS,
   })
 
   // Debounced refresh function to prevent multiple concurrent refreshes
@@ -99,54 +197,75 @@ export function SeatSelection() {
       clearTimeout(refreshTimeoutRef.current)
     }
     refreshTimeoutRef.current = setTimeout(async () => {
+      // Skip if lock expiration is in progress
+      if (lockExpirationInProgressRef.current) {
+        return
+      }
+
       try {
         await refreshLocks(tripId!)
-        setOperationInProgress(false)
       } catch (err) {
         console.error('Error refreshing locks:', err)
+      } finally {
+        // Ensure operationInProgress is set to false only after refresh completes
         setOperationInProgress(false)
       }
     }, 300) // Wait 300ms after last operation
   }, [tripId, refreshLocks])
 
+  // Memoized callback for when a lock expires
+  const handleLockExpire = useCallback(
+    async (seatCode: string) => {
+      console.log(
+        'LockExpire: Starting expiration handling for seat:',
+        seatCode
+      )
+
+      // Mark that lock expiration is in progress
+      lockExpirationInProgressRef.current = true
+
+      // Immediately remove the expired seat from selectedSeats
+      if (seatMapDataRef.current) {
+        const expiredSeat = seatMapDataRef.current.seats.find(
+          (s: Seat) => s.seat_code === seatCode
+        )
+        console.log('LockExpire: Found expired seat object:', expiredSeat)
+        if (expiredSeat?.seat_id) {
+          console.log(
+            'LockExpire: Removing seat_id from selectedSeats:',
+            expiredSeat.seat_id
+          )
+          setSelectedSeats((prev) =>
+            prev.filter((id) => id !== expiredSeat.seat_id)
+          )
+        }
+      }
+
+      // Add a small delay to ensure lock expiration is processed on backend
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      // Refresh both seat map and user locks when a lock expires
+      console.log('LockExpire: Refreshing seat map and user locks')
+      await Promise.all([fetchSeatMap(), refreshLocks(tripId!)])
+
+      // Add another small delay and refresh again to ensure UI is fully updated
+      //await new Promise((resolve) => setTimeout(resolve, 200))
+      //await fetchSeatMap()
+
+      // Clear the lock expiration flag
+      lockExpirationInProgressRef.current = false
+      console.log(
+        'LockExpire: Completed expiration handling for seat:',
+        seatCode
+      )
+    },
+    [fetchSeatMap, refreshLocks, tripId]
+  )
+
   // Fetch trip details and seat map
   useEffect(() => {
-    const fetchTripAndSeats = async () => {
-      if (!tripId) {
-        setError('Trip ID is missing')
-        setLoading(false)
-        return
-      }
-
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Fetch trip details
-        const tripResponse = await fetch(`${API_BASE_URL}/trips/${tripId}`)
-        console.log('Trip API response:', tripResponse)
-        if (!tripResponse.ok) {
-          throw new Error('Failed to fetch trip details')
-        }
-        const tripResult = await tripResponse.json()
-        console.log('Trip API result:', tripResult)
-        const tripData = tripResult.data || tripResult
-        setTrip(tripData)
-
-        // Fetch seat map
-        await fetchSeatMap()
-      } catch (err) {
-        console.error('Error fetching trip/seats:', err)
-        setError(
-          err instanceof Error ? err.message : 'Failed to load trip details'
-        )
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchTripAndSeats()
-  }, [tripId, fetchSeatMap])
+  }, [fetchTripAndSeats])
 
   // Cleanup locks and timeouts when component unmounts
   useEffect(() => {
@@ -162,43 +281,235 @@ export function SeatSelection() {
           console.error('Error releasing locks on unmount:', err)
         })
       }
+      // Clear guest session ID when user logs in
+      if (user && guestSessionId) {
+        sessionStorage.removeItem('guestSessionId')
+      }
     }
-  }, [user, selectedSeats.length, tripId, releaseAllLocksApi])
+  }, [user, selectedSeats.length, tripId, releaseAllLocksApi, guestSessionId])
 
-  // Set selectedSeats from loaded locks (only when not in operation)
+  // Transfer guest locks when user logs in
   useEffect(() => {
-    if (seatMapData && !operationInProgress) {
+    const transferGuestLocksOnLogin = async () => {
+      // Prevent multiple concurrent transfers
+      if (transferInProgressRef.current) return
+      if (!user || !tripId || !guestSessionId) return
+
+      transferInProgressRef.current = true
+      setOperationInProgress(false)
+      setSeatMapLoading(true)
+      try {
+        const result = await transferGuestLocksApi(
+          tripId,
+          guestSessionId,
+          MAX_SELECTABLE_SEATS
+        )
+
+        // Add delay to ensure backend processes transfer before refreshing locks
+        await new Promise((resolve) => setTimeout(resolve, 800))
+
+        // Refresh locks with new user context
+        await refreshLocks(tripId)
+
+        // Check if any seats were rejected due to limit (use snake_case from backend)
+        const rejectedSeats = result.data?.rejected_seats || []
+        const transferredSeats = result.data?.transferred_seats || []
+
+        // Show error if seats were rejected
+        if (rejectedSeats.length > 0) {
+          setError(
+            `${rejectedSeats.length} seat(s) could not be transferred because you already had the maximum number of seats locked. Only ${transferredSeats.length} seat(s) were transferred.`
+          )
+        }
+
+        // Show success message if seats were transferred
+        // if (transferredSeats.length > 0 && rejectedSeats.length === 0) {
+        // }
+
+        // Then refresh seat map to show updated lock ownership
+        if (tripId) {
+          const seatsResponse = await fetch(
+            `${API_BASE_URL}/trips/${tripId}/seats`
+          )
+          if (seatsResponse.ok) {
+            const seatsResult = await seatsResponse.json()
+            const seatsData = seatsResult.data.seat_map || seatsResult
+
+            // Update seat map first
+            setSeatMapData(seatsData)
+
+            // Update selectedSeats with transferred seats using the fresh seat map
+            if (transferredSeats.length > 0) {
+              const transferredSeatIds = transferredSeats
+                .map((seatCode: string) => {
+                  const seat = seatsData.seats.find(
+                    (s: Seat) => s.seat_code === seatCode
+                  )
+                  console.log(
+                    'Transfer: seatCode',
+                    seatCode,
+                    'found seat',
+                    seat
+                  )
+                  return seat?.seat_id
+                })
+                .filter(Boolean) as string[]
+
+              console.log(
+                'Transfer: transferredSeats (codes)',
+                transferredSeats
+              )
+              console.log('Transfer: transferredSeatIds', transferredSeatIds)
+
+              // Fetch current user locks from the API to ensure we have all locks
+              try {
+                // Use refreshLocks instead of direct fetch to include proper authentication
+                await refreshLocks(tripId)
+                const allUserLocks = userLocks
+
+                const existingUserLockIds = allUserLocks
+                  .filter((lock) => new Date(lock.expires_at) > new Date()) // Only include non-expired locks
+                  .map(
+                    (lock: {
+                      seat_code: string
+                      locked_at: string
+                      expires_at: string
+                    }) => {
+                      const seat = seatsData.seats.find(
+                        (s: Seat) => s.seat_code === lock.seat_code
+                      )
+                      return seat?.seat_id
+                    }
+                  )
+                  .filter(Boolean) as string[]
+
+                // Only include successfully transferred seats + existing user locks (not rejected ones)
+                const allLockedSeatIds = [
+                  ...new Set([...transferredSeatIds, ...existingUserLockIds]),
+                ]
+                setSelectedSeats(allLockedSeatIds)
+              } catch (error) {
+                console.error('Error fetching user locks:', error)
+                // Fallback if fetch fails: only use transferred seats
+                setSelectedSeats(transferredSeatIds)
+              }
+              seatMapDataRef.current = seatsData
+              hasCompletedTransferRef.current = true
+            } else {
+              // No seats were transferred - keep selectedSeats empty
+              setSelectedSeats([])
+            }
+          }
+        }
+
+        // Clear the guest session ID after successful transfer
+        sessionStorage.removeItem('guestSessionId')
+      } catch (error) {
+        console.error('Failed to transfer guest locks:', error)
+        setOperationInProgress(false)
+        setError(
+          error instanceof Error
+            ? `Failed to transfer locks: ${error.message}`
+            : 'Failed to transfer guest locks'
+        )
+        // Don't clear session ID on failure, user can try again
+      } finally {
+        setSeatMapLoading(false)
+        transferInProgressRef.current = false
+      }
+    }
+
+    transferGuestLocksOnLogin()
+  }, [user, tripId, guestSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Calculate total price based on selected seats (excluding booking-locked seats)
+  useEffect(() => {
+    const filteredSeats =
+      seatMapData?.seats?.filter(
+        (seat) =>
+          seat.seat_id &&
+          selectedSeats.includes(seat.seat_id) &&
+          seat.locked_by !== 'booking'
+      ) || []
+    if (seatMapData && filteredSeats.length > 0) {
+      const subtotal = filteredSeats.reduce((sum, seat) => {
+        return sum + (seat?.price || 0)
+      }, 0)
+      setTotalPrice(subtotal)
+      // Service fee: 3% + 10,000 VND fixed fee (matches backend calculation)
+      const percentageFee = subtotal * 0.03
+      const fixedFee = 10000
+      const fee = Math.round(percentageFee + fixedFee)
+      setServiceFee(fee)
+      setTotalWithFee(subtotal + fee)
+    } else {
+      setTotalPrice(0)
+      setServiceFee(0)
+      setTotalWithFee(0)
+    }
+  }, [selectedSeats, seatMapData])
+
+  // Restore selectedSeats from userLocks on mount/refresh (but not after user deselection or lock expiration)
+  useEffect(() => {
+    // Skip restoration if lock expiration is in progress
+    // This check must come FIRST before any other checks to ensure lock expiration is handled completely
+    if (lockExpirationInProgressRef.current) {
+      return
+    }
+
+    // Skip restoration if user just made an action and deselected everything
+    // (but only after confirming lock expiration is not in progress)
+    if (isUserActionRef.current && selectedSeats.length === 0) {
+      isUserActionRef.current = false
+      return
+    }
+
+    // Skip if operation is in progress to avoid interfering with optimistic updates
+    if (operationInProgress) {
+      return
+    }
+
+    if (userLocks.length > 0 && seatMapData) {
       const lockedSeatIds = userLocks
+        .filter((lock) => new Date(lock.expires_at) > new Date()) // Only include non-expired locks
         .map(
           (lock) =>
             seatMapData.seats.find((seat) => seat.seat_code === lock.seat_code)
               ?.seat_id
         )
         .filter(Boolean) as string[]
-      setSelectedSeats(lockedSeatIds)
-    }
-  }, [userLocks, seatMapData, operationInProgress])
 
-  // Calculate total price based on selected seats
-  useEffect(() => {
-    if (seatMapData && selectedSeats.length > 0) {
-      const total = selectedSeats.reduce((sum, seatId) => {
-        const seat = seatMapData.seats.find((s) => s.seat_id === seatId)
-        return sum + (seat?.price || 0)
-      }, 0)
-      setTotalPrice(total)
-    } else {
-      setTotalPrice(0)
+      // Only update if the locked seats don't match selectedSeats
+      const sortedLocked = lockedSeatIds.sort()
+      const sortedSelected = selectedSeats.sort()
+      if (JSON.stringify(sortedLocked) !== JSON.stringify(sortedSelected)) {
+        setSelectedSeats(lockedSeatIds)
+      }
     }
-  }, [selectedSeats, seatMapData])
+    // Never auto-clear selectedSeats when locks are empty
+    // Locks may be empty during initial load or transient states
+    // User selections should only be cleared by explicit user deselection or lock expiration
+  }, [userLocks, seatMapData, operationInProgress]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSeatSelect = async (seat: Seat, isSelected: boolean) => {
-    if (!seat.seat_id || !user || !tripId) return
+    if (!seat.seat_id || !tripId) return
 
     // Check if this seat is already being processed
     const isAlreadySelected = selectedSeats.includes(seat.seat_id)
     if (isSelected && isAlreadySelected) return // Already selected
     if (!isSelected && !isAlreadySelected) return // Already deselected
+
+    // Enforce seat limit when selecting new seats
+    if (isSelected && selectedSeats.length >= MAX_SELECTABLE_SEATS) {
+      setError(`Maximum ${MAX_SELECTABLE_SEATS} seats can be selected`)
+      return
+    }
+
+    // Only prevent concurrent SELECTION operations, allow deselection anytime
+    if (operationInProgress && isSelected) return
+
+    // Mark that user is making an action
+    isUserActionRef.current = true
 
     setOperationInProgress(true)
 
@@ -214,7 +525,10 @@ export function SeatSelection() {
         await lockSeatsApi({
           tripId,
           seatCodes: [seat.seat_code],
-          userId: user.userId.toString(),
+          userId: user?.userId.toString() || guestSessionId!,
+          sessionId: user
+            ? user.userId.toString()
+            : guestSessionId || undefined,
         })
         // Refresh seat map first to show updated lock status
         await fetchSeatMap()
@@ -225,12 +539,18 @@ export function SeatSelection() {
         await releaseLocksApi({
           tripId,
           seatCodes: [seat.seat_code],
-          userId: user.userId.toString(),
+          userId: user?.userId.toString() || guestSessionId!,
+          sessionId: user
+            ? user.userId.toString()
+            : guestSessionId || undefined,
         })
         // Refresh seat map first to show updated lock status
         await fetchSeatMap()
-        // Debounced refresh of locks
-        debouncedRefresh()
+        // Immediately refresh locks without debounce for deselection
+        await refreshLocks(tripId)
+        setOperationInProgress(false)
+        // Clear user action flag after deselection
+        isUserActionRef.current = false
       }
     } catch (err) {
       console.error('Error managing seat lock:', err)
@@ -250,19 +570,52 @@ export function SeatSelection() {
       alert('Please select at least one seat')
       return
     }
-    // In real app, navigate to next step (passenger details, etc.)
-    console.log('Selected seats:', selectedSeats)
-    console.log('Total price:', totalPrice)
+
+    // Save trip and seats to booking store before checkout
+    if (trip) {
+      // Convert Trip type to match booking store's expected format
+      const tripForStore = {
+        ...trip,
+        route: {
+          ...trip.route,
+          distance: trip.route.distance_km,
+          estimated_duration: trip.route.estimated_minutes,
+        },
+      }
+      setSelectedTrip(
+        tripForStore as unknown as Parameters<typeof setSelectedTrip>[0]
+      )
+    }
+    const selectedSeatObjects = getFilteredSelectedSeats()
+    setBookingSeats(selectedSeatObjects.map((s) => s.seat_code))
+
+    // Show checkout for all users (guests and authenticated)
+    setShowGuestCheckout(true)
   }
 
   const getSelectedSeatCodes = () => {
     if (!seatMapData?.seats) return '-'
+    // Filter out seats locked by "booking"
     const selectedSeatObjects = seatMapData.seats.filter(
-      (seat) => seat.seat_id && selectedSeats.includes(seat.seat_id)
+      (seat) =>
+        seat.seat_id &&
+        selectedSeats.includes(seat.seat_id) &&
+        seat.locked_by !== 'booking'
     )
     return selectedSeatObjects.length > 0
       ? selectedSeatObjects.map((seat) => seat.seat_code).join(', ')
       : '-'
+  }
+
+  // Helper to get filtered selected seats (excluding booking-locked seats)
+  const getFilteredSelectedSeats = () => {
+    if (!seatMapData?.seats) return []
+    return seatMapData.seats.filter(
+      (seat) =>
+        seat.seat_id &&
+        selectedSeats.includes(seat.seat_id) &&
+        seat.locked_by !== 'booking'
+    )
   }
 
   if (loading) {
@@ -276,7 +629,7 @@ export function SeatSelection() {
     )
   }
 
-  if (error || !seatMapData || !trip) {
+  if (!seatMapData || !trip) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
@@ -289,9 +642,9 @@ export function SeatSelection() {
               Error Loading Trip
             </h2>
             <p className="text-muted-foreground mb-4">
-              {error || 'Failed to load trip details. Please try again.'}
+              Failed to load trip details. Please try again.
             </p>
-            <Button onClick={() => navigate(-1)}>Go Back</Button>
+            <Button onClick={() => fetchTripAndSeats()}>Refresh</Button>
           </Card>
         </div>
       </div>
@@ -324,14 +677,36 @@ export function SeatSelection() {
           {/* Dashboard Button and Theme Toggle */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button
-              onClick={() => navigate('/dashboard')}
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              <span className="hidden sm:inline">Dashboard</span>
-            </Button>
+            {isGuest ? (
+              <Button
+                onClick={() => navigate('/login')}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <span className="hidden sm:inline">Login</span>
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => navigate('/dashboard')}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
+                <Button
+                  onClick={logout}
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              </div>
+            )}
           </div>
         </nav>
       </header>
@@ -379,19 +754,30 @@ export function SeatSelection() {
             <div className="flex-1 space-y-4">
               {/* Seat Map Component */}
               {seatMapData && (
-                <SeatMap
-                  seatMapData={seatMapData}
-                  selectedSeats={selectedSeats}
-                  onSeatSelect={handleSeatSelect}
-                  maxSelectable={MAX_SELECTABLE_SEATS}
-                  operationInProgress={operationInProgress}
-                  userLocks={userLocks}
-                  onLockExpire={async (seatCode) => {
-                    console.log('Lock expired for seat:', seatCode)
-                    // Refresh seat map when a lock expires
-                    await fetchSeatMap()
-                  }}
-                />
+                <div className="relative">
+                  {seatMapLoading && (
+                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center z-50">
+                      <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                        <p className="text-white text-sm font-medium">
+                          Updating seats...
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  <SeatMap
+                    seatMapData={seatMapData}
+                    selectedSeats={selectedSeats}
+                    onSeatSelect={handleSeatSelect}
+                    maxSelectable={MAX_SELECTABLE_SEATS}
+                    operationInProgress={operationInProgress}
+                    userLocks={userLocks}
+                    onLockExpire={handleLockExpire}
+                    currentUserId={
+                      user?.userId.toString() || guestSessionId || undefined
+                    }
+                  />
+                </div>
               )}
             </div>
 
@@ -413,12 +799,12 @@ export function SeatSelection() {
                   <div>
                     <p className="text-muted-foreground">Passengers:</p>
                     <p className="font-semibold text-foreground">
-                      {selectedSeats.length}
+                      {getFilteredSelectedSeats().length}
                     </p>
                   </div>
 
                   {/* Lock Status Information */}
-                  {selectedSeats.length > 0 && (
+                  {getFilteredSelectedSeats().length > 0 && (
                     <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
                       <div className="flex items-center gap-2 mb-2">
                         <Lock className="w-4 h-4 text-blue-600" />
@@ -440,37 +826,38 @@ export function SeatSelection() {
                   )}
 
                   <div className="pt-2 border-t border-border/50">
-                    <p className="text-muted-foreground">Fare per seat:</p>
+                    <p className="text-muted-foreground">
+                      Base fare (per seat):
+                    </p>
                     <p className="font-semibold text-foreground">
-                      {trip?.pricing?.base_price
-                        ? trip.pricing.base_price.toLocaleString('vi-VN')
-                        : '0'}
-                      đ
+                      {formatPrice(trip?.pricing?.base_price || 0)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-muted-foreground">Subtotal:</p>
                     <p className="font-semibold text-foreground">
-                      {totalPrice.toLocaleString('vi-VN')}đ
+                      {formatPrice(totalPrice)}
                     </p>
                   </div>
 
                   <div>
                     <p className="text-muted-foreground">Service fee:</p>
-                    <p className="font-semibold text-foreground">0đ</p>
+                    <p className="font-semibold text-foreground">
+                      {formatPrice(serviceFee)}
+                    </p>
                   </div>
 
                   <div className="pt-2 border-t border-border/50 border-b">
                     <p className="text-muted-foreground">Total:</p>
                     <p className="text-lg font-bold text-primary">
-                      {totalPrice.toLocaleString('vi-VN')}đ
+                      {formatPrice(totalWithFee)}
                     </p>
                   </div>
 
                   <Button
                     onClick={handleContinue}
-                    disabled={selectedSeats.length === 0}
+                    disabled={getFilteredSelectedSeats().length === 0}
                     className="w-full mt-3"
                     size="sm"
                   >
@@ -482,6 +869,44 @@ export function SeatSelection() {
           </div>
         </div>
       </div>
+
+      {/* Error Modal */}
+      {error && (
+        <Dialog open={true} onOpenChange={() => setError(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Error</DialogTitle>
+              <DialogDescription>{error}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setError(null)
+                  fetchSeatMap()
+                  refreshLocks(tripId!)
+                }}
+              >
+                Refresh
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+      {/* Guest Checkout - Conditionally render instead of dialog */}
+      {showGuestCheckout && (
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto">
+          <GuestCheckout
+            selectedSeats={getFilteredSelectedSeats()
+              .filter((seat) => seat.seat_id !== undefined)
+              .map((seat) => ({
+                seat_id: seat.seat_id!,
+                seat_code: seat.seat_code,
+              }))}
+            onBack={() => setShowGuestCheckout(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }
+export default SeatSelection

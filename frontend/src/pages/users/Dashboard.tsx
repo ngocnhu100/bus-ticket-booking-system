@@ -55,7 +55,7 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Search Bus Tickets
           </h1>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground mb-8">
             Find and book your next trip
           </p>
           <TripSearchForm />

@@ -1,9 +1,11 @@
 const bookingService = require('../services/bookingService');
+const { mapToBooking } = require('../utils/helpers');
 const {
   createBookingSchema,
   cancelBookingSchema,
   confirmPaymentSchema,
-  getBookingsQuerySchema
+  getBookingsQuerySchema,
+  guestLookupSchema,
 } = require('../validators/bookingValidators');
 
 class BookingController {
@@ -20,15 +22,15 @@ class BookingController {
           success: false,
           error: {
             code: 'VAL_001',
-            message: error.details.map(d => d.message).join(', ')
-          }
+            message: error.details.map((d) => d.message).join(', '),
+          },
         });
       }
 
       // Get user ID from auth (null for guest checkout)
       // Handle both userId (camelCase) and user_id (snake_case) from JWT
       const userId = req.user?.userId || req.user?.user_id || null;
-      
+
       console.log('[BookingController] create called');
       console.log('[BookingController] req.user:', JSON.stringify(req.user, null, 2));
       console.log('[BookingController] extracted userId:', userId);
@@ -40,28 +42,38 @@ class BookingController {
       return res.status(201).json({
         success: true,
         data: booking,
-        message: 'Booking created successfully. Please complete payment within 10 minutes.'
+        message: 'Booking created successfully. Please complete payment within 10 minutes.',
       });
     } catch (err) {
       console.error('Error creating booking:', err);
-      
+
       if (err.message.includes('already booked')) {
         return res.status(409).json({
           success: false,
           error: {
-            code: 'BOOKING_001',
-            message: err.message
-          }
+            code: 'BOOK_001',
+            message: err.message,
+          },
         });
       }
-      
+
       if (err.message.includes('not found')) {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
-            message: err.message
-          }
+            code: 'BOOK_002',
+            message: err.message,
+          },
+        });
+      }
+
+      if (err.message.includes('BOOKING_REFERENCE_GENERATION_FAILED')) {
+        return res.status(500).json({
+          success: false,
+          error: {
+            code: 'BOOK_003',
+            message: 'Unable to generate unique booking reference. Please try again.',
+          },
         });
       }
 
@@ -69,8 +81,8 @@ class BookingController {
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to create booking'
-        }
+          message: 'Failed to create booking',
+        },
       });
     }
   }
@@ -88,7 +100,7 @@ class BookingController {
 
       return res.json({
         success: true,
-        data: booking
+        data: booking,
       });
     } catch (err) {
       console.error('Error getting booking:', err);
@@ -97,9 +109,9 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
-            message: 'Booking not found'
-          }
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
         });
       }
 
@@ -108,8 +120,8 @@ class BookingController {
           success: false,
           error: {
             code: 'AUTH_003',
-            message: 'Unauthorized to view this booking'
-          }
+            message: 'Unauthorized to view this booking',
+          },
         });
       }
 
@@ -117,8 +129,8 @@ class BookingController {
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to retrieve booking'
-        }
+          message: 'Failed to retrieve booking',
+        },
       });
     }
   }
@@ -137,8 +149,8 @@ class BookingController {
           success: false,
           error: {
             code: 'VAL_001',
-            message: 'Email parameter is required'
-          }
+            message: 'Email parameter is required',
+          },
         });
       }
 
@@ -146,7 +158,7 @@ class BookingController {
 
       return res.json({
         success: true,
-        data: booking
+        data: booking,
       });
     } catch (err) {
       console.error('Error getting booking by reference:', err);
@@ -155,9 +167,9 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
-            message: 'Booking not found or invalid credentials'
-          }
+            code: 'BOOK_002',
+            message: 'Booking not found or invalid credentials',
+          },
         });
       }
 
@@ -165,8 +177,79 @@ class BookingController {
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to retrieve booking'
-        }
+          message: 'Failed to retrieve booking',
+        },
+      });
+    }
+  }
+
+  /**
+   * Guest booking lookup (accepts phone OR email)
+   * GET /bookings/guest/lookup
+   * Query params: bookingReference (required), phone OR email (one required)
+   */
+  async guestLookup(req, res) {
+    try {
+      // Validate query parameters
+      const { error, value } = guestLookupSchema.validate(req.query);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: error.details.map((d) => d.message).join(', '),
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const { bookingReference, phone, email } = value;
+
+      // Lookup booking with phone or email verification
+      const booking = await bookingService.guestLookupBooking(bookingReference, phone, email);
+
+      // Booking is already formatted by repository layer
+      return res.json({
+        success: true,
+        data: booking,
+        message: 'Booking retrieved successfully',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error in guest booking lookup:', err);
+
+      // Handle specific error cases
+      if (err.message === 'BOOKING_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found with the provided reference',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (err.message === 'CONTACT_MISMATCH') {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'AUTH_003',
+            message:
+              'Contact information does not match booking records. Please verify your phone number or email.',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Generic error
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to retrieve booking',
+        },
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -178,7 +261,7 @@ class BookingController {
   async getUserBookings(req, res) {
     try {
       const userId = req.user?.userId || req.user?.user_id;
-      
+
       console.log('[BookingController] getUserBookings called');
       console.log('[BookingController] userId:', userId);
       console.log('[BookingController] Query params:', req.query);
@@ -191,31 +274,54 @@ class BookingController {
           success: false,
           error: {
             code: 'VAL_001',
-            message: error.details.map(d => d.message).join(', ')
-          }
+            message: error.details.map((d) => d.message).join(', '),
+          },
         });
       }
-      
+
       console.log('[BookingController] Validated filters:', value);
 
       const result = await bookingService.getUserBookings(userId, value);
-      
+
       console.log(`[BookingController] Returning ${result.bookings.length} bookings`);
 
       return res.json({
         success: true,
         data: result.bookings,
-        pagination: result.pagination
+        pagination: result.pagination,
       });
     } catch (err) {
       console.error('Error getting user bookings:', err);
+
+      // Handle old JWT token error
+      if (err.message.includes('OLD_JWT_TOKEN_DETECTED')) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            code: 'AUTH_004',
+            message: 'Your session is outdated. Please logout and login again to continue.',
+            action: 'FORCE_LOGOUT',
+          },
+        });
+      }
+
+      // Handle invalid user ID
+      if (err.message.includes('INVALID_USER_ID')) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VAL_002',
+            message: 'Invalid user ID format',
+          },
+        });
+      }
 
       return res.status(500).json({
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to retrieve bookings'
-        }
+          message: 'Failed to retrieve bookings',
+        },
       });
     }
   }
@@ -231,16 +337,16 @@ class BookingController {
       // Validate request body
       const { error, value } = confirmPaymentSchema.validate({
         ...req.body,
-        bookingId: id
+        bookingId: id,
       });
-      
+
       if (error) {
         return res.status(422).json({
           success: false,
           error: {
             code: 'VAL_001',
-            message: error.details.map(d => d.message).join(', ')
-          }
+            message: error.details.map((d) => d.message).join(', '),
+          },
         });
       }
 
@@ -249,7 +355,7 @@ class BookingController {
       return res.json({
         success: true,
         data: booking,
-        message: 'Payment confirmed successfully'
+        message: 'Payment confirmed successfully',
       });
     } catch (err) {
       console.error('Error confirming payment:', err);
@@ -258,9 +364,9 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
-            message: 'Booking not found'
-          }
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
         });
       }
 
@@ -268,9 +374,9 @@ class BookingController {
         return res.status(409).json({
           success: false,
           error: {
-            code: 'BOOKING_003',
-            message: err.message
-          }
+            code: 'BOOK_003',
+            message: err.message,
+          },
         });
       }
 
@@ -278,8 +384,8 @@ class BookingController {
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to confirm payment'
-        }
+          message: 'Failed to confirm payment',
+        },
       });
     }
   }
@@ -300,8 +406,8 @@ class BookingController {
           success: false,
           error: {
             code: 'VAL_001',
-            message: error.details.map(d => d.message).join(', ')
-          }
+            message: error.details.map((d) => d.message).join(', '),
+          },
         });
       }
 
@@ -310,7 +416,7 @@ class BookingController {
       return res.json({
         success: true,
         data: result,
-        message: 'Booking cancelled successfully'
+        message: 'Booking cancelled successfully',
       });
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -319,9 +425,9 @@ class BookingController {
         return res.status(404).json({
           success: false,
           error: {
-            code: 'BOOKING_002',
-            message: 'Booking not found'
-          }
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
         });
       }
 
@@ -330,8 +436,8 @@ class BookingController {
           success: false,
           error: {
             code: 'AUTH_003',
-            message: 'Unauthorized to cancel this booking'
-          }
+            message: 'Unauthorized to cancel this booking',
+          },
         });
       }
 
@@ -339,9 +445,9 @@ class BookingController {
         return res.status(409).json({
           success: false,
           error: {
-            code: 'BOOKING_004',
-            message: err.message
-          }
+            code: 'BOOK_004',
+            message: err.message,
+          },
         });
       }
 
@@ -349,8 +455,8 @@ class BookingController {
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to cancel booking'
-        }
+          message: 'Failed to cancel booking',
+        },
       });
     }
   }
@@ -370,18 +476,18 @@ class BookingController {
           success: false,
           error: {
             code: 'VAL_001',
-            message: error.details.map(d => d.message).join(', ')
-          }
+            message: error.details.map((d) => d.message).join(', '),
+          },
         });
       }
 
       // TODO: Implement admin get all bookings with validated filters
       console.log('[BookingController] Admin getAllBookings - filters:', value);
-      
+
       return res.json({
         success: true,
         data: [],
-        message: 'Admin endpoint - to be implemented'
+        message: 'Admin endpoint - to be implemented',
       });
     } catch (err) {
       console.error('Error getting all bookings:', err);
@@ -390,8 +496,79 @@ class BookingController {
         success: false,
         error: {
           code: 'SYS_001',
-          message: 'Failed to retrieve bookings'
-        }
+          message: 'Failed to retrieve bookings',
+        },
+      });
+    }
+  }
+
+  /**
+   * Share ticket via email
+   * POST /bookings/:bookingReference/share
+   */
+  async shareTicket(req, res) {
+    try {
+      const { bookingReference } = req.params;
+      const { email, phone } = req.body;
+
+      if (!email) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Email is required',
+          },
+        });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Invalid email format',
+          },
+        });
+      }
+
+      const result = await bookingService.shareTicket(bookingReference, email, phone);
+
+      return res.json({
+        success: true,
+        message: 'Ticket shared successfully',
+        data: result,
+      });
+    } catch (err) {
+      console.error('Error sharing ticket:', err);
+
+      if (err.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
+        });
+      }
+
+      if (err.message.includes('not confirmed')) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'BOOK_004',
+            message: 'Only confirmed bookings can be shared',
+          },
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to share ticket',
+        },
       });
     }
   }
@@ -404,7 +581,7 @@ class BookingController {
     return res.json({
       status: 'healthy',
       service: 'booking-service',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 }

@@ -1,14 +1,33 @@
+import type { Trip } from './trip.types'
+
 export interface Passenger {
-  fullName: string
-  idNumber?: string
-  phone?: string
-  seatNumber: string
+  ticketId?: string
+  bookingId?: string
+  seat_code: string
+  seatNumber?: string // deprecated - use seatCode
   price?: number
+  fullName?: string
+  phone?: string
+  passenger?: {
+    fullName: string
+    phone?: string
+    documentId?: string
+  }
+  createdAt?: string
+}
+
+export interface User {
+  userId: number
+  email: string
+  phone: string | null
+  fullName: string
+  role: 'passenger' | 'admin'
+  emailVerified: boolean
 }
 
 export interface ETicket {
-  ticketUrl: string | null
-  qrCode: string | null
+  ticket_url: string | null
+  qr_code_url: string | null
 }
 
 export interface CreateBookingRequest {
@@ -20,20 +39,48 @@ export interface CreateBookingRequest {
 }
 
 export interface Booking {
-  bookingId: string
-  bookingReference: string
-  tripId: string
-  userId: string | null
-  contactEmail: string
-  contactPhone: string
+  booking_id: string
+  booking_reference: string
+  trip_id: string
+  user_id: string | null
+  contact_email: string
+  contact_phone: string
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded'
-  totalPrice: number
-  lockedUntil: string | null
-  createdAt: string
-  updatedAt: string
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded'
+  total_price?: number
+  service_fee?: number
+  locked_until: string | null
+  created_at: string
+  updated_at: string
   passengers: Passenger[]
-  eTicket?: ETicket
+  pricing?: {
+    subtotal: number
+    service_fee: number
+    total: number
+    currency: string
+  }
+  payment?: {
+    method: string | null
+    status: string
+    paid_at: string | null
+  }
+  e_ticket?: ETicket
+  trip_details?: {
+    trip_id?: string
+    route: {
+      origin: string
+      destination: string
+    }
+    operator: {
+      name: string
+    }
+    schedule: {
+      departure_time: string
+      arrival_time: string
+    }
+  }
+  trip?: Trip
+  user?: User
 }
 
 export interface BookingResponse {

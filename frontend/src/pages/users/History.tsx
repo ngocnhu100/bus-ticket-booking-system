@@ -248,7 +248,7 @@ const History = () => {
           <div className="space-y-4">
             {bookings.map((booking) => (
               <Card
-                key={booking.bookingId}
+                key={booking.booking_id}
                 className="p-6 hover:shadow-lg transition-shadow"
               >
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -256,19 +256,19 @@ const History = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold">
-                        {booking.bookingReference}
+                        {booking.booking_reference}
                       </h3>
                       {getStatusBadge(booking.status)}
                     </div>
 
-                    {booking.tripDetails && (
+                    {booking.trip_details && (
                       <div className="text-sm text-muted-foreground space-y-1">
                         <p className="font-medium text-foreground">
-                          {booking.tripDetails.route?.origin} →{' '}
-                          {booking.tripDetails.route?.destination}
+                          {booking.trip_details.route?.origin} →{' '}
+                          {booking.trip_details.route?.destination}
                         </p>
                         <p>
-                          {booking.tripDetails.operator?.name || 'N/A'} •
+                          {booking.trip_details.operator?.name || 'N/A'} •
                           {booking.passengers && booking.passengers.length > 0
                             ? ` ${booking.passengers.length} seat(s)`
                             : ' N/A'}
@@ -279,8 +279,8 @@ const History = () => {
 
                     {/* Contact Info */}
                     <div className="mt-2 text-sm text-muted-foreground">
-                      <p>📧 {booking.contactEmail}</p>
-                      <p>📱 {booking.contactPhone}</p>
+                      <p>📧 {booking.contact_email}</p>
+                      <p>📱 {booking.contact_phone}</p>
                     </div>
                   </div>
 
@@ -379,34 +379,35 @@ const History = () => {
                 <div className="mb-4">
                   <div className="flex items-center gap-3">
                     <h3 className="text-lg font-semibold">
-                      {selectedBooking.bookingReference}
+                      {selectedBooking.booking_reference}
                     </h3>
                     {getStatusBadge(selectedBooking.status)}
                   </div>
                 </div>
 
                 {/* Trip Details */}
-                {selectedBooking.tripDetails && (
+                {selectedBooking.trip_details && (
                   <div className="mb-6">
                     <h4 className="font-semibold mb-2">Trip Information</h4>
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 text-sm">
                       <p>
                         <span className="text-muted-foreground">Route:</span>{' '}
-                        {selectedBooking.tripDetails.route?.origin} →{' '}
-                        {selectedBooking.tripDetails.route?.destination}
+                        {selectedBooking.trip_details.route?.origin} →{' '}
+                        {selectedBooking.trip_details.route?.destination}
                       </p>
                       <p>
                         <span className="text-muted-foreground">Operator:</span>{' '}
-                        {selectedBooking.tripDetails.operator?.name}
+                        {selectedBooking.trip_details.operator?.name}
                       </p>
-                      {selectedBooking.tripDetails.schedule && (
+                      {selectedBooking.trip_details.schedule && (
                         <>
                           <p>
                             <span className="text-muted-foreground">
                               Departure:
                             </span>{' '}
                             {formatDate(
-                              selectedBooking.tripDetails.schedule.departureTime
+                              selectedBooking.trip_details.schedule
+                                .departure_time
                             )}
                           </p>
                           <p>
@@ -414,7 +415,7 @@ const History = () => {
                               Arrival:
                             </span>{' '}
                             {formatDate(
-                              selectedBooking.tripDetails.schedule.arrivalTime
+                              selectedBooking.trip_details.schedule.arrival_time
                             )}
                           </p>
                         </>

@@ -60,8 +60,10 @@ export function TripSearchResults() {
 
   const searchParams = new URLSearchParams(location.search)
 
-  const origin = searchParams.get('origin') || 'Ho Chi Minh'
-  const destination = searchParams.get('destination') || 'Lam Dong'
+  const origin =
+    searchParams.get('from') || searchParams.get('origin') || 'Ho Chi Minh'
+  const destination =
+    searchParams.get('to') || searchParams.get('destination') || 'Lam Dong'
   const date =
     searchParams.get('date') || new Date().toISOString().split('T')[0]
   const passengers = searchParams.get('passengers') || '1'
@@ -167,6 +169,7 @@ export function TripSearchResults() {
       const timeSlot = timeSlots.find((t) => t.value === slot)
       if (timeSlot) {
         activeFilters.push({
+          key: `departure-${slot}`,
           label: timeSlot.label.split(' (')[0], // Remove the time range part
           remove: () =>
             setFilters({
@@ -182,6 +185,7 @@ export function TripSearchResults() {
     // Price range
     if (filters.priceRange[0] > 0 || filters.priceRange[1] < 5000000) {
       activeFilters.push({
+        key: `price-${filters.priceRange[0]}-${filters.priceRange[1]}`,
         label: `${filters.priceRange[0].toLocaleString(
           'vi-VN'
         )}đ - ${filters.priceRange[1].toLocaleString('vi-VN')}đ`,
@@ -196,6 +200,7 @@ export function TripSearchResults() {
     // Operators
     filters.operators.forEach((operator) => {
       activeFilters.push({
+        key: `operator-${operator}`,
         label: operator,
         remove: () =>
           setFilters({
@@ -210,6 +215,7 @@ export function TripSearchResults() {
       const busType = busTypes.find((b) => b.id === type)
       if (busType) {
         activeFilters.push({
+          key: `busType-${type}`,
           label: busType.label,
           remove: () =>
             setFilters({
@@ -225,6 +231,7 @@ export function TripSearchResults() {
       const amenityItem = amenities.find((a) => a.id === amenity)
       if (amenityItem) {
         activeFilters.push({
+          key: `amenity-${amenity}`,
           label: amenityItem.label,
           remove: () =>
             setFilters({
@@ -238,6 +245,7 @@ export function TripSearchResults() {
     // Seat locations
     filters.seatLocations.forEach((location) => {
       activeFilters.push({
+        key: `seatLocation-${location}`,
         label: location,
         remove: () =>
           setFilters({
@@ -250,6 +258,7 @@ export function TripSearchResults() {
     // Minimum rating
     if (filters.minRating > 0) {
       activeFilters.push({
+        key: `rating-${filters.minRating}`,
         label: `${filters.minRating}+ stars`,
         remove: () =>
           setFilters({
@@ -266,6 +275,7 @@ export function TripSearchResults() {
           opt.value === filters.minSeatsAvailable
       )
       activeFilters.push({
+        key: `seats-${filters.minSeatsAvailable}`,
         label: option?.label || `${filters.minSeatsAvailable}+ seats available`,
         remove: () =>
           setFilters({

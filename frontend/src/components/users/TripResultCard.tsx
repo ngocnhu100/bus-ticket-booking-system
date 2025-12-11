@@ -37,8 +37,8 @@ export const TripResultCard = ({
   }
 
   const calculateDuration = () => {
-    const departure = new Date(`2000-01-01T${trip.schedule.departureTime}`)
-    const arrival = new Date(`2000-01-01T${trip.schedule.arrivalTime}`)
+    const departure = new Date(`2000-01-01T${trip.schedule.departure_time}`)
+    const arrival = new Date(`2000-01-01T${trip.schedule.arrival_time}`)
     const diffMs = arrival.getTime() - departure.getTime()
     const hours = Math.floor(diffMs / (1000 * 60 * 60))
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
@@ -62,9 +62,9 @@ export const TripResultCard = ({
   }
 
   const availabilityColor =
-    trip.availability.availableSeats > 10
+    trip.availability.available_seats > 10
       ? 'text-green-600'
-      : trip.availability.availableSeats > 5
+      : trip.availability.available_seats > 5
         ? 'text-yellow-600'
         : 'text-red-600'
 
@@ -97,11 +97,11 @@ export const TripResultCard = ({
               <Clock className="w-4 h-4 text-muted-foreground" />
               <div>
                 <span className="font-semibold">
-                  {formatTime(trip.schedule.departureTime)}
+                  {formatTime(trip.schedule.departure_time)}
                 </span>
                 <span className="text-muted-foreground"> → </span>
                 <span className="font-semibold">
-                  {formatTime(trip.schedule.arrivalTime)}
+                  {formatTime(trip.schedule.arrival_time)}
                 </span>
                 <span className="text-muted-foreground ml-2">
                   ({calculateDuration()})
@@ -121,12 +121,12 @@ export const TripResultCard = ({
 
           <div className="flex items-center gap-2 text-sm">
             <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
-              {trip.bus.busType}
+              {trip.bus.bus_type}
             </span>
             <span className={`flex items-center gap-1 ${availabilityColor}`}>
               <UsersIcon className="w-4 h-4" />
               <span className="font-medium">
-                {trip.availability.availableSeats} seats left
+                {trip.availability.available_seats} seats left
               </span>
             </span>
           </div>
@@ -157,17 +157,17 @@ export const TripResultCard = ({
         <div className="flex flex-col items-end gap-4">
           <div className="text-right">
             <div className="text-2xl font-bold text-primary">
-              {formatPrice(trip.pricing.basePrice)}
+              {formatPrice(trip.pricing.base_price)}
             </div>
             <div className="text-xs text-muted-foreground">per seat</div>
           </div>
 
           <Button
             className="bg-blue-500 text-white hover:bg-blue-600"
-            onClick={() => onSelectSeats?.(trip.tripId)}
-            disabled={trip.availability.availableSeats === 0}
+            onClick={() => onSelectSeats?.(trip.trip_id)}
+            disabled={trip.availability.available_seats === 0}
           >
-            {trip.availability.availableSeats === 0
+            {trip.availability.available_seats === 0
               ? 'Sold Out'
               : 'Select Seats'}
           </Button>
