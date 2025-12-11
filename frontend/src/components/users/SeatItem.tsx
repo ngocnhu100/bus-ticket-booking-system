@@ -96,13 +96,10 @@ export function SeatItem({
     // Don't show locked status if we have no valid lock for this seat
     if (seat.status === 'available') return 'seat-available'
     if (seat.status === 'occupied') return 'seat-occupied'
-    // For locked status, verify we actually have a valid lock or it's selected
-    if (
-      seat.status === 'locked' &&
-      (userLock || (currentUserId && seat.locked_by === currentUserId))
-    ) {
-      return 'seat-locked'
-    }
+    // Treat any non-expired locked seat as locked visually so other-user locks
+    // use the same locked styling as booking locks. Interaction rules remain
+    // enforced elsewhere (SeatMap prevents toggling seats locked by others).
+    if (seat.status === 'locked') return 'seat-locked'
     return 'seat-unavailable'
   }
 
@@ -169,14 +166,12 @@ export function SeatItem({
         {/* Seat Code */}
         <span className="seat-code">{seat.seat_code}</span>
 
-        {/* Countdown Timer for seats with valid locks or booking locks */}
-        {((userLock && !isLockExpired) ||
-          (currentUserId &&
-            seat.locked_by === currentUserId &&
-            !isLockExpired) ||
-          (seat.locked_by === 'booking' &&
-            seat.locked_until &&
-            !hasExpiredLock)) &&
+        {/* Countdown Timer for seats with valid user locks or current-user locks. */}
+        {seat.locked_by !== 'booking' &&
+          ((userLock && !isLockExpired) ||
+            (currentUserId &&
+              seat.locked_by === currentUserId &&
+              !isLockExpired)) &&
           (userLock?.expires_at || seat.locked_until) &&
           !hasExpiredLock && (
             <div className="seat-countdown">

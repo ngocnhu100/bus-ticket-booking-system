@@ -436,7 +436,10 @@ export function SeatSelection() {
         return sum + (seat?.price || 0)
       }, 0)
       setTotalPrice(subtotal)
-      const fee = Math.max(subtotal * 0.02, 5000)
+      // Service fee: 3% + 10,000 VND fixed fee (matches backend calculation)
+      const percentageFee = subtotal * 0.03
+      const fixedFee = 10000
+      const fee = Math.round(percentageFee + fixedFee)
       setServiceFee(fee)
       setTotalWithFee(subtotal + fee)
     } else {
@@ -823,7 +826,9 @@ export function SeatSelection() {
                   )}
 
                   <div className="pt-2 border-t border-border/50">
-                    <p className="text-muted-foreground">Fare per seat:</p>
+                    <p className="text-muted-foreground">
+                      Base fare (per seat):
+                    </p>
                     <p className="font-semibold text-foreground">
                       {formatPrice(trip?.pricing?.base_price || 0)}
                     </p>

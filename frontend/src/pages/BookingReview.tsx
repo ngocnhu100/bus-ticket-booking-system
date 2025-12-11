@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cancelBooking } from '@/api/bookings'
 import type { Booking } from '@/types/booking.types'
+import type { Seat } from '@/types/trip.types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
@@ -68,6 +69,15 @@ function getTimeRemaining(lockedUntil: string | undefined): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+/**
+ * Calculate service fee (matches backend calculation: 3% + 10,000 VND fixed fee)
+ */
+function calculateServiceFee(subtotal: number): number {
+  const percentageFee = subtotal * 0.03 // 3%
+  const fixedFee = 10000 // 10,000 VND
+  return Math.round(percentageFee + fixedFee)
+}
+
 export function BookingReview() {
   const { bookingId } = useParams<{ bookingId: string }>()
   const navigate = useNavigate()
@@ -76,6 +86,11 @@ export function BookingReview() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRemaining, setTimeRemaining] = useState<string>('10:00')
+  const [calculatedPricing, setCalculatedPricing] = useState<{
+    subtotal: number
+    serviceFee: number
+    total: number
+  } | null>(null)
 
   // Load booking from sessionStorage or fetch from API
   useEffect(() => {
@@ -90,6 +105,7 @@ export function BookingReview() {
           const bookingData = JSON.parse(pendingBooking)
           console.log('📋 Booking loaded from sessionStorage:', bookingData)
           setBooking(bookingData)
+          await calculatePricing(bookingData)
           setLoading(false)
           return
         }
@@ -112,6 +128,7 @@ export function BookingReview() {
         const result = await response.json()
         console.log('📋 Booking loaded from API:', result.data)
         setBooking(result.data)
+        await calculatePricing(result.data)
       } catch (err) {
         console.error('Error loading booking:', err)
         setError(err instanceof Error ? err.message : 'Failed to load booking')
@@ -122,6 +139,53 @@ export function BookingReview() {
 
     loadBooking()
   }, [bookingId])
+
+  // Calculate pricing by fetching seat prices
+  const calculatePricing = async (bookingData: Booking) => {
+    try {
+      if (!bookingData.trip_details?.trip_id) {
+        console.warn('No trip ID available for pricing calculation')
+        return
+      }
+
+      // Fetch seats for the trip
+      const seatsResponse = await fetch(
+        `${API_BASE_URL}/trips/${bookingData.trip_details.trip_id}/seats`
+      )
+      if (!seatsResponse.ok) {
+        throw new Error('Failed to fetch seat information')
+      }
+
+      const seatsResult = await seatsResponse.json()
+      const seatsData = seatsResult.data.seat_map || seatsResult
+
+      // Find prices for the booked seats
+      const seatCodes = bookingData.passengers?.map((p) => p.seat_code) || []
+      const bookedSeats = seatsData.filter((seat: Seat) =>
+        seatCodes.includes(seat.seat_code)
+      )
+
+      if (bookedSeats.length !== seatCodes.length) {
+        console.warn(
+          'Some seat prices not found, using backend pricing as fallback'
+        )
+        return
+      }
+
+      // Calculate subtotal by summing seat prices
+      const subtotal = bookedSeats.reduce(
+        (sum: number, seat: Seat) => sum + (seat.price || 0),
+        0
+      )
+      const serviceFee = calculateServiceFee(subtotal)
+      const total = subtotal + serviceFee
+
+      setCalculatedPricing({ subtotal, serviceFee, total })
+    } catch (err) {
+      console.error('Error calculating pricing:', err)
+      // Fallback to backend pricing if calculation fails
+    }
+  }
 
   // Update countdown timer
   useEffect(() => {
@@ -361,7 +425,31 @@ export function BookingReview() {
               <div className="pt-4 border-t">
                 <h3 className="font-semibold mb-3">Payment Summary</h3>
                 <div className="space-y-2">
-                  {booking.pricing ? (
+                  {calculatedPricing ? (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>
+                          {calculatedPricing.subtotal.toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Service Fee
+                        </span>
+                        <span>
+                          {calculatedPricing.serviceFee.toLocaleString('vi-VN')}
+                          đ
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t">
+                        <span className="font-semibold">Total</span>
+                        <span className="text-xl font-bold text-primary">
+                          {calculatedPricing.total.toLocaleString('vi-VN')}đ
+                        </span>
+                      </div>
+                    </>
+                  ) : booking?.pricing ? (
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
