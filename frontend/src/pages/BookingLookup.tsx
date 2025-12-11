@@ -547,14 +547,14 @@ export function BookingLookup() {
                 </p>
                 <code className="text-xs block space-y-1">
                   <span className="block">
-                    Reference: <strong>BK20251209001</strong>
+                    Reference: <strong>BK20260115001</strong>
                   </span>
                   <span className="block">
-                    Email: <strong>phamminh0973@gmail.com</strong>
+                    Email: <strong>passenger@bus-ticket.com</strong>
                   </span>
                   <span className="block">
-                    Phone: <strong>+84973994154</strong> or{' '}
-                    <strong>0973994154</strong>
+                    Phone: <strong>+84901234567</strong> or{' '}
+                    <strong>0901234567</strong>
                   </span>
                   <span className="block mt-2 text-green-600">
                     ✅ This booking is available for testing
