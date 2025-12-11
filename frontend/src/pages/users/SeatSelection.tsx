@@ -11,11 +11,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { SeatMap } from '@/components/users/SeatMap'
-import { GuestCheckoutDialog } from '@/components/users/GuestCheckoutDialog'
+import GuestCheckout from '@/components/booking/GuestCheckout'
 import { ChevronLeft, ArrowRight, Lock, Clock, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useSeatLocks } from '@/hooks/useSeatLocks'
 import { useAuth } from '@/context/AuthContext'
+import { useBookingStore } from '@/store/bookingStore'
 import type { Seat, SeatMapData, Trip } from '@/types/trip.types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -57,6 +58,8 @@ export function SeatSelection() {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { setSelectedTrip, setSelectedSeats: setBookingSeats } =
+    useBookingStore()
 
   const [trip, setTrip] = useState<Trip | null>(null)
   const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null)
@@ -565,11 +568,26 @@ export function SeatSelection() {
       return
     }
 
-    // Show guest checkout dialog for all users (guests and authenticated)
-    setShowGuestCheckout(true)
+    // Save trip and seats to booking store before checkout
+    if (trip) {
+      // Convert Trip type to match booking store's expected format
+      const tripForStore = {
+        ...trip,
+        route: {
+          ...trip.route,
+          distance: trip.route.distance_km,
+          estimated_duration: trip.route.estimated_minutes,
+        },
+      }
+      setSelectedTrip(
+        tripForStore as unknown as Parameters<typeof setSelectedTrip>[0]
+      )
+    }
+    const selectedSeatObjects = getFilteredSelectedSeats()
+    setBookingSeats(selectedSeatObjects.map((s) => s.seat_code))
 
-    // TODO: For authenticated users, we can pre-fill the form with their data
-    // Or implement a different flow if needed
+    // Show checkout for all users (guests and authenticated)
+    setShowGuestCheckout(true)
   }
 
   const getSelectedSeatCodes = () => {
@@ -869,15 +887,20 @@ export function SeatSelection() {
           </DialogContent>
         </Dialog>
       )}
-      {/* Guest Checkout Dialog */}
-      <GuestCheckoutDialog
-        open={showGuestCheckout}
-        onOpenChange={setShowGuestCheckout}
-        tripId={tripId!}
-        selectedSeats={getFilteredSelectedSeats().map((s) => s.seat_id!)}
-        seatCodes={getSelectedSeatCodes().split(', ')}
-        totalPrice={totalWithFee}
-      />
+      {/* Guest Checkout - Conditionally render instead of dialog */}
+      {showGuestCheckout && (
+        <div className="fixed inset-0 bg-background z-50 overflow-y-auto">
+          <GuestCheckout
+            selectedSeats={getFilteredSelectedSeats()
+              .filter((seat) => seat.seat_id !== undefined)
+              .map((seat) => ({
+                seat_id: seat.seat_id!,
+                seat_code: seat.seat_code,
+              }))}
+            onBack={() => setShowGuestCheckout(false)}
+          />
+        </div>
+      )}
     </div>
   )
 }
