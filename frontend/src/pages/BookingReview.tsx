@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { Header } from '@/components/landing/Header'
 import {
   CheckCircle2,
@@ -79,6 +78,16 @@ function calculateServiceFee(subtotal: number): number {
   return Math.round(percentageFee + fixedFee)
 }
 
+/**
+ * Format price in VND (match SeatSelection)
+ */
+function formatPrice(price: number): string {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(price)
+}
+
 export function BookingReview() {
   const { bookingId } = useParams<{ bookingId: string }>()
   const navigate = useNavigate()
@@ -92,6 +101,7 @@ export function BookingReview() {
     serviceFee: number
     total: number
   } | null>(null)
+  const { toast } = useToast()
 
   // Load booking from sessionStorage or fetch from API
   useEffect(() => {
@@ -159,11 +169,15 @@ export function BookingReview() {
       }
 
       const seatsResult = await seatsResponse.json()
-      const seatsData = seatsResult.data.seat_map || seatsResult
+      // Normalize seat list (API may return { data: { seat_map: { seats: [...] } } } or an array)
+      const rawSeatMap = seatsResult?.data?.seat_map ?? seatsResult
+      const seatList: Seat[] = Array.isArray(rawSeatMap)
+        ? rawSeatMap
+        : (rawSeatMap?.seats ?? rawSeatMap)
 
       // Find prices for the booked seats
       const seatCodes = bookingData.passengers?.map((p) => p.seat_code) || []
-      const bookedSeats = seatsData.filter((seat: Seat) =>
+      const bookedSeats = (seatList || []).filter((seat: Seat) =>
         seatCodes.includes(seat.seat_code)
       )
 
@@ -175,10 +189,11 @@ export function BookingReview() {
       }
 
       // Calculate subtotal by summing seat prices
-      const subtotal = bookedSeats.reduce(
-        (sum: number, seat: Seat) => sum + (seat.price || 0),
-        0
-      )
+      const subtotal = bookedSeats.reduce((sum: number, seat: Seat) => {
+        const price =
+          typeof seat.price === 'string' ? Number(seat.price) : seat.price || 0
+        return sum + (Number.isFinite(price) ? price : 0)
+      }, 0)
       const serviceFee = calculateServiceFee(subtotal)
       const total = subtotal + serviceFee
 
@@ -197,21 +212,27 @@ export function BookingReview() {
       const remaining = getTimeRemaining(booking.locked_until || undefined)
       setTimeRemaining(remaining)
 
-      // If time expired, navigate to home
+      // If time expired, show toast and navigate to home
       if (remaining === '0:00') {
         clearInterval(interval)
-        alert('Booking time expired. Please select seats again.')
+        toast({
+          title: 'Booking expired',
+          description: 'Booking time expired. Please select seats again.',
+        })
         navigate('/')
       }
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [booking, navigate])
+  }, [booking, navigate, toast])
 
   const handleProceedToPayment = () => {
     // TODO: Implement payment flow
-    // For now, just navigate to a placeholder or show message
-    alert('Payment integration coming soon!')
+    // For now, just show a toast and keep placeholder behavior
+    toast({
+      title: 'Payment',
+      description: 'Payment integration coming soon!',
+    })
     // navigate(`/booking/${bookingId}/payment`)
   }
 
@@ -293,9 +314,7 @@ export function BookingReview() {
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       <Header />
-      <div className="absolute top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
+      {/* ThemeToggle is provided in Header - avoid duplicate toggles */}
 
       <div className="container max-w-4xl mx-auto px-4 py-8">
         {/* Success Header */}
@@ -438,23 +457,22 @@ export function BookingReview() {
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>
-                          {calculatedPricing.subtotal.toLocaleString('vi-VN')}đ
+                        <span className="font-semibold text-foreground">
+                          {formatPrice(calculatedPricing.subtotal)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           Service Fee
                         </span>
-                        <span>
-                          {calculatedPricing.serviceFee.toLocaleString('vi-VN')}
-                          đ
+                        <span className="font-semibold text-foreground">
+                          {formatPrice(calculatedPricing.serviceFee)}
                         </span>
                       </div>
                       <div className="flex justify-between pt-2 border-t">
                         <span className="font-semibold">Total</span>
                         <span className="text-xl font-bold text-primary">
-                          {calculatedPricing.total.toLocaleString('vi-VN')}đ
+                          {formatPrice(calculatedPricing.total)}
                         </span>
                       </div>
                     </>
@@ -462,22 +480,22 @@ export function BookingReview() {
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>
-                          {booking.pricing.subtotal.toLocaleString('vi-VN')}đ
+                        <span className="font-semibold text-foreground">
+                          {formatPrice(booking.pricing.subtotal)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           Service Fee
                         </span>
-                        <span>
-                          {booking.pricing.service_fee.toLocaleString('vi-VN')}đ
+                        <span className="font-semibold text-foreground">
+                          {formatPrice(booking.pricing.service_fee)}
                         </span>
                       </div>
                       <div className="flex justify-between pt-2 border-t">
                         <span className="font-semibold">Total</span>
                         <span className="text-xl font-bold text-primary">
-                          {booking.pricing.total.toLocaleString('vi-VN')}đ
+                          {formatPrice(booking.pricing.total)}
                         </span>
                       </div>
                     </>

@@ -113,6 +113,36 @@ export function PassengerInformationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passengersKey])
 
+  // Prevent page (body) scrolling while this passenger form is mounted
+  // This avoids the double-scrollbar effect when the form is rendered
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+
+    const shouldLock = () => document.body.scrollHeight > window.innerHeight
+
+    // Only hide body scrollbar when page content actually overflows viewport
+    if (shouldLock()) {
+      document.body.style.overflow = 'hidden'
+    }
+
+    const onResize = () => {
+      if (shouldLock()) {
+        document.body.style.overflow = 'hidden'
+      } else {
+        document.body.style.overflow = previousOverflow || ''
+      }
+    }
+
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      // restore previous overflow
+      document.body.style.overflow = previousOverflow || ''
+      window.removeEventListener('resize', onResize)
+    }
+    // Only run on mount/unmount
+  }, [])
+
   return (
     <div className="w-full">
       <Card>
