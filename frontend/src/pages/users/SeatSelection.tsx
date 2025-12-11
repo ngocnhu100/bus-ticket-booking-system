@@ -17,6 +17,7 @@ import { ChevronLeft, ArrowRight, Lock, Clock, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useSeatLocks } from '@/hooks/useSeatLocks'
 import { useAuth } from '@/context/AuthContext'
+import { useBookingStore } from '@/store/bookingStore'
 import type { Seat, SeatMapData, Trip } from '@/types/trip.types'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -48,6 +49,8 @@ export function SeatSelection() {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const { setSelectedTrip, setSelectedSeats: setBookingSeats } =
+    useBookingStore()
 
   const [trip, setTrip] = useState<Trip | null>(null)
   const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null)
@@ -827,15 +830,46 @@ export function SeatSelection() {
                         </p>
                       </div>
 
-                      {/* Removed Continue to Checkout button */}
-                      {/* Continue as Guest button for guest users */}
-                      {isGuest && selectedSeats.length > 0 && (
+                      {/* Continue button for both guest and logged-in users */}
+                      {selectedSeats.length > 0 && (
                         <Button
                           className="w-full mt-3 bg-primary text-white"
                           size="sm"
-                          onClick={() => setShowGuestCheckout(true)}
+                          onClick={() => {
+                            // Save trip and seats to booking store before checkout
+                            if (trip) {
+                              // Convert Trip type to match booking store's expected format
+                              const tripForStore = {
+                                ...trip,
+                                route: {
+                                  ...trip.route,
+                                  distance: trip.route.distance_km,
+                                  estimated_duration:
+                                    trip.route.estimated_minutes,
+                                },
+                              }
+                              // Type assertion needed due to route field differences between Trip types
+                              setSelectedTrip(
+                                tripForStore as unknown as Parameters<
+                                  typeof setSelectedTrip
+                                >[0]
+                              )
+                            }
+                            const selectedSeatObjects =
+                              seatMapData?.seats.filter(
+                                (seat) =>
+                                  seat.seat_id &&
+                                  selectedSeats.includes(seat.seat_id)
+                              ) || []
+                            setBookingSeats(
+                              selectedSeatObjects.map((s) => s.seat_code)
+                            )
+                            setShowGuestCheckout(true)
+                          }}
                         >
-                          Continue as Guest
+                          {isGuest
+                            ? 'Continue as Guest'
+                            : 'Continue to Booking'}
                         </Button>
                       )}
                     </div>

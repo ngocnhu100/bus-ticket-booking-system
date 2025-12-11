@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,41 +57,6 @@ export function PassengerInformationForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seatInfos.length])
 
-  // No redirect or navigation logic allowed for guest mode
-
-  const validateAllPassengers = (): boolean => {
-    let allValid = true
-    const updatedPassengers = passengers.map((passenger) => {
-      const errors: PassengerFormData['errors'] = {}
-
-      if (!passenger.fullName || passenger.fullName.trim().length < 2) {
-        errors.fullName = 'Full name is required (min 2 characters)'
-        allValid = false
-      }
-
-      if (passenger.phone && passenger.phone.trim()) {
-        const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
-        if (!phoneRegex.test(passenger.phone.trim())) {
-          errors.phone = 'Invalid phone format (e.g., 0901234567)'
-          allValid = false
-        }
-      }
-
-      if (passenger.documentId && passenger.documentId.trim()) {
-        const documentRegex = /^[0-9]{9,12}$/
-        if (!documentRegex.test(passenger.documentId.trim())) {
-          errors.documentId = 'Document ID must be 9-12 digits'
-          allValid = false
-        }
-      }
-
-      return { ...passenger, errors }
-    })
-
-    setPassengersState(updatedPassengers)
-    return allValid
-  }
-
   const handleInputChange = (
     index: number,
     field: keyof PassengerInfo,
@@ -111,32 +76,42 @@ export function PassengerInformationForm({
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  // Create stable dependency strings
+  const passengersKey = useMemo(
+    () =>
+      passengers
+        .map(
+          (p) =>
+            `${p.seatCode}:${p.fullName}:${p.phone || ''}:${p.documentId || ''}`
+        )
+        .join('|'),
+    [passengers]
+  )
 
-    // Validate passengers
-    const passengersValid = validateAllPassengers()
+  // Auto-sync passengers to parent when all have valid names
+  useEffect(() => {
+    // Only sync if all passengers have valid full names
+    if (
+      passengers.length > 0 &&
+      passengers.every((p) => p.fullName && p.fullName.trim().length >= 2)
+    ) {
+      const cleanedPassengers: PassengerInfo[] = passengers.map((p) => ({
+        fullName: p.fullName.trim(),
+        phone: p.phone?.trim() || undefined,
+        documentId: p.documentId?.trim() || undefined,
+        seatCode: p.seatCode,
+      }))
 
-    if (!passengersValid) {
-      return
+      // Save to store
+      setPassengers(cleanedPassengers)
+
+      // Call onSubmit to update parent
+      if (propOnSubmit) {
+        propOnSubmit(cleanedPassengers)
+      }
     }
-
-    // Clean up passengers data
-    const cleanedPassengers: PassengerInfo[] = passengers.map((p) => ({
-      fullName: p.fullName.trim(),
-      phone: p.phone?.trim() || undefined,
-      documentId: p.documentId?.trim() || undefined,
-      seatCode: p.seatCode,
-    }))
-
-    // Save to store
-    setPassengers(cleanedPassengers)
-
-    // Only call onSubmit, never navigate
-    if (propOnSubmit) {
-      propOnSubmit(cleanedPassengers)
-    }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passengersKey])
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -150,7 +125,7 @@ export function PassengerInformationForm({
             are required.
           </p>
 
-          <form onSubmit={handleSubmit}>
+          <div>
             {/* Passengers Section */}
             <div className="space-y-6">
               {passengers.map((passenger, index) => (
@@ -262,7 +237,7 @@ export function PassengerInformationForm({
                 </Button>
               </div>
             )}
-          </form>
+          </div>
         </div>
       </Card>
     </div>

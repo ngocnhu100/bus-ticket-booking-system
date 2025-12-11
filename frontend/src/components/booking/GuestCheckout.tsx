@@ -1,8 +1,12 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, UserCheck } from 'lucide-react'
 import { PassengerInformationForm } from '@/components/booking/PassengerInformationForm'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { useAuth } from '@/context/AuthContext'
+import { createBooking } from '@/api/bookings'
+import { useBookingStore } from '@/store/bookingStore'
 
 interface GuestCheckoutProps {
   selectedSeats?: { seat_id: string; seat_code: string }[]
@@ -24,9 +28,13 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
   onSubmit,
   onBack,
 }) => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { selectedTrip } = useBookingStore()
+
   const selectedSeats = propSeats ?? []
-  const [contactEmail, setContactEmail] = React.useState('')
-  const [contactPhone, setContactPhone] = React.useState('')
+  const [contactEmail, setContactEmail] = React.useState(user?.email || '')
+  const [contactPhone, setContactPhone] = React.useState(user?.phone || '')
   const [contactErrors, setContactErrors] = React.useState<{
     email?: string
     phone?: string
@@ -40,6 +48,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
     }[]
   >([])
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
   const validateContactInfo = () => {
     const errors: { email?: string; phone?: string } = {}
@@ -68,18 +77,75 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
     return isValid
   }
 
-  const handleSubmit = (event?: React.FormEvent) => {
+  const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault()
+
+    console.log('=== GuestCheckout handleSubmit DEBUG ===')
+    console.log('passengers:', passengers)
+    console.log('contactEmail:', contactEmail)
+    console.log('contactPhone:', contactPhone)
+    console.log('selectedTrip:', selectedTrip)
+    console.log('selectedTrip?.trip_id:', selectedTrip?.trip_id)
+    console.log('selectedSeats:', selectedSeats)
+
+    setError(null)
     setIsSubmitting(true)
-    const contactValid = validateContactInfo()
-    if (!contactValid || passengers.length === 0) {
+
+    try {
+      // Validate contact info
+      const contactValid = validateContactInfo()
+      if (!contactValid || passengers.length === 0) {
+        setIsSubmitting(false)
+        return
+      }
+
+      // Validate selectedTrip exists
+      if (!selectedTrip?.trip_id) {
+        console.error(
+          'selectedTrip is missing or has no trip_id:',
+          selectedTrip
+        )
+        throw new Error(
+          'Trip information is missing. Please select seats again.'
+        )
+      }
+
+      // Prepare booking data
+      const bookingData = {
+        tripId: selectedTrip.trip_id,
+        seats: selectedSeats.map((s) => s.seat_code),
+        passengers: passengers,
+        contactEmail: contactEmail.trim(),
+        contactPhone: contactPhone.trim(),
+        isGuestCheckout: !user,
+      }
+
+      console.log('Creating booking with data:', bookingData)
+
+      // Call backend API
+      const response = await createBooking(bookingData)
+      console.log('Booking created successfully:', response.data)
+
+      // Store booking in sessionStorage for BookingReview
+      sessionStorage.setItem('pendingBooking', JSON.stringify(response.data))
+
+      // Navigate to review page with bookingId
+      navigate(`/booking/${response.data.booking_id}/review`)
+
+      // Call optional onSubmit callback if provided
+      if (onSubmit) {
+        onSubmit({ contactEmail, contactPhone, passengers })
+      }
+    } catch (err) {
+      console.error('Error creating booking:', err)
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'Failed to create booking. Please try again.'
+      setError(errorMessage)
+    } finally {
       setIsSubmitting(false)
-      return
     }
-    if (onSubmit) {
-      onSubmit({ contactEmail, contactPhone, passengers })
-    }
-    setIsSubmitting(false)
   }
 
   return (
@@ -89,7 +155,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
           <div className="flex items-center gap-2 mb-2">
             <UserCheck className="w-7 h-7 text-primary" />
             <CardTitle className="text-3xl font-bold text-center text-foreground">
-              Guest Checkout
+              {user ? 'Passenger Information' : 'Guest Checkout'}
             </CardTitle>
           </div>
         </CardHeader>
@@ -102,12 +168,21 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                 onClick={onBack}
                 variant="outline"
                 className="gap-2 px-4 py-2 rounded-full shadow-sm border-primary text-primary hover:bg-primary/10"
+                disabled={isSubmitting}
               >
                 <ChevronLeft className="w-4 h-4" />
                 Quay lại chọn ghế
               </Button>
             </div>
           )}
+
+          {/* Error message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+            </div>
+          )}
+
           <div className="mb-8">
             <Card className="border rounded-xl shadow-sm bg-white dark:bg-slate-800">
               <CardHeader className="p-4 pb-0">
@@ -148,11 +223,14 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                           }
                         }
                       }}
+                      readOnly={!!user}
+                      disabled={!!user}
                       className={
                         'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
                         (contactErrors.email
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input')
+                          : 'border-input') +
+                        (user ? ' bg-muted cursor-not-allowed' : '')
                       }
                       required
                     />
@@ -193,11 +271,14 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                           }
                         }
                       }}
+                      readOnly={!!user}
+                      disabled={!!user}
                       className={
                         'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
                         (contactErrors.phone
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input')
+                          : 'border-input') +
+                        (user ? ' bg-muted cursor-not-allowed' : '')
                       }
                       required
                     />
@@ -221,10 +302,10 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || passengers.length === 0}
               className="bg-primary hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-md dark:shadow-blue-500/20 text-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Processing...' : 'Continue to Summary'}
+              {isSubmitting ? 'Creating Booking...' : 'Continue to Summary'}
             </button>
           </div>
         </CardContent>
