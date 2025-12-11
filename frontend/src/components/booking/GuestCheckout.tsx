@@ -223,14 +223,11 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                           }
                         }
                       }}
-                      readOnly={!!user}
-                      disabled={!!user}
                       className={
                         'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
                         (contactErrors.email
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input') +
-                        (user ? ' bg-muted cursor-not-allowed' : '')
+                          : 'border-input')
                       }
                       required
                     />
@@ -271,14 +268,11 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                           }
                         }
                       }}
-                      readOnly={!!user}
-                      disabled={!!user}
                       className={
                         'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
                         (contactErrors.phone
                           ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input') +
-                        (user ? ' bg-muted cursor-not-allowed' : '')
+                          : 'border-input')
                       }
                       required
                     />
