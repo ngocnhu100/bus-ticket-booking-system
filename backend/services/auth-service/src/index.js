@@ -24,7 +24,7 @@ app.get('/health', (req, res) => {
     service: 'auth-service',
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
   });
 });
 
@@ -42,6 +42,20 @@ app.post('/request-otp', authController.requestOTP);
 app.post('/verify-otp', authController.verifyOTP);
 app.post('/logout', authenticate, authController.logout);
 app.post('/change-password', authenticate, authController.changePassword);
+app.get('/me', authenticate, async (req, res, next) => {
+  try {
+    await authController.getProfile(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+app.put('/me', authenticate, async (req, res, next) => {
+  try {
+    await authController.updateProfile(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
 
 // POST /auth/verify - Để verify token và lấy thông tin user
 app.post('/auth/verify', (req, res) => {
@@ -50,7 +64,7 @@ app.post('/auth/verify', (req, res) => {
     return res.status(400).json({
       success: false,
       error: { code: 'VAL_001', message: 'Token is required' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -59,13 +73,13 @@ app.post('/auth/verify', (req, res) => {
     return res.status(401).json({
       success: false,
       error: { code: 'AUTH_002', message: 'Token expired or invalid' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
   res.json({
     success: true,
-    user: decoded
+    user: decoded,
   });
 });
 
@@ -76,7 +90,7 @@ app.post('/auth/blacklist-check', async (req, res) => {
     return res.status(400).json({
       success: false,
       error: { code: 'VAL_001', message: 'Token is required' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -84,12 +98,12 @@ app.post('/auth/blacklist-check', async (req, res) => {
   res.json({ isBlacklisted });
 });
 // Error handling
-app.use((err, req, res) => {
+app.use((err, req, res, next) => {
   console.error('⚠️', err.stack);
   res.status(500).json({
     success: false,
     error: { code: 'SYS_001', message: 'Internal server error' },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -98,7 +112,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     error: { code: 'NOT_FOUND', message: 'Endpoint not found' },
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 

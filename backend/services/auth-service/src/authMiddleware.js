@@ -6,7 +6,7 @@ const authenticate = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       error: { code: 'AUTH_001', message: 'Authorization header missing or invalid' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -16,7 +16,7 @@ const authenticate = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       error: { code: 'AUTH_002', message: 'Token expired or invalid' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -26,7 +26,7 @@ const authenticate = async (req, res, next) => {
     return res.status(401).json({
       success: false,
       error: { code: 'AUTH_004', message: 'Token has been revoked' },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -40,7 +40,7 @@ const authorize = (roles) => {
       return res.status(403).json({
         success: false,
         error: { code: 'AUTH_003', message: 'Insufficient permissions' },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
     next();

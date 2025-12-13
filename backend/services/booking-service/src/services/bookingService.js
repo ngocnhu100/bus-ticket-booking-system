@@ -350,8 +350,8 @@ class BookingService {
     // Clear expiration from Redis
     await redisClient.del(`booking:expiration:${bookingId}`);
 
-    // Send confirmation notification
-    await this.sendBookingConfirmation(updatedBooking);
+    // Send comprehensive booking confirmation email with user preferences check
+    await this.sendBookingConfirmationEmail(updatedBooking, paymentData);
 
     return updatedBooking;
   }
@@ -567,6 +567,112 @@ class BookingService {
         console.error('Trip Service response:', error.response.status, error.response.data);
       }
       return null;
+    }
+  }
+
+  /**
+   * Send comprehensive booking confirmation email with all details
+   * @param {object} booking - Booking object with payment info
+   * @param {object} paymentData - Payment data
+   */
+  async sendBookingConfirmationEmail(booking, paymentData) {
+    try {
+      // 1. Get full booking details including trip info
+      const tripDetails = await this.getTripById(booking.trip_id);
+      if (!tripDetails) {
+        console.warn('Trip details not found for booking confirmation email');
+        return;
+      }
+
+      // 2. Get passengers
+      const passengers = await passengerRepository.findByBookingId(booking.booking_id);
+
+      // 3. Get user preferences (if logged-in user, otherwise use defaults)
+      let shouldSendEmail = true;
+      if (booking.user_id) {
+        try {
+          const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+          const userResponse = await axios.get(`${authServiceUrl}/users/${booking.user_id}`);
+          const userPreferences = userResponse.data?.data?.preferences;
+
+          if (userPreferences && userPreferences.notifications) {
+            shouldSendEmail = userPreferences.notifications.bookingConfirmations?.email !== false;
+          }
+        } catch (error) {
+          console.warn(
+            'Could not fetch user preferences, sending email by default:',
+            error.message
+          );
+        }
+      }
+
+      if (!shouldSendEmail) {
+        console.log(
+          `📧 Email skipped - user has disabled booking confirmation emails for booking ${booking.booking_reference}`
+        );
+        return;
+      }
+
+      // 4. Prepare comprehensive booking data
+      const bookingConfirmationData = {
+        bookingReference: booking.booking_reference,
+        customerName: passengers[0]?.passenger_name || 'Valued Customer',
+        customerEmail: booking.contact_email,
+        customerPhone: booking.contact_phone,
+        tripDetails: {
+          origin: tripDetails.route?.origin || 'Unknown',
+          destination: tripDetails.route?.destination || 'Unknown',
+          departureTime: tripDetails.schedule?.departureTime,
+          arrivalTime: tripDetails.schedule?.arrivalTime,
+          operatorName: tripDetails.operator?.name || 'Bus Operator',
+          busModel: tripDetails.bus?.model || 'Bus',
+          pickupPoint: tripDetails.pickupPoints?.[0]?.name || 'TBD',
+          dropoffPoint: tripDetails.dropoffPoints?.[0]?.name || 'TBD',
+        },
+        passengers: passengers.map((p) => ({
+          fullName: p.passenger_name,
+          documentId: p.document_id,
+          seatCode: p.seat_code,
+          seatPrice: tripDetails.pricing?.basePrice || 0,
+        })),
+        pricing: {
+          basePrice: tripDetails.pricing?.basePrice || 0,
+          subtotal: booking.subtotal,
+          serviceFee: booking.service_fee,
+          total: booking.total_price,
+          paymentMethod: paymentData?.paymentMethod || 'Unknown',
+        },
+        eTicketUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings/${booking.booking_reference}/ticket`,
+        qrCodeUrl: `${process.env.API_URL || 'http://localhost:3000'}/api/bookings/${booking.booking_reference}/qr`,
+        bookingDetailsUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/bookings/${booking.booking_reference}`,
+        cancellationPolicy:
+          tripDetails.policies?.cancellationPolicy || 'Please check with operator',
+        operatorContact: {
+          phone: tripDetails.operator?.phone || '+84-XXX-XXXX',
+          email: tripDetails.operator?.email || 'operator@example.com',
+          website: tripDetails.operator?.website || 'www.operator.com',
+        },
+      };
+
+      // 5. Send email through notification service
+      const notificationServiceUrl =
+        process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+      const response = await axios.post(`${notificationServiceUrl}/send-booking-confirmation`, {
+        email: booking.contact_email,
+        bookingData: bookingConfirmationData,
+      });
+
+      if (response.data?.success) {
+        console.log(
+          `✅ Booking confirmation email sent to ${booking.contact_email} for ${booking.booking_reference}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `❌ Error sending booking confirmation email for ${booking.booking_reference}:`,
+        error.message
+      );
+      // Don't fail booking confirmation if email sending fails
     }
   }
 

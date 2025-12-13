@@ -1,5 +1,6 @@
 const sgMail = require('@sendgrid/mail');
 const { generateTicketEmailTemplate } = require('../templates/ticketEmailTemplate');
+const { generateBookingConfirmationTemplate } = require('../templates/bookingConfirmationTemplate');
 
 // Only set API key if it's provided
 if (process.env.SENDGRID_API_KEY) {
@@ -9,7 +10,9 @@ if (process.env.SENDGRID_API_KEY) {
   if (isProduction) {
     throw new Error('SendGrid API key is required in production but not configured.');
   } else {
-    console.warn('⚠️  SendGrid API key not set. Email sending will be disabled in development mode.');
+    console.warn(
+      '⚠️  SendGrid API key not set. Email sending will be disabled in development mode.'
+    );
   }
 }
 
@@ -65,7 +68,9 @@ class EmailService {
 
     // Check if SendGrid is configured
     if (!process.env.SENDGRID_API_KEY) {
-      console.log(`📧 [DEV MODE] Password reset email would be sent to ${email} with token ${token}`);
+      console.log(
+        `📧 [DEV MODE] Password reset email would be sent to ${email} with token ${token}`
+      );
       console.log(`📧 [DEV MODE] Reset URL: ${resetUrl}`);
       return { success: true, mode: 'development' };
     }
@@ -145,7 +150,9 @@ class EmailService {
   async sendPasswordChangedEmail(email, userName) {
     // Check if SendGrid is configured
     if (!process.env.SENDGRID_API_KEY) {
-      console.log(`📧 [DEV MODE] Password changed email would be sent to ${email} for user ${userName}`);
+      console.log(
+        `📧 [DEV MODE] Password changed email would be sent to ${email} for user ${userName}`
+      );
       return { success: true, mode: 'development' };
     }
 
@@ -183,10 +190,55 @@ class EmailService {
     }
   }
 
+  async sendBookingConfirmationEmail(email, bookingData) {
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(`📧 [DEV MODE] Booking confirmation email would be sent to ${email}`);
+      console.log(`📧 [DEV MODE] Booking Reference: ${bookingData.bookingReference}`);
+      return { success: true, mode: 'development' };
+    }
+
+    try {
+      const htmlContent = generateBookingConfirmationTemplate({
+        bookingReference: bookingData.bookingReference,
+        customerName: bookingData.customerName,
+        customerEmail: bookingData.customerEmail,
+        customerPhone: bookingData.customerPhone,
+        tripDetails: bookingData.tripDetails,
+        passengers: bookingData.passengers,
+        pricing: bookingData.pricing,
+        eTicketUrl: bookingData.eTicketUrl,
+        qrCodeUrl: bookingData.qrCodeUrl,
+        bookingDetailsUrl: bookingData.bookingDetailsUrl,
+        cancellationPolicy: bookingData.cancellationPolicy,
+        operatorContact: bookingData.operatorContact,
+      });
+
+      const msg = {
+        to: email,
+        from: DEFAULT_EMAIL_FROM,
+        subject: `✓ Booking Confirmation - ${bookingData.bookingReference}`,
+        html: htmlContent,
+      };
+
+      await sgMail.send(msg);
+      console.log(
+        `📧 Booking confirmation email sent to ${email} for ${bookingData.bookingReference}`
+      );
+      return { success: true, sent: true };
+    } catch (error) {
+      console.error('⚠️ Error sending booking confirmation email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send booking confirmation email');
+    }
+  }
+
   async sendTicketEmail(email, bookingData, ticketUrl, qrCode) {
     // Check if SendGrid is configured
     if (!process.env.SENDGRID_API_KEY) {
-      console.log(`📧 [DEV MODE] Ticket email would be sent to ${email} for booking ${bookingData.reference}`);
+      console.log(
+        `📧 [DEV MODE] Ticket email would be sent to ${email} for booking ${bookingData.reference}`
+      );
       console.log(`📧 [DEV MODE] Ticket URL: ${ticketUrl}`);
       return { success: true, mode: 'development' };
     }
@@ -201,14 +253,14 @@ class EmailService {
       contactEmail: bookingData.contactEmail,
       contactPhone: bookingData.contactPhone,
       ticketUrl,
-      qrCode
+      qrCode,
     });
 
     const msg = {
       to: email,
       from: DEFAULT_EMAIL_FROM,
       subject: `Your Bus Ticket - ${bookingData.reference}`,
-      html: htmlContent
+      html: htmlContent,
     };
 
     try {

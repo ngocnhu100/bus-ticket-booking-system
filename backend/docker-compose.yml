@@ -106,6 +106,11 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3003
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bus_ticket_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-default-sendgrid-api-key}
       - EMAIL_FROM=${EMAIL_FROM:-default@email.com}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
