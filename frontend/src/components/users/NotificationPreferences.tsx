@@ -211,9 +211,9 @@ export const NotificationPreferences = () => {
           <p className="text-sm text-muted-foreground mt-1">
             Receive confirmation when your booking is complete
           </p>
-          <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900 rounded-md">
-            <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-            <span className="text-xs text-yellow-600 dark:text-yellow-400">
+          <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md">
+            <AlertCircle className="w-4 h-4 text-yellow-700 dark:text-yellow-300" />
+            <span className="text-xs text-yellow-700 dark:text-yellow-300">
               Critical notification - cannot be disabled
             </span>
           </div>
@@ -221,9 +221,9 @@ export const NotificationPreferences = () => {
 
         <div className="space-y-3">
           {/* Booking Confirmation Email */}
-          <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
             <div className="flex-1">
-              <p className="font-medium">Email</p>
+              <p className="font-medium text-foreground">Email</p>
               <p className="text-sm text-muted-foreground">
                 Booking reference and e-ticket
               </p>
@@ -237,14 +237,14 @@ export const NotificationPreferences = () => {
                 disabled={true}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:ring-1 peer-checked:ring-primary" />
             </label>
           </div>
 
           {/* Booking Confirmation SMS */}
-          <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
             <div className="flex-1">
-              <p className="font-medium flex items-center gap-2">
+              <p className="font-medium flex items-center gap-2 text-foreground">
                 <MessageSquare className="w-4 h-4" />
                 SMS
               </p>
@@ -261,7 +261,7 @@ export const NotificationPreferences = () => {
                 disabled={true}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:ring-1 peer-checked:ring-primary" />
             </label>
           </div>
         </div>
@@ -281,9 +281,9 @@ export const NotificationPreferences = () => {
 
         <div className="space-y-3">
           {/* Trip Reminder Email */}
-          <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
             <div className="flex-1">
-              <p className="font-medium">Email Reminders</p>
+              <p className="font-medium text-foreground">Email Reminders</p>
               <p className="text-sm text-muted-foreground">
                 Trip details and boarding information
               </p>
@@ -296,14 +296,14 @@ export const NotificationPreferences = () => {
                 disabled={saving}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:ring-1 peer-checked:ring-primary disabled:opacity-50 disabled:cursor-not-allowed" />
             </label>
           </div>
 
           {/* Trip Reminder SMS */}
-          <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
             <div className="flex-1">
-              <p className="font-medium flex items-center gap-2">
+              <p className="font-medium flex items-center gap-2 text-foreground">
                 <MessageSquare className="w-4 h-4" />
                 SMS Reminders
               </p>
@@ -319,7 +319,7 @@ export const NotificationPreferences = () => {
                 disabled={saving}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:ring-1 peer-checked:ring-primary disabled:opacity-50 disabled:cursor-not-allowed" />
             </label>
           </div>
         </div>
@@ -339,9 +339,9 @@ export const NotificationPreferences = () => {
 
         <div className="space-y-3">
           {/* Trip Update Email */}
-          <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
             <div className="flex-1">
-              <p className="font-medium">Email Updates</p>
+              <p className="font-medium text-foreground">Email Updates</p>
               <p className="text-sm text-muted-foreground">
                 Detailed information about changes
               </p>
@@ -354,14 +354,14 @@ export const NotificationPreferences = () => {
                 disabled={saving}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-checked:ring-1 peer-checked:ring-primary disabled:opacity-50 disabled:cursor-not-allowed" />
             </label>
           </div>
 
           {/* Trip Update SMS */}
-          <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+          <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
             <div className="flex-1">
-              <p className="font-medium flex items-center gap-2">
+              <p className="font-medium flex items-center gap-2 text-foreground">
                 <MessageSquare className="w-4 h-4" />
                 SMS Updates
               </p>
@@ -377,7 +377,7 @@ export const NotificationPreferences = () => {
                 disabled={saving}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
+              <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
             </label>
           </div>
         </div>
@@ -392,9 +392,9 @@ export const NotificationPreferences = () => {
           </p>
         </div>
 
-        <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-lg border border-border">
+        <div className="flex items-center justify-between p-4 bg-secondary/30 dark:bg-secondary/50 rounded-lg border border-border dark:border-border/70">
           <div className="flex-1">
-            <p className="font-medium">Marketing Emails</p>
+            <p className="font-medium text-foreground">Marketing Emails</p>
             <p className="text-sm text-muted-foreground">
               Occasional emails about promotions and updates
             </p>
@@ -407,7 +407,7 @@ export const NotificationPreferences = () => {
               disabled={saving}
               className="sr-only peer"
             />
-            <div className="w-11 h-6 bg-secondary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
+            <div className="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary peer-focus:ring-offset-2 dark:peer-focus:ring-offset-background rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white dark:after:bg-gray-200 after:border-gray-300 dark:after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary disabled:opacity-50 disabled:cursor-not-allowed" />
           </label>
         </div>
       </Card>

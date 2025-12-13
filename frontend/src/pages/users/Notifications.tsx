@@ -14,30 +14,32 @@ import '@/styles/admin.css'
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'read':
-      return <CheckCircle className="w-5 h-5 text-green-600" />
+      return (
+        <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400" />
+      )
     case 'sent':
-      return <Clock className="w-5 h-5 text-blue-600" />
+      return <Clock className="w-5 h-5 text-blue-500 dark:text-blue-400" />
     case 'failed':
-      return <AlertCircle className="w-5 h-5 text-red-600" />
+      return <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400" />
     default:
-      return <Info className="w-5 h-5 text-gray-600" />
+      return <Info className="w-5 h-5 text-gray-600 dark:text-gray-400" />
   }
 }
 
 const getTypeColor = (type: string) => {
   switch (type) {
     case 'booking':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
     case 'trip':
-      return 'bg-purple-100 text-purple-800'
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
     case 'update':
-      return 'bg-orange-100 text-orange-800'
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300'
     case 'promo':
-      return 'bg-green-100 text-green-800'
+      return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
     case 'system':
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-200'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-200'
   }
 }
 
@@ -218,12 +220,12 @@ const Notifications = () => {
                             >
                               {notification.type}
                             </span>
-                            <span className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full capitalize">
+                            <span className="text-xs bg-gray-100 text-gray-800 dark:bg-gray-800/60 dark:text-gray-200 px-2 py-1 rounded-full capitalize">
                               {notification.channel}
                             </span>
                           </div>
                           {notification.status === 'failed' && (
-                            <span className="text-xs text-red-600 font-medium">
+                            <span className="text-xs text-red-600 dark:text-red-400 font-medium">
                               Failed to Send
                             </span>
                           )}
@@ -255,7 +257,7 @@ const Notifications = () => {
             )}
 
             {!loading && notifications.length === 0 && (
-              <Card className="p-8 text-center bg-secondary/30 border-2 border-dashed">
+              <Card className="p-8 text-center bg-secondary/30 dark:bg-secondary/20 border-2 border-dashed">
                 <Info className="w-12 h-12 text-primary mx-auto mb-3" />
                 <p className="text-foreground font-semibold mb-2">
                   No notifications yet

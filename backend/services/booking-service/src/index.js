@@ -7,6 +7,7 @@ require('dotenv').config();
 const bookingController = require('./controllers/bookingController');
 const { authenticate, authorize, optionalAuthenticate } = require('./middleware/authMiddleware');
 const bookingExpirationJob = require('./jobs/bookingExpirationJob');
+const tripReminderJob = require('./jobs/tripReminderJob');
 
 const app = express();
 const PORT = process.env.PORT || 3004;
@@ -76,8 +77,9 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
 
-    // Start booking expiration job
+    // Start background jobs
     bookingExpirationJob.start();
+    tripReminderJob.start();
   });
 }
 
@@ -85,12 +87,14 @@ if (process.env.NODE_ENV !== 'test') {
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
   bookingExpirationJob.stop();
+  tripReminderJob.stop();
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT signal received: closing HTTP server');
   bookingExpirationJob.stop();
+  tripReminderJob.stop();
   process.exit(0);
 });
 

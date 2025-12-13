@@ -667,6 +667,42 @@ class BookingService {
           `✅ Booking confirmation email sent to ${booking.contact_email} for ${booking.booking_reference}`
         );
       }
+
+      // 6. Send SMS confirmation if phone number is provided
+      if (booking.contact_phone) {
+        try {
+          const smsBookingData = {
+            bookingReference: booking.booking_reference,
+            tripName: `${tripDetails.route?.origin || 'Origin'} to ${tripDetails.route?.destination || 'Destination'}`,
+            departureTime: tripDetails.schedule?.departureTime || 'TBD',
+            fromLocation: tripDetails.route?.origin || 'Origin',
+            toLocation: tripDetails.route?.destination || 'Destination',
+            seats: passengers.map((p) => p.seat_code),
+            totalPrice: booking.total_price,
+            currency: booking.currency || 'VND',
+          };
+
+          const smsResponse = await axios.post(
+            `${notificationServiceUrl}/send-sms-booking-confirmation`,
+            {
+              phoneNumber: booking.contact_phone,
+              bookingData: smsBookingData,
+            }
+          );
+
+          if (smsResponse.data?.success) {
+            console.log(
+              `📱 Booking confirmation SMS sent to ${booking.contact_phone} for ${booking.booking_reference}`
+            );
+          }
+        } catch (smsError) {
+          console.error(
+            `❌ Error sending booking confirmation SMS for ${booking.booking_reference}:`,
+            smsError.message
+          );
+          // Don't fail booking confirmation if SMS sending fails
+        }
+      }
     } catch (error) {
       console.error(
         `❌ Error sending booking confirmation email for ${booking.booking_reference}:`,

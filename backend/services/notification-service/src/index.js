@@ -7,6 +7,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const emailService = require('./services/emailService');
+const smsService = require('./services/smsService');
 const notificationsController = require('./notificationsController');
 
 const app = express();
@@ -235,6 +236,189 @@ app.use((err, req, res, next) => {
     error: { code: 'SYS_001', message: 'Internal server error' },
     timestamp: new Date().toISOString(),
   });
+});
+
+// SMS Routes
+app.post('/send-sms-booking-confirmation', async (req, res) => {
+  try {
+    const { phoneNumber, bookingData } = req.body;
+
+    if (!phoneNumber || !bookingData) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VAL_001', message: 'Phone number and bookingData are required' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const result = await smsService.sendBookingConfirmation(phoneNumber, bookingData);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Booking confirmation SMS sent successfully',
+        sid: result.sid,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SMS_001',
+          message: result.error || 'Failed to send booking confirmation SMS',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error('Error sending booking confirmation SMS:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SMS_001',
+        message: error.message || 'Failed to send booking confirmation SMS',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/send-sms-trip-reminder', async (req, res) => {
+  try {
+    const { phoneNumber, tripData, hoursUntilDeparture } = req.body;
+
+    if (!phoneNumber || !tripData || hoursUntilDeparture === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VAL_001',
+          message: 'Phone number, tripData, and hoursUntilDeparture are required',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const result = await smsService.sendTripReminder(phoneNumber, tripData, hoursUntilDeparture);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Trip reminder SMS sent successfully',
+        sid: result.sid,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SMS_002',
+          message: result.error || 'Failed to send trip reminder SMS',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error('Error sending trip reminder SMS:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SMS_002',
+        message: error.message || 'Failed to send trip reminder SMS',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/send-sms-booking-cancellation', async (req, res) => {
+  try {
+    const { phoneNumber, bookingData } = req.body;
+
+    if (!phoneNumber || !bookingData) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VAL_001', message: 'Phone number and bookingData are required' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const result = await smsService.sendBookingCancellation(phoneNumber, bookingData);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Booking cancellation SMS sent successfully',
+        sid: result.sid,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SMS_003',
+          message: result.error || 'Failed to send booking cancellation SMS',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error('Error sending booking cancellation SMS:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SMS_003',
+        message: error.message || 'Failed to send booking cancellation SMS',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/send-sms-payment-reminder', async (req, res) => {
+  try {
+    const { phoneNumber, bookingData, minutesLeft } = req.body;
+
+    if (!phoneNumber || !bookingData || minutesLeft === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VAL_001',
+          message: 'Phone number, bookingData, and minutesLeft are required',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const result = await smsService.sendPaymentReminder(phoneNumber, bookingData, minutesLeft);
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Payment reminder SMS sent successfully',
+        sid: result.sid,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SMS_004',
+          message: result.error || 'Failed to send payment reminder SMS',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error('Error sending payment reminder SMS:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SMS_004',
+        message: error.message || 'Failed to send payment reminder SMS',
+      },
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // 404 handler
