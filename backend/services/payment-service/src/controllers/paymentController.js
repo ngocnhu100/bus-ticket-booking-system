@@ -1,54 +1,50 @@
-// Payment controller for PayOS integration
+// controllers/paymentController.js
 const payosService = require('../services/payosService');
+const { verifyPayOSSignature } = require('../utils/webhookVerifier');
 
-// POST /payments
 async function createPayment(req, res) {
   try {
-    const { amount, currency, description, returnUrl, cancelUrl, metadata } = req.body;
-    // Validate input (no card data allowed)
-    if (!amount || !currency || !description || !returnUrl || !cancelUrl) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    const payment = await payosService.createPayment({
-      amount,
-      currency,
-      description,
-      returnUrl,
-      cancelUrl,
-      metadata,
-    });
-    res.status(201).json(payment);
+    const body = req.body;
+    const result = await payosService.createPayment(body);
+    res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ message: 'Create payment failed', error: err.message });
   }
+}
+
+function paymentWebhook(req, res) {
+  const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
+  if (!checksumKey) {
+    console.error('PAYOS_CHECKSUM_KEY is not set in environment variables');
+    return res.status(500).json({ message: 'Server misconfiguration: missing PAYOS_CHECKSUM_KEY' });
+  }
+  // Log chi tiết request để debug signature
+  let signature = req.headers['x-payos-signature'];
+  if (!signature && req.body && req.body.signature) {
+    signature = req.body.signature;
+  }
+  // Hash raw body đúng chuẩn PayOS
+  const payload = req.rawBody || JSON.stringify(req.body);
+  const crypto = require('crypto');
+  const expected = crypto.createHmac('sha256', checksumKey).update(payload).digest('hex');
+  console.log('--- PAYOS WEBHOOK DEBUG ---');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  console.log('ChecksumKey:', checksumKey);
+  console.log('Signature from PayOS:', signature);
+  console.log('Expected signature:', expected);
+  console.log('Payload for hash (raw body):', payload);
+  if (!signature || signature !== expected) {
+    console.error('Invalid signature!');
+    return res.status(401).json({ message: 'Invalid payload' });
+  }
+  // TODO: xử lý dữ liệu hợp lệ, ví dụ cập nhật trạng thái payment
+  console.log('Webhook valid:', req.body);
+  res.status(200).json({ message: 'Webhook received' });
 }
 
 module.exports = {
   createPayment,
-  async webhook(req, res) {
-    const { verifyPayOSSignature } = require('../utils/webhookVerifier');
-    const paymentStatusService = require('../services/paymentStatusService');
-    const PAYOS_WEBHOOK_SECRET = process.env.PAYOS_WEBHOOK_SECRET || 'sandbox_secret';
-    if (!verifyPayOSSignature(req, PAYOS_WEBHOOK_SECRET)) {
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-    const { paymentId, status, gatewayRef } = req.body;
-    if (!paymentId || !status) {
-      return res.status(400).json({ error: 'Missing paymentId or status' });
-    }
-    // Idempotency: check if already processed
-    const existing = paymentStatusService.getPayment(paymentId);
-    if (existing && existing.status === status) {
-      return res.status(200).json({ message: 'Already processed' });
-    }
-    // Update status
-    paymentStatusService.updatePaymentStatus(paymentId, status, gatewayRef);
-    // Notify booking-service (stub)
-    if (status === 'completed') {
-      // TODO: call booking-service API
-    }
-    // Notify notification-service (stub)
-    // TODO: call notification-service API
-    return res.status(200).json({ message: 'Webhook processed' });
-  },
+  paymentWebhook,
 };
