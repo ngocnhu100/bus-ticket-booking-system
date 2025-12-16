@@ -350,7 +350,8 @@ class BookingController {
         });
       }
 
-      const booking = await bookingService.confirmPayment(id, value);
+      const userId = req.user?.userId || req.user?.user_id || null;
+      const booking = await bookingService.confirmPayment(id, value, userId);
 
       return res.json({
         success: true,

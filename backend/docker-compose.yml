@@ -114,6 +114,7 @@ services:
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-default-sendgrid-api-key}
       - EMAIL_FROM=${EMAIL_FROM:-default@email.com}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - API_URL=http://api-gateway:3000
     networks:
       - bus-ticket-network
     volumes:
@@ -142,6 +143,7 @@ services:
       - BOOKING_LOCK_DURATION_MINUTES=10
       - SERVICE_FEE_PERCENTAGE=3
       - SERVICE_FEE_FIXED=10000
+      - API_URL=http://api-gateway:3000
     depends_on:
       postgres:
         condition: service_healthy

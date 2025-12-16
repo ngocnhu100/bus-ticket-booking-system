@@ -337,6 +337,31 @@ class BookingRepository {
   }
 
   /**
+   * Assign a user_id to a booking if currently null
+   * @param {string} bookingId
+   * @param {string} userId
+   * @returns {Promise<object|null>} Updated booking
+   */
+  async updateUserId(bookingId, userId) {
+    const sanitizedUserId = sanitizeUUID(userId);
+    if (!sanitizedUserId) {
+      console.warn('[BookingRepository] updateUserId called with invalid userId:', userId);
+      return null;
+    }
+
+    const query = `
+      UPDATE bookings
+      SET user_id = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE booking_id = $2 AND (user_id IS NULL OR user_id = '')
+      RETURNING *
+    `;
+
+    const result = await db.query(query, [sanitizedUserId, bookingId]);
+    if (result.rows.length === 0) return null;
+    return mapToBooking(result.rows[0]);
+  }
+
+  /**
    * Cancel booking
    * @param {string} bookingId - Booking UUID
    * @param {object} cancellationData - Cancellation data

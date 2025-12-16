@@ -21,8 +21,8 @@ const generateBookingConfirmationTemplate = (bookingData) => {
 
   // Format currency
   const formatCurrency = (amount) => {
-    if (!amount || isNaN(amount)) return '0 đ';
-    return Math.round(amount).toLocaleString() + ' đ';
+    if (!amount || isNaN(amount)) return '0 VND';
+    return Math.round(amount).toLocaleString() + ' VND';
   };
 
   // Format date/time
@@ -59,13 +59,26 @@ const generateBookingConfirmationTemplate = (bookingData) => {
     )
     .join('');
 
+  // Build a booking lookup URL that pre-fills the lookup form and triggers auto-search
+  const bookingLookupBase = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(
+    /\/$/,
+    ''
+  );
+  const bookingLookupUrl = `${bookingLookupBase}/booking-lookup?bookingReference=${encodeURIComponent(
+    bookingReference
+  )}&email=${encodeURIComponent(customerEmail || '')}&phone=${encodeURIComponent(
+    customerPhone || ''
+  )}&autoSearch=1`;
+
+  const viewDetailsUrl = bookingDetailsUrl || bookingLookupUrl;
+
   return `
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Nhận Đặt Vé - ${bookingReference}</title>
+    <title>${bookingReference}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -227,12 +240,14 @@ const generateBookingConfirmationTemplate = (bookingData) => {
         }
         .cta-buttons {
             display: flex;
-            gap: 10px;
+            gap: 16px;
             margin: 30px 0;
             flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
         }
         .btn {
-            flex: 1;
+            flex: none;
             min-width: 200px;
             padding: 14px 24px;
             text-align: center;
@@ -243,11 +258,16 @@ const generateBookingConfirmationTemplate = (bookingData) => {
             transition: background-color 0.3s;
         }
         .btn-primary {
-            background-color: #667eea;
-            color: white;
+            background-color: #2563eb;
+            color: #ffffff;
+            transition: all 0.15s ease-in-out;
         }
         .btn-primary:hover {
-            background-color: #5568d3;
+            background-color: #1e40af !important;
+            cursor: pointer;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(30,64,175,0.15);
+            text-decoration: none;
         }
         .btn-secondary {
             background-color: #e0e0e0;
@@ -340,7 +360,7 @@ const generateBookingConfirmationTemplate = (bookingData) => {
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>✓ Booking Confirmed</h1>
+            <h1>Booking Confirmed</h1>
             <div class="booking-ref">${bookingReference}</div>
         </div>
 
@@ -354,7 +374,7 @@ const generateBookingConfirmationTemplate = (bookingData) => {
 
             <!-- Success Badge -->
             <div class="success-badge">
-                ✓ Payment Confirmed - Your ticket is reserved
+                Payment Confirmed - Your ticket is reserved
             </div>
 
             <!-- Trip Details Section -->
@@ -434,17 +454,27 @@ const generateBookingConfirmationTemplate = (bookingData) => {
             <div class="section-title">Payment Information</div>
             <div class="info-row">
                 <div class="info-label">Status:</div>
-                <div class="info-value" style="color: #28a745; font-weight: bold;">✓ Payment Confirmed</div>
+                <div class="info-value" style="color: #28a745; font-weight: bold;">Payment Confirmed</div>
             </div>
             <div class="info-row">
                 <div class="info-label">Transaction ID:</div>
                 <div class="info-value">${bookingReference}</div>
             </div>
 
-            <!-- CTA Buttons -->
+            <!-- CTA Buttons (table layout for consistent spacing in email clients) -->
             <div class="cta-buttons">
-                <a href="${eTicketUrl}" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" fill="white"/></svg>Download E-Ticket</a>
-                <a href="${bookingDetailsUrl}" class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#333"/></svg>View Details</a>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto;">
+                    <tr>
+                        <td style="padding-right:16px; vertical-align: middle;">
+                            <a href="${eTicketUrl}" class="btn btn-primary" style="display:inline-block; text-decoration: none; padding: 14px 24px; border-radius: 4px; font-weight: bold; font-size: 14px;">
+                                <span style="color: #ffffff;">Download E-Ticket</span>
+                            </a>
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <a href="${viewDetailsUrl}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer" style="display:inline-block;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="#333"/></svg>View Booking</a>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <!-- QR Code -->
@@ -456,8 +486,7 @@ const generateBookingConfirmationTemplate = (bookingData) => {
             <!-- Cancellation Policy -->
             <div class="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;"><path d="M16 4h-2l-1-1h-4L8 4H6c-.55 0-1 .45-1 1s.45 1 1 1v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V6c.55 0 1-.45 1-1s-.45-1-1-1zM9 3h6l1 1H8l1-1zM6 6h12v12c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1V6z" fill="#667eea"/></svg> Cancellation Policy</div>
             <div class="policy-box">
-                <strong>Cancellation Terms:</strong><br>
-                ${cancellationPolicy || 'Please contact the bus operator for cancellation details'}
+                <strong>Cancellation Terms:</strong> ${cancellationPolicy}
                 <br><br>
                 <strong>Important:</strong> Please arrive at the station at least 30 minutes before departure. 
                 You can check trip status and contact the bus operator using the information below.
