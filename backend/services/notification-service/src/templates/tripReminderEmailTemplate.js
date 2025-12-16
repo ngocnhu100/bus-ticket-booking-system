@@ -526,10 +526,10 @@ async function generateTripReminderTemplate(data, hoursUntilDeparture) {
                     <tr>
                         ${
                           eTicketUrl
-                            ? `<td style="padding-right: 12px;"><a href="${eTicketUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 24px; text-align: center; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; background-color: #2563eb; color: #ffffff; transition: all 0.15s ease-in-out;">Download E-Ticket</a></td>`
+                            ? `<td style="padding-right: 12px;"><a href="${eTicketUrl}" class="btn btn-primary" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 24px; text-align: center; text-decoration: none;">Download E-Ticket</a></td>`
                             : ''
                         }
-                        <td><a href="${bookingLookupUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 24px; text-align: center; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 14px; background-color: #e0e0e0; color: #333;">View Booking Details</a></td>
+                        <td><a href="${bookingLookupUrl}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 24px; text-align: center; text-decoration: none;">View Booking Details</a></td>
                     </tr>
                 </table>
             </div>
