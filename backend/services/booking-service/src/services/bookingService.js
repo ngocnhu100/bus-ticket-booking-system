@@ -18,7 +18,8 @@ class BookingService {
    * @returns {Promise<object>} Created booking with passengers
    */
   async createBooking(bookingData, userId = null) {
-    const { tripId, seats, passengers, contactEmail, contactPhone } = bookingData;
+    const { tripId, seats, passengers, contactEmail, contactPhone, isGuestCheckout } = bookingData;
+    console.log('[BookingService] createBooking called with isGuestCheckout:', isGuestCheckout, '| userId:', userId);
 
     // 1. Validate trip exists and get pricing
     const trip = await this.getTripById(tripId);
@@ -82,7 +83,7 @@ class BookingService {
     );
 
     // 5. Create booking record
-    const booking = await bookingRepository.create({
+    const bookingPayload = {
       bookingReference,
       tripId,
       userId,
@@ -94,7 +95,11 @@ class BookingService {
       serviceFee: formatPrice(serviceFee),
       totalPrice: formatPrice(totalPrice),
       currency: 'VND',
-    });
+      isGuestCheckout: isGuestCheckout === true,
+    };
+    console.log('[BookingService] bookingRepository.create payload:', bookingPayload);
+    const booking = await bookingRepository.create(bookingPayload);
+    console.log('[BookingService] bookingRepository.create called with isGuestCheckout:', isGuestCheckout === true);
 
     // 6. Create passenger records with validated price
     const passengerRecords = passengers.map((p, index) => {
@@ -326,6 +331,10 @@ class BookingService {
    * @returns {Promise<object>} Updated booking
    */
   async confirmPayment(bookingId, paymentData) {
+      // DEBUG LOG: print all relevant info
+      console.log('[BookingService] confirmPayment called');
+      console.log('paymentData:', paymentData);
+      console.log('paymentData.paymentMethod:', paymentData.paymentMethod);
     const booking = await bookingRepository.findById(bookingId);
 
     if (!booking) {
@@ -340,20 +349,57 @@ class BookingService {
       throw new Error('Booking already paid');
     }
 
-    // Update payment status
-    const updatedBooking = await bookingRepository.updatePayment(bookingId, {
-      paymentStatus: 'paid',
-      paymentMethod: paymentData.paymentMethod,
-      paidAt: new Date(),
+    // Call payment-service to create PayOS payment
+    const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://localhost:3005';
+    let payosResponse;
+    try {
+      // Parse orderCode: lấy số từ booking_reference, fallback sang timestamp nếu không hợp lệ
+      let orderCode = null;
+      if (booking.booking_reference) {
+        // Lấy số cuối mã booking_reference, ví dụ BK20251215703 -> 20251215703
+        const match = booking.booking_reference.match(/(\d{6,})$/);
+        if (match) {
+          orderCode = parseInt(match[1], 10);
+        }
+      }
+      if (!orderCode) {
+        orderCode = Date.now(); // fallback: timestamp
+      }
+      payosResponse = await axios.post(
+        `${paymentServiceUrl}/api/payment`,
+        {
+          orderId: orderCode,
+          amount: booking.total_price || booking.pricing?.total || booking.totalPrice,
+          description: `Thanh toán vé xe khách - Mã đặt chỗ ${booking.booking_reference}`,
+          paymentMethod: paymentData.paymentMethod, // PATCH: forward paymentMethod
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 10000,
+        }
+      );
+    } catch (err) {
+      console.error('[BookingService] Error calling payment-service:', err.message, err.response?.data);
+      throw new Error('Failed to initiate payment with PayOS');
+    }
+
+    const { paymentUrl, qrCode } = payosResponse.data || {};
+
+    // Only update allowed fields, keep payment_status = 'unpaid'
+    await bookingRepository.updatePayment(bookingId, {
+      paymentMethod: paymentData.paymentMethod || 'payos',
+      paymentUrl,
+      qrCode,
     });
 
-    // Clear expiration from Redis
-    await redisClient.del(`booking:expiration:${bookingId}`);
+    // Do NOT mark as paid yet; wait for webhook
 
-    // Send confirmation notification
-    await this.sendBookingConfirmation(updatedBooking);
-
-    return updatedBooking;
+    // Return booking info + paymentUrl/qrCode for frontend
+    return {
+      ...booking,
+      paymentUrl,
+      qrCode,
+    };
   }
 
   /**

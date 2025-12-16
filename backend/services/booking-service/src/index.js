@@ -35,8 +35,11 @@ app.post('/:bookingReference/share', bookingController.shareTicket);
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);
 app.get('/:id', authenticate, bookingController.getById);
-app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
+app.post('/:id/confirm-payment', optionalAuthenticate, bookingController.confirmPayment);
 app.put('/:id/cancel', optionalAuthenticate, bookingController.cancel);
+
+// Internal idempotent confirm-payment endpoint for payment-service webhook
+app.post('/internal/:id/confirm-payment', bookingController.internalConfirmPayment);
 
 // Admin routes
 app.get('/admin/bookings', authenticate, authorize(['admin']), bookingController.getAllBookings);

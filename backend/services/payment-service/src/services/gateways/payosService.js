@@ -106,5 +106,5 @@ async function createPayment(body) {
   };
 }
 
-module.exports = { createPayment, generateSignature };
+module.exports = { createPayment };
 

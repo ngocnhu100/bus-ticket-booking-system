@@ -147,6 +147,26 @@ services:
     volumes:
       - ./services/booking-service:/app
       - /app/node_modules
+    ports:
+      - "3004:3004"
+
+      # Payment Service
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-payment-service
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      # ... các biến môi trường khác
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./services/payment-service:/app
+      - /app/node_modules
+    ports:
+      - "3005:3005"
 
   # API Gateway
   api-gateway:
@@ -195,3 +215,4 @@ volumes:
 networks:
   bus-ticket-network:
     driver: bridge
+    

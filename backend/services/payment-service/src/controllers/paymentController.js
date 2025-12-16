@@ -1,10 +1,35 @@
 // controllers/paymentController.js
-const payosService = require('../services/payosService');
+const payosService = require('../services/gateways/payosService');
+const momoService = require('../services/gateways/momoService');
 const { verifyPayOSSignature } = require('../utils/webhookVerifier');
 
 async function createPayment(req, res) {
   try {
     const body = req.body;
+    // DEBUG LOG: print all relevant info
+    console.log('[PaymentService] createPayment called');
+    console.log('req.body:', body);
+    console.log('paymentMethod:', body.paymentMethod);
+    console.log('headers:', req.headers);
+    if (body.paymentMethod === 'momo') {
+      // Tích hợp MoMo
+      const momoResult = await momoService.createMomoPayment({
+        amount: body.amount,
+        orderInfo: body.description || 'Thanh toán MoMo',
+        bookingId: body.bookingId,
+      });
+      if (momoResult && momoResult.payUrl) {
+        return res.json({
+          success: true,
+          paymentUrl: momoResult.payUrl,
+          qrCode: momoResult.qrCodeUrl || undefined,
+          ...momoResult,
+        });
+      } else {
+        return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', ...momoResult });
+      }
+    }
+    // Mặc định PayOS
     const result = await payosService.createPayment(body);
     res.json(result);
   } catch (err) {

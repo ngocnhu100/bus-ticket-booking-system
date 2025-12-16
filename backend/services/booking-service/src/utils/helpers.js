@@ -110,6 +110,7 @@ function mapToBooking(row) {
     contact_phone: row.contact_phone,
     status: row.status,
     locked_until: row.locked_until,
+    is_guest_checkout: row.is_guest_checkout === true || row.is_guest_checkout === 1,
     pricing: {
       subtotal: parseFloat(row.subtotal),
       service_fee: parseFloat(row.service_fee),

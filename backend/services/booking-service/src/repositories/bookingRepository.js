@@ -62,7 +62,8 @@ class BookingRepository {
       tripId: bookingData.tripId,
       userId: bookingData.userId,
       sanitizedUserId: sanitizeUUID(bookingData.userId),
-      contactEmail: bookingData.contactEmail
+      contactEmail: bookingData.contactEmail,
+      isGuestCheckout: bookingData.isGuestCheckout,
     });
     
     const query = `
@@ -78,13 +79,15 @@ class BookingRepository {
         service_fee,
         total_price,
         currency,
-        payment_status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        payment_status,
+        is_guest_checkout
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `;
-    
+
     const sanitizedUserId = sanitizeUUID(bookingData.userId);
-    
+
+    const isGuestFlag = bookingData.isGuestCheckout === true || bookingData.is_guest_checkout === true ? true : false;
     const values = [
       bookingData.bookingReference,
       bookingData.tripId,
@@ -97,11 +100,12 @@ class BookingRepository {
       bookingData.serviceFee,
       bookingData.totalPrice,
       bookingData.currency || 'VND',
-      'unpaid'
+      'unpaid',
+      isGuestFlag
     ];
-    
     console.log('[BookingRepository] SQL values:', values);
     console.log('[BookingRepository] user_id will be:', sanitizedUserId);
+    console.log('[BookingRepository] is_guest_checkout DB value:', isGuestFlag);
     
     const result = await db.query(query, values);
     const createdBooking = mapToBooking(result.rows[0]);
