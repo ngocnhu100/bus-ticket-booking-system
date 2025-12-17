@@ -91,6 +91,26 @@ class PassengerRepository {
   }
 
   /**
+   * Find a passenger by ticket ID
+   * @param {string} ticketId - Ticket UUID
+   * @returns {Promise<object|null>} Passenger or null if not found
+   */
+  async findByTicketId(ticketId) {
+    const query = `
+      SELECT * FROM booking_passengers 
+      WHERE ticket_id = $1
+    `;
+    
+    const result = await db.query(query, [ticketId]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return mapToPassenger(result.rows[0]);
+  }
+
+  /**
    * Delete passengers by booking ID
    * @param {string} bookingId - Booking UUID
    * @returns {Promise<boolean>} Success
@@ -119,9 +139,9 @@ class PassengerRepository {
     `;
     
     const values = [
-      passengerData.fullName,
+      passengerData.full_name || passengerData.fullName,
       passengerData.phone,
-      passengerData.documentId,
+      passengerData.document_id || passengerData.documentId,
       ticketId
     ];
     
@@ -131,6 +151,29 @@ class PassengerRepository {
       return null;
     }
     
+    return mapToPassenger(result.rows[0]);
+  }
+
+  /**
+   * Update passenger seat (for seat changes)
+   * @param {string} ticketId - Ticket UUID
+   * @param {string} newSeatCode - New seat code
+   * @returns {Promise<object|null>} Updated passenger
+   */
+  async updateSeat(ticketId, newSeatCode) {
+    const query = `
+      UPDATE booking_passengers
+      SET seat_code = $1
+      WHERE ticket_id = $2
+      RETURNING *
+    `;
+
+    const result = await db.query(query, [newSeatCode, ticketId]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
     return mapToPassenger(result.rows[0]);
   }
 }

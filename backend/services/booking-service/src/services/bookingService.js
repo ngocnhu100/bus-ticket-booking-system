@@ -12,6 +12,12 @@ const {
   calculateLockExpiration,
   formatPrice,
 } = require('../utils/helpers');
+const {
+  calculateRefund: calculateRefundPolicy,
+  validateCancellation,
+  getAllPolicyTiers,
+  formatRefundDetails,
+} = require('../utils/cancellationPolicy');
 
 class BookingService {
   /**
@@ -304,14 +310,39 @@ class BookingService {
   async getUserBookings(userId, filters) {
     const result = await bookingRepository.findByUserId(userId, filters);
 
-    // Enrich each booking with passengers count
+    // Enrich each booking with passengers count and trip details
     const enrichedBookings = await Promise.all(
       result.bookings.map(async (booking) => {
         const passengers = await passengerRepository.findByBookingId(booking.booking_id);
+        
+        // Fetch trip details
+        let tripDetails = null;
+        try {
+          const trip = await this.getTripById(booking.trip_id);
+          if (trip) {
+            tripDetails = {
+              route: {
+                origin: trip.route?.origin || trip.origin,
+                destination: trip.route?.destination || trip.destination,
+              },
+              operator: {
+                name: trip.operator?.name || 'Unknown Operator',
+              },
+              schedule: {
+                departure_time: trip.schedule?.departure_time || trip.schedule?.departureTime,
+                arrival_time: trip.schedule?.arrival_time || trip.schedule?.arrivalTime,
+              },
+            };
+          }
+        } catch (error) {
+          console.error(`Failed to fetch trip details for booking ${booking.booking_id}:`, error.message);
+        }
+
         return {
           ...booking,
           passengersCount: passengers.length,
           seatCodes: passengers.map((p) => p.seat_code),
+          trip_details: tripDetails,
         };
       })
     );
@@ -454,78 +485,216 @@ class BookingService {
   }
 
   /**
-   * Cancel a booking
+   * Get cancellation policy preview for a booking
+   * Shows what refund the user would get if they cancel now
    * @param {string} bookingId - Booking UUID
-   * @param {string} userId - User ID
-   * @param {object} cancellationData - Cancellation data
-   * @returns {Promise<object>} Updated booking with refund info
+   * @param {string|null} userId - User ID for authorization
+   * @returns {Promise<object>} Cancellation policy and refund preview
    */
-  async cancelBooking(bookingId, userId, cancellationData) {
+  async getCancellationPreview(bookingId, userId = null) {
+    // Get booking
     const booking = await bookingRepository.findById(bookingId);
 
     if (!booking) {
       throw new Error('Booking not found');
     }
 
-    // Check authorization (DB uses snake_case)
-    if (booking.user_id && booking.user_id !== userId) {
+    // Check authorization - only owner can view cancellation preview
+    if (booking.user_id && booking.user_id !== userId && userId !== null) {
+      throw new Error('Unauthorized to view this booking');
+    }
+
+    // Get trip details for departure time
+    const trip = await this.getTripById(booking.trip_id);
+    if (!trip) {
+      throw new Error('Trip information not found');
+    }
+
+    const departureTime = new Date(trip.schedule.departureTime || trip.schedule.departure_time);
+
+    // Validate if cancellation is allowed
+    const validation = validateCancellation(booking, departureTime);
+
+    if (!validation.valid) {
+      return {
+        canCancel: false,
+        error: validation.error,
+        booking: {
+          id: booking.booking_id,
+          reference: booking.booking_reference,
+          status: booking.status,
+        },
+      };
+    }
+
+    // Calculate refund with current cancellation policy
+    const refundCalculation = calculateRefundPolicy(booking, departureTime);
+
+    // Get all policy tiers for reference
+    const policyTiers = getAllPolicyTiers();
+
+    return {
+      canCancel: true,
+      booking: {
+        id: booking.booking_id,
+        reference: booking.booking_reference,
+        status: booking.status,
+        totalPrice: parseFloat(booking.total_price),
+        paymentStatus: booking.payment_status,
+      },
+      trip: {
+        departureTime: departureTime.toISOString(),
+        hoursUntilDeparture: refundCalculation.tier.hoursUntilDeparture,
+      },
+      refund: {
+        tier: refundCalculation.tier.name,
+        tierDescription: refundCalculation.tier.description,
+        canRefund: refundCalculation.canRefund,
+        refundAmount: refundCalculation.refundAmount,
+        processingFee: refundCalculation.processingFee,
+        totalRefund: refundCalculation.totalRefund,
+        refundPercentage: refundCalculation.refundPercentage,
+        processingTime: '3-5 business days',
+        formattedDetails: formatRefundDetails(refundCalculation),
+      },
+      policyTiers, // Include all tiers for user reference
+    };
+  }
+
+  /**
+   * Cancel a booking with enhanced refund processing
+   * @param {string} bookingId - Booking UUID
+   * @param {string|null} userId - User ID (null for guest)
+   * @param {object} cancellationData - Cancellation data (reason, requestRefund)
+   * @returns {Promise<object>} Updated booking with refund info
+   */
+  async cancelBooking(bookingId, userId, cancellationData) {
+    console.log(`[BookingService] Starting cancellation for booking ${bookingId}`);
+
+    // STEP 1: Get booking and validate
+    const booking = await bookingRepository.findById(bookingId);
+
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Check authorization - only owner can cancel (support both user_id and userId)
+    const bookingUserId = booking.user_id || booking.userId;
+    
+    if (bookingUserId && bookingUserId !== userId && userId !== null) {
+      console.error(`[BookingService] Unauthorized cancellation attempt by ${userId} for booking owned by ${bookingUserId}`);
       throw new Error('Unauthorized to cancel this booking');
     }
 
+    // STEP 2: Get trip details for departure time
+    const trip = await this.getTripById(booking.trip_id);
+    if (!trip) {
+      throw new Error('Trip information not found');
+    }
+
+    const departureTime = new Date(trip.schedule.departureTime || trip.schedule.departure_time);
+
+    // STEP 3: Validate cancellation is allowed
+    const validation = validateCancellation(booking, departureTime);
+
+    if (!validation.valid) {
+      console.error(`[BookingService] Cancellation validation failed: ${validation.error}`);
+      throw new Error(validation.error);
+    }
+
+    // Prevent double cancellation with atomic check
     if (booking.status === 'cancelled') {
-      throw new Error('Booking already cancelled');
+      console.warn(`[BookingService] Attempted double cancellation for booking ${bookingId}`);
+      throw new Error('Booking is already cancelled');
     }
 
-    if (booking.status === 'completed') {
-      throw new Error('Cannot cancel completed booking');
-    }
+    // STEP 4: Calculate refund based on cancellation policy
+    const refundCalculation = calculateRefundPolicy(booking, departureTime);
 
-    // Prevent user-initiated cancellation for already paid & confirmed bookings.
-    if (booking.status === 'confirmed' && booking.payment && booking.payment.status === 'paid') {
-      throw new Error(
-        'Cannot cancel a confirmed booking with completed payment. Please contact support for refund requests.'
-      );
-    }
-
-    // Calculate refund based on cancellation policy
-    const refundAmount = await this.calculateRefund(booking);
-
-    // Cancel booking
-    const cancelledBooking = await bookingRepository.cancel(bookingId, {
-      reason: cancellationData.reason,
-      refundAmount: cancellationData.requestRefund ? refundAmount : 0,
+    console.log(`[BookingService] Refund calculation:`, {
+      tier: refundCalculation.tier.name,
+      refundAmount: refundCalculation.refundAmount,
+      totalRefund: refundCalculation.totalRefund,
+      canRefund: refundCalculation.canRefund,
     });
 
-    // Clear expiration from Redis
-    await redisClient.del(`booking:expiration:${bookingId}`);
+    // Determine final refund amount
+    const finalRefundAmount =
+      cancellationData.requestRefund !== false && refundCalculation.canRefund
+        ? refundCalculation.totalRefund
+        : 0;
 
-    // Release seat locks since booking is cancelled
+    // STEP 5: Get passengers to release seats atomically
+    const passengers = await passengerRepository.findByBookingId(bookingId);
+    const seatCodes = passengers.map((p) => p.seat_code);
+
+    // STEP 6: Cancel booking in database (atomic transaction)
+    const cancelledBooking = await bookingRepository.cancel(bookingId, {
+      reason: cancellationData.reason || 'Cancelled by user',
+      refundAmount: finalRefundAmount,
+    });
+
+    console.log(`[BookingService] Booking ${bookingId} cancelled successfully`);
+
+    // STEP 7: Clear expiration from Redis
     try {
-      const passengers = await passengerRepository.findByBookingId(bookingId);
-      const seatCodes = passengers.map((p) => p.seat_code);
-
-      if (seatCodes.length > 0) {
-        console.log(`🔓 Attempting to release locks for seats: ${seatCodes.join(', ')}`);
-        await this.releaseLocksForCancelledBooking(booking.trip_id, seatCodes, booking.user_id);
-        console.log(`✅ Released locks for cancelled booking seats: ${seatCodes.join(', ')}`);
-      } else {
-        console.log('⚠️ No seat codes found for cancelled booking');
-      }
+      await redisClient.del(`booking:expiration:${bookingId}`);
+      console.log(`[BookingService] Cleared expiration for booking ${bookingId}`);
     } catch (error) {
-      console.error('Error releasing locks for cancelled booking:', error);
-      // Don't fail cancellation if lock release fails
+      console.error(`[BookingService] Failed to clear expiration from Redis:`, error);
+      // Non-critical, continue
     }
 
-    // Send cancellation notification
-    await this.sendCancellationNotification(cancelledBooking);
+    // STEP 8: Release seat locks atomically
+    if (seatCodes.length > 0) {
+      try {
+        console.log(`[BookingService] Releasing locks for seats: ${seatCodes.join(', ')}`);
+        await this.releaseLocksForCancelledBooking(
+          booking.trip_id,
+          seatCodes,
+          bookingUserId
+        );
+        console.log(`[BookingService] Successfully released seat locks`);
+      } catch (error) {
+        console.error(`[BookingService] Failed to release seat locks:`, error);
+        // Log error but don't fail cancellation - seats will be released by expiration
+      }
+    }
 
+    // STEP 9: Send cancellation confirmation email
+    try {
+      await this.sendCancellationNotification({
+        ...cancelledBooking,
+        passengers,
+        trip,
+        refundDetails: {
+          ...refundCalculation,
+          finalRefundAmount,
+        },
+      });
+      console.log(`[BookingService] Sent cancellation notification email`);
+    } catch (error) {
+      console.error(`[BookingService] Failed to send cancellation email:`, error);
+      // Non-critical, continue
+    }
+
+    // Return complete cancellation result
     return {
-      ...cancelledBooking,
+      success: true,
+      booking: cancelledBooking,
       refund: {
-        amount: refundAmount,
-        percentage: this.calculateRefundPercentage(booking),
-        processingTime: '3-5 business days',
+        tier: refundCalculation.tier.name,
+        tierDescription: refundCalculation.tier.description,
+        originalAmount: refundCalculation.originalAmount,
+        refundAmount: refundCalculation.refundAmount,
+        processingFee: refundCalculation.processingFee,
+        totalRefund: finalRefundAmount,
+        refundPercentage: refundCalculation.refundPercentage,
+        canRefund: refundCalculation.canRefund,
+        processingTime: finalRefundAmount > 0 ? '3-5 business days' : 'N/A',
+        status: finalRefundAmount > 0 ? 'processing' : 'no_refund',
       },
+      seatsReleased: seatCodes,
     };
   }
 
@@ -580,49 +749,213 @@ class BookingService {
   }
 
   /**
-   * Process expired bookings
+   * Process expired bookings (Enhanced with better logging and email notifications)
+   * Automatically cancels unpaid bookings that have exceeded their lock time
    * @returns {Promise<number>} Number of bookings cancelled
    */
   async processExpiredBookings() {
-    const expiredBookings = await bookingRepository.findExpiredBookings();
+    const startTime = Date.now();
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('⏰ [ExpirationJob] Starting expired bookings processing');
+    console.log(`⏰ [ExpirationJob] Time: ${new Date().toISOString()}`);
 
-    let cancelledCount = 0;
+    try {
+      // STEP 1: Find all expired bookings (pending + unpaid + past locked_until)
+      const expiredBookings = await bookingRepository.findExpiredBookings();
 
-    for (const booking of expiredBookings) {
-      try {
-        // Get passengers before cancelling to know which seats to release
-        const passengers = await passengerRepository.findByBookingId(booking.booking_id);
-        const seatCodes = passengers.map((p) => p.seat_code);
-
-        await bookingRepository.cancel(booking.booking_id, {
-          reason: 'Booking expired - payment not received',
-          refundAmount: 0,
-        });
-
-        await redisClient.del(`booking:expiration:${booking.booking_id}`);
-
-        // Release seat locks for expired booking
-        if (seatCodes.length > 0) {
-          try {
-            console.log(
-              `🔓 Attempting to release locks for expired booking seats: ${seatCodes.join(', ')}`
-            );
-            await this.releaseLocksForCancelledBooking(booking.trip_id, seatCodes, booking.user_id);
-            console.log(`✅ Released locks for expired booking seats: ${seatCodes.join(', ')}`);
-          } catch (error) {
-            console.error('❌ Error releasing locks for expired booking:', error);
-          }
-        } else {
-          console.log('⚠️ No seat codes found for expired booking');
-        }
-
-        cancelledCount++;
-      } catch (error) {
-        console.error(`Failed to cancel expired booking ${booking.booking_id}:`, error);
+      if (expiredBookings.length === 0) {
+        console.log('⏰ [ExpirationJob] No expired bookings found');
+        console.log('═══════════════════════════════════════════════════════════');
+        return 0;
       }
-    }
 
-    return cancelledCount;
+      console.log(`⏰ [ExpirationJob] Found ${expiredBookings.length} expired bookings`);
+
+      let cancelledCount = 0;
+      let failedCount = 0;
+      const cancelledBookings = [];
+
+      // STEP 2: Process each expired booking with proper error handling
+      for (const booking of expiredBookings) {
+        const bookingRef = booking.booking_reference;
+        const bookingId = booking.booking_id;
+
+        try {
+          console.log(`⏰ [ExpirationJob] Processing booking ${bookingRef} (${bookingId})`);
+
+          // Validate booking is actually expired and unpaid
+          if (booking.status !== 'pending') {
+            console.log(
+              `⏰ [ExpirationJob] Skipping booking ${bookingRef}: status is ${booking.status}, not 'pending'`
+            );
+            continue;
+          }
+
+          if (booking.payment_status === 'paid') {
+            console.log(
+              `⏰ [ExpirationJob] Skipping booking ${bookingRef}: already paid`
+            );
+            continue;
+          }
+
+          // Get passengers before cancelling to know which seats to release
+          const passengers = await passengerRepository.findByBookingId(bookingId);
+          const seatCodes = passengers.map((p) => p.seat_code);
+
+          console.log(
+            `⏰ [ExpirationJob] Booking ${bookingRef}: ${seatCodes.length} seats - ${seatCodes.join(', ')}`
+          );
+
+          // Get trip details for email notification
+          let trip = null;
+          try {
+            trip = await this.getTripById(booking.trip_id);
+          } catch (error) {
+            console.error(`⏰ [ExpirationJob] Failed to fetch trip details:`, error.message);
+          }
+
+          // STEP 3: Cancel booking (atomic transaction)
+          await bookingRepository.cancel(bookingId, {
+            reason: 'Booking expired - payment not received within time limit',
+            refundAmount: 0,
+          });
+
+          console.log(`⏰ [ExpirationJob] Cancelled booking ${bookingRef} in database`);
+
+          // STEP 4: Clear expiration from Redis
+          try {
+            await redisClient.del(`booking:expiration:${bookingId}`);
+            console.log(`⏰ [ExpirationJob] Cleared Redis expiration for ${bookingRef}`);
+          } catch (error) {
+            console.error(
+              `⏰ [ExpirationJob] Failed to clear Redis for ${bookingRef}:`,
+              error.message
+            );
+            // Non-critical, continue
+          }
+
+          // STEP 5: Release seat locks atomically
+          if (seatCodes.length > 0) {
+            try {
+              console.log(
+                `⏰ [ExpirationJob] Releasing locks for seats: ${seatCodes.join(', ')}`
+              );
+              await this.releaseLocksForCancelledBooking(
+                booking.trip_id,
+                seatCodes,
+                booking.user_id
+              );
+              console.log(
+                `⏰ [ExpirationJob] Successfully released seat locks for ${bookingRef}`
+              );
+            } catch (error) {
+              console.error(
+                `⏰ [ExpirationJob] Failed to release seat locks for ${bookingRef}:`,
+                error.message
+              );
+              // Log error but continue - seats will eventually be released
+            }
+          } else {
+            console.warn(`⏰ [ExpirationJob] No seat codes found for booking ${bookingRef}`);
+          }
+
+          // STEP 6: Send expiration notification email to user
+          try {
+            await this.sendExpirationNotification({
+              booking,
+              passengers,
+              trip,
+            });
+            console.log(`⏰ [ExpirationJob] Sent expiration email for ${bookingRef}`);
+          } catch (error) {
+            console.error(
+              `⏰ [ExpirationJob] Failed to send expiration email for ${bookingRef}:`,
+              error.message
+            );
+            // Non-critical, continue
+          }
+
+          cancelledCount++;
+          cancelledBookings.push({
+            reference: bookingRef,
+            id: bookingId,
+            seats: seatCodes.length,
+          });
+
+          console.log(`⏰ [ExpirationJob] ✅ Successfully processed booking ${bookingRef}`);
+        } catch (error) {
+          failedCount++;
+          console.error(
+            `⏰ [ExpirationJob] ❌ Failed to cancel expired booking ${bookingRef}:`,
+            error.message
+          );
+          console.error(`⏰ [ExpirationJob] Error stack:`, error.stack);
+          // Continue with next booking
+        }
+      }
+
+      // STEP 7: Log summary
+      const duration = Date.now() - startTime;
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log(`⏰ [ExpirationJob] Processing complete`);
+      console.log(`⏰ [ExpirationJob] Duration: ${duration}ms`);
+      console.log(`⏰ [ExpirationJob] Total found: ${expiredBookings.length}`);
+      console.log(`⏰ [ExpirationJob] Successfully cancelled: ${cancelledCount}`);
+      console.log(`⏰ [ExpirationJob] Failed: ${failedCount}`);
+
+      if (cancelledBookings.length > 0) {
+        console.log(`⏰ [ExpirationJob] Cancelled bookings:`);
+        cancelledBookings.forEach((b) => {
+          console.log(`   - ${b.reference} (${b.seats} seats)`);
+        });
+      }
+
+      console.log('═══════════════════════════════════════════════════════════');
+
+      return cancelledCount;
+    } catch (error) {
+      console.error('⏰ [ExpirationJob] Critical error in processExpiredBookings:', error);
+      console.error('⏰ [ExpirationJob] Error stack:', error.stack);
+      console.log('═══════════════════════════════════════════════════════════');
+      return 0;
+    }
+  }
+
+  /**
+   * Send booking expiration notification email
+   * @param {object} data - Expiration data
+   */
+  async sendExpirationNotification(data) {
+    try {
+      if (!data.booking.contact_email) {
+        console.log('[BookingService] No contact email for expiration notification');
+        return;
+      }
+
+      const notificationServiceUrl =
+        process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+
+      await axios.post(`${notificationServiceUrl}/send-email`, {
+        to: data.booking.contact_email,
+        template: 'booking-expiration',
+        data: {
+          bookingReference: data.booking.booking_reference,
+          expirationTime: data.booking.locked_until,
+          trip: data.trip
+            ? {
+                origin: data.trip.route.origin,
+                destination: data.trip.route.destination,
+                departureTime: data.trip.schedule.departure_time,
+              }
+            : null,
+        },
+      });
+
+      console.log('[BookingService] Sent expiration notification email');
+    } catch (error) {
+      console.error('Error sending expiration notification:', error.message);
+      // Don't throw - email failure shouldn't fail the expiration process
+    }
   }
 
   /**
@@ -1071,6 +1404,359 @@ class BookingService {
       }
     } catch (error) {
       console.error('❌ Error in releaseLocksForCancelledBooking:', error.message);
+    }
+  }
+
+  /**
+   * Get modification policy preview for a booking
+   * Shows fees and what modifications are allowed
+   * @param {string} bookingId - Booking UUID
+   * @param {string|null} userId - User ID for authorization
+   * @returns {Promise<object>} Modification policy and fee preview
+   */
+  async getModificationPreview(bookingId, userId = null) {
+    const {
+      getModificationTier,
+      getAllModificationTiers,
+    } = require('../utils/modificationPolicy');
+
+    // Get booking
+    const booking = await bookingRepository.findById(bookingId);
+
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Check authorization
+    const bookingUserId = booking.user_id || booking.userId;
+    if (bookingUserId && bookingUserId !== userId && userId !== null) {
+      throw new Error('Unauthorized to view this booking');
+    }
+
+    // Get trip details for departure time
+    const trip = await this.getTripById(booking.trip_id);
+    if (!trip) {
+      throw new Error('Trip information not found');
+    }
+
+    const departureTime = new Date(trip.schedule.departureTime || trip.schedule.departure_time);
+
+    // Get modification tier
+    const tier = getModificationTier(departureTime);
+
+    // Get current passengers
+    const passengers = await passengerRepository.findByBookingId(bookingId);
+
+    // Get all policy tiers for reference
+    const policyTiers = getAllModificationTiers();
+
+    return {
+      canModify: tier.canModify,
+      booking: {
+        id: booking.booking_id,
+        reference: booking.booking_reference,
+        status: booking.status,
+        totalPrice: parseFloat(booking.total_price),
+      },
+      trip: {
+        departureTime: departureTime.toISOString(),
+        hoursUntilDeparture: tier.hoursUntilDeparture,
+      },
+      currentPassengers: passengers.map((p) => ({
+        ticketId: p.ticket_id,
+        seatCode: p.seat_code,
+        fullName: p.full_name,
+        phone: p.phone,
+        documentId: p.document_id,
+      })),
+      policy: {
+        tier: tier.name,
+        tierDescription: tier.description,
+        baseFee: tier.modificationFee,
+        seatChangeFee: tier.seatChangeFee,
+        allowSeatChange: tier.allowSeatChange,
+        allowPassengerUpdate: tier.allowPassengerUpdate,
+      },
+      policyTiers, // Include all tiers for user reference
+    };
+  }
+
+  /**
+   * Modify a booking (update passenger info or change seats)
+   * @param {string} bookingId - Booking UUID
+   * @param {string|null} userId - User ID for authorization
+   * @param {object} modifications - Modification data
+   * @returns {Promise<object>} Updated booking
+   */
+  async modifyBooking(bookingId, userId, modifications) {
+    const {
+      validateModification,
+      calculateModificationFees,
+    } = require('../utils/modificationPolicy');
+
+    console.log(`[BookingService] Starting modification for booking ${bookingId}`);
+
+    // STEP 1: Get booking and validate
+    const booking = await bookingRepository.findById(bookingId);
+
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Check authorization
+    const bookingUserId = booking.user_id || booking.userId;
+    if (bookingUserId && bookingUserId !== userId && userId !== null) {
+      console.error(
+        `[BookingService] Unauthorized modification attempt by ${userId} for booking owned by ${bookingUserId}`
+      );
+      throw new Error('Unauthorized to modify this booking');
+    }
+
+    // STEP 2: Get trip details for departure time
+    const trip = await this.getTripById(booking.trip_id);
+    if (!trip) {
+      throw new Error('Trip information not found');
+    }
+
+    const departureTime = new Date(trip.schedule.departureTime || trip.schedule.departure_time);
+
+    // STEP 3: Validate modification is allowed
+    const validation = validateModification(booking, departureTime, modifications);
+
+    if (!validation.valid) {
+      console.error(`[BookingService] Modification validation failed: ${validation.error}`);
+      throw new Error(validation.error);
+    }
+
+    // STEP 4: Calculate modification fees
+    const feeCalculation = calculateModificationFees(modifications, departureTime);
+
+    if (!feeCalculation.canModify) {
+      throw new Error('Modifications not allowed at this time');
+    }
+
+    console.log(`[BookingService] Modification fees:`, {
+      baseFee: feeCalculation.baseFee,
+      seatChangeFees: feeCalculation.seatChangeFees,
+      totalFee: feeCalculation.totalFee,
+    });
+
+    // STEP 5: Process seat changes if requested
+    let releasedSeats = [];
+    let newSeats = [];
+
+    if (modifications.seatChanges && modifications.seatChanges.length > 0) {
+      const tripServiceUrl = process.env.TRIP_SERVICE_URL || 'http://localhost:3002';
+
+      console.log(
+        `[BookingService] Processing ${modifications.seatChanges.length} seat change(s)`
+      );
+
+      for (const seatChange of modifications.seatChanges) {
+        const { ticketId, oldSeatCode, newSeatCode } = seatChange;
+
+        console.log(
+          `[BookingService] Seat change: ${oldSeatCode} → ${newSeatCode} for ticket ${ticketId}`
+        );
+
+        // Verify ticket exists in this booking
+        const existingTicket = await passengerRepository.findByTicketId(ticketId);
+        if (!existingTicket || existingTicket.booking_id !== bookingId) {
+          throw new Error(
+            `Ticket ${ticketId} not found in this booking. Please use the correct ticket ID from the modification preview.`
+          );
+        }
+
+        // Validate new seat availability
+        try {
+          console.log(`[BookingService] Checking availability of seat ${newSeatCode}...`);
+          const availabilityResponse = await axios.get(
+            `${tripServiceUrl}/${booking.trip_id}/seats`,
+            { timeout: 5000 }
+          );
+
+          const seatData = availabilityResponse.data.data || availabilityResponse.data;
+          const seatMap = seatData.seat_map || seatData;
+          const seats = seatMap.seats || seatMap;
+
+          console.log(`[BookingService] Found ${seats.length} seats in trip`);
+
+          const newSeat = seats.find((s) => s.seat_code === newSeatCode);
+
+          if (!newSeat) {
+            throw new Error(
+              `Seat ${newSeatCode} does not exist in this trip. Available seats can be found in the seat map.`
+            );
+          }
+
+          console.log(`[BookingService] Seat ${newSeatCode} status: ${newSeat.status}`);
+
+          if (newSeat.status !== 'available') {
+            throw new Error(
+              `Seat ${newSeatCode} is ${newSeat.status}. Please choose an available seat.`
+            );
+          }
+
+          console.log(`[BookingService] ✅ Seat ${newSeatCode} is available`);
+        } catch (error) {
+          console.error(`[BookingService] Seat availability check failed:`, error.message);
+          // If the error already has a helpful message, use it; otherwise wrap it
+          if (error.message.includes('Seat ') || error.message.includes('Ticket ')) {
+            throw error;
+          }
+          throw new Error(`Failed to verify seat availability: ${error.message}`);
+        }
+
+        // Lock new seat
+        try {
+          await axios.post(
+            `${tripServiceUrl}/${booking.trip_id}/seats/lock`,
+            {
+              seatCodes: [newSeatCode],
+              sessionId: bookingUserId || `booking_${bookingId}`,
+            },
+            { timeout: 5000 }
+          );
+          newSeats.push(newSeatCode);
+        } catch (error) {
+          // Rollback any previously locked seats
+          if (newSeats.length > 0) {
+            await this.releaseLocksForCancelledBooking(
+              booking.trip_id,
+              newSeats,
+              bookingUserId
+            );
+          }
+          throw new Error(`Failed to lock new seat ${newSeatCode}: ${error.message}`);
+        }
+
+        // Update passenger seat in database
+        await passengerRepository.updateSeat(ticketId, newSeatCode);
+
+        releasedSeats.push(oldSeatCode);
+      }
+
+      // Release old seat locks
+      if (releasedSeats.length > 0) {
+        await this.releaseLocksForCancelledBooking(booking.trip_id, releasedSeats, bookingUserId);
+      }
+    }
+
+    // STEP 6: Process passenger information updates
+    if (modifications.passengerUpdates && modifications.passengerUpdates.length > 0) {
+      for (const passengerUpdate of modifications.passengerUpdates) {
+        const { ticketId, fullName, phone, documentId } = passengerUpdate;
+
+        await passengerRepository.update(ticketId, {
+          full_name: fullName,
+          phone,
+          document_id: documentId,
+        });
+      }
+    }
+
+    // STEP 7: Update booking with modification fee
+    const newTotalPrice = parseFloat(booking.total_price) + feeCalculation.totalFee;
+
+    await bookingRepository.updateModificationFee(bookingId, {
+      modificationFee: feeCalculation.totalFee,
+      newTotalPrice: formatPrice(newTotalPrice),
+    });
+
+    // STEP 8: Regenerate e-ticket with updated information
+    let newTicketUrl = booking.ticket_url;
+    try {
+      const ticketService = require('./ticketService');
+      const updatedBooking = await bookingRepository.findById(bookingId);
+      const updatedPassengers = await passengerRepository.findByBookingId(bookingId);
+
+      const ticketResult = await ticketService.generateTicket({
+        ...updatedBooking,
+        passengers: updatedPassengers,
+        trip,
+      });
+
+      newTicketUrl = ticketResult.ticketUrl;
+
+      // Update booking with new ticket URL
+      await bookingRepository.updateTicketUrl(bookingId, ticketResult.ticketUrl);
+    } catch (error) {
+      console.error('[BookingService] Failed to regenerate ticket:', error);
+      // Non-critical, continue
+    }
+
+    // STEP 9: Send modification confirmation email
+    try {
+      const updatedBooking = await bookingRepository.findById(bookingId);
+      const updatedPassengers = await passengerRepository.findByBookingId(bookingId);
+
+      await this.sendModificationNotification({
+        booking: updatedBooking,
+        passengers: updatedPassengers,
+        trip,
+        modifications: {
+          seatChanges: modifications.seatChanges || [],
+          passengerUpdates: modifications.passengerUpdates || [],
+        },
+        fees: feeCalculation,
+      });
+    } catch (error) {
+      console.error('[BookingService] Failed to send modification email:', error);
+      // Non-critical, continue
+    }
+
+    console.log(`[BookingService] Booking ${bookingId} modified successfully`);
+
+    // Return complete modification result
+    const finalBooking = await bookingRepository.findById(bookingId);
+    const finalPassengers = await passengerRepository.findByBookingId(bookingId);
+
+    return {
+      success: true,
+      booking: finalBooking,
+      passengers: finalPassengers,
+      modifications: {
+        seatChanges: modifications.seatChanges || [],
+        passengerUpdates: modifications.passengerUpdates || [],
+      },
+      fees: {
+        baseFee: feeCalculation.baseFee,
+        seatChangeFees: feeCalculation.seatChangeFees,
+        totalFee: feeCalculation.totalFee,
+        newTotalPrice,
+      },
+      ticketUrl: newTicketUrl,
+    };
+  }
+
+  /**
+   * Send modification notification email
+   * @param {object} data - Modification data
+   */
+  async sendModificationNotification(data) {
+    try {
+      const notificationServiceUrl =
+        process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+
+      await axios.post(`${notificationServiceUrl}/send-email`, {
+        to: data.booking.contact_email,
+        template: 'booking-modification',
+        data: {
+          bookingReference: data.booking.booking_reference,
+          modifications: data.modifications,
+          fees: data.fees,
+          trip: {
+            origin: data.trip.route.origin,
+            destination: data.trip.route.destination,
+            departureTime: data.trip.schedule.departure_time,
+          },
+        },
+      });
+
+      console.log('[BookingService] Sent modification notification email');
+    } catch (error) {
+      console.error('Error sending modification notification:', error.message);
+      // Don't throw - email failure shouldn't fail the modification
     }
   }
 }

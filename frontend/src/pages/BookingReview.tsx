@@ -234,10 +234,7 @@ export function BookingReview() {
 
     try {
       setLoading(true)
-      await cancelBooking(bookingId, {
-        reason: 'User cancelled',
-        requestRefund: true,
-      })
+      await cancelBooking(bookingId, 'User cancelled from booking review')
       // Clear pending booking and return to home
       sessionStorage.removeItem('pendingBooking')
       alert('Booking cancelled successfully')

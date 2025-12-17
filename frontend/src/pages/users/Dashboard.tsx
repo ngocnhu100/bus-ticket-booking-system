@@ -1,51 +1,132 @@
+import { useState, useEffect } from 'react'
 import { TripCard } from '@/components/users/TripCard'
 import { TripSearchForm } from '@/components/users/TripSearchForm'
 import { useToast } from '../../hooks/use-toast'
 import '@/styles/admin.css'
 import { DashboardLayout } from '@/components/users/DashboardLayout'
-
-const upcomingTrips = [
-  {
-    from: 'HCM',
-    to: 'Hanoi',
-    date: '15 Nov 2025',
-    time: '08:00',
-    seats: 'A1, A2',
-    bookingId: 'BK2025HS001',
-  },
-  {
-    from: 'Hanoi',
-    to: 'Hue',
-    date: '20 Nov 2025',
-    time: '14:00',
-    seats: 'B3',
-    bookingId: 'BK2025HH002',
-  },
-]
+import { CancelBookingDialog } from '@/components/users/CancelBookingDialog'
+import { ModifyBookingDialog } from '@/components/users/ModifyBookingDialog'
+import { getUserBookings, type Booking } from '@/api/bookings'
+import { Loader2 } from 'lucide-react'
 
 const Dashboard = () => {
   const { toast } = useToast()
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [modifyDialogOpen, setModifyDialogOpen] = useState(false)
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
+    null
+  )
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null)
 
-  const handleCancel = (bookingId: string) => {
-    toast({
-      title: 'Cancellation Request',
-      description: `Processing cancellation for booking ${bookingId}`,
-    })
+  // Fetch user bookings on mount
+  useEffect(() => {
+    fetchBookings()
+  }, [])
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await getUserBookings({
+        status: 'confirmed',
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      })
+
+      // Show all confirmed bookings
+      // Note: If trip_details is missing from API response, we can't filter by departure time
+      // So we show all confirmed bookings instead
+      setBookings(response.data || [])
+    } catch (err) {
+      console.error('Error fetching bookings:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load bookings')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleModify = (bookingId: string) => {
-    toast({
-      title: 'Modify Booking',
-      description: `Opening modification form for ${bookingId}`,
-    })
+  const handleCancel = (bookingId: string) => {
+    setSelectedBookingId(bookingId)
+    setCancelDialogOpen(true)
+  }
+
+  const handleModify = (bookingId: string, tripId: string) => {
+    setSelectedBookingId(bookingId)
+    setSelectedTripId(tripId)
+    setModifyDialogOpen(true)
   }
 
   const handleViewTicket = (bookingId: string) => {
-    toast({
-      title: 'E-Ticket',
-      description: `Viewing e-ticket for ${bookingId}`,
-    })
+    const booking = bookings.find((b) => b.booking_id === bookingId)
+    if (booking?.e_ticket?.ticket_url) {
+      window.open(booking.e_ticket.ticket_url, '_blank')
+    } else {
+      toast({
+        title: 'E-Ticket Not Available',
+        description: 'E-ticket is not available for this booking yet.',
+      })
+    }
   }
+
+  const handleCancelSuccess = () => {
+    toast({
+      title: 'Booking Cancelled',
+      description: 'Your booking has been cancelled successfully',
+    })
+    fetchBookings() // Refresh bookings list
+  }
+
+  const handleModifySuccess = () => {
+    toast({
+      title: 'Booking Modified',
+      description: 'Your booking has been updated successfully',
+    })
+    fetchBookings() // Refresh bookings list
+  }
+
+  // Transform bookings for TripCard component
+  const upcomingTrips = bookings.map((booking) => {
+    // Handle seatCodes field from API (it's an array of strings)
+    const seats =
+      booking.seatCodes?.join(', ') ||
+      booking.passengers?.map((p) => p.seatCode).join(', ') ||
+      'Unknown'
+
+    return {
+      from: booking.trip_details?.route?.origin || 'Unknown',
+      to: booking.trip_details?.route?.destination || 'Unknown',
+      date: booking.trip_details?.schedule?.departure_time
+        ? new Date(
+            booking.trip_details.schedule.departure_time
+          ).toLocaleDateString('en-US', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : booking.created_at
+          ? new Date(booking.created_at).toLocaleDateString('en-US', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })
+          : 'Unknown',
+      time: booking.trip_details?.schedule?.departure_time
+        ? new Date(
+            booking.trip_details.schedule.departure_time
+          ).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'Unknown',
+      seats,
+      bookingId: booking.booking_id,
+      bookingReference: booking.booking_reference,
+      tripId: booking.trip_id,
+    }
+  })
 
   return (
     <DashboardLayout>
@@ -71,25 +152,70 @@ const Dashboard = () => {
           </p>
         </div>
 
-        <div className="space-y-4">
-          {upcomingTrips.map((trip) => (
-            <TripCard
-              key={trip.bookingId}
-              {...trip}
-              status="upcoming"
-              onCancel={() => handleCancel(trip.bookingId)}
-              onModify={() => handleModify(trip.bookingId)}
-              onViewTicket={() => handleViewTicket(trip.bookingId)}
-            />
-          ))}
-        </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
 
-        <div className="mt-12 text-center py-12">
-          <p className="text-muted-foreground mb-6 text-sm uppercase tracking-wide">
-            No more upcoming trips
-          </p>
-        </div>
+        {/* Error State */}
+        {error && !loading && (
+          <div className="p-4 bg-destructive/10 border border-destructive rounded-lg">
+            <p className="text-destructive text-sm">{error}</p>
+          </div>
+        )}
+
+        {/* Bookings List */}
+        {!loading && !error && (
+          <>
+            {upcomingTrips.length > 0 ? (
+              <div className="space-y-4">
+                {upcomingTrips.map((trip) => (
+                  <TripCard
+                    key={trip.bookingId}
+                    {...trip}
+                    status="upcoming"
+                    onCancel={() => handleCancel(trip.bookingId)}
+                    onModify={() => handleModify(trip.bookingId, trip.tripId)}
+                    onViewTicket={() => handleViewTicket(trip.bookingId)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-12 text-center py-12 border border-dashed border-border rounded-lg">
+                <p className="text-muted-foreground mb-2">
+                  No upcoming trips found
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Book a trip to see it here
+                </p>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      {/* Cancel Booking Dialog */}
+      {selectedBookingId && (
+        <CancelBookingDialog
+          open={cancelDialogOpen}
+          onOpenChange={setCancelDialogOpen}
+          bookingId={selectedBookingId}
+          onSuccess={handleCancelSuccess}
+        />
+      )}
+
+      {/* Modify Booking Dialog */}
+      {selectedBookingId && selectedTripId && (
+        <ModifyBookingDialog
+          open={modifyDialogOpen}
+          onOpenChange={setModifyDialogOpen}
+          bookingId={selectedBookingId}
+          tripId={selectedTripId}
+          onSuccess={handleModifySuccess}
+        />
+      )}
     </DashboardLayout>
   )
 }

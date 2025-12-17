@@ -36,8 +36,11 @@ app.post('/:bookingReference/share', bookingController.shareTicket);
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);
 app.get('/:id', authenticate, bookingController.getById);
+app.get('/:id/cancellation-preview', optionalAuthenticate, bookingController.getCancellationPreview);
+app.get('/:id/modification-preview', optionalAuthenticate, bookingController.getModificationPreview);
 app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
 app.put('/:id/cancel', optionalAuthenticate, bookingController.cancel);
+app.put('/:id/modify', optionalAuthenticate, bookingController.modifyBooking);
 
 // Admin routes
 app.get('/admin/bookings', authenticate, authorize(['admin']), bookingController.getAllBookings);

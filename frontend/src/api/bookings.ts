@@ -39,10 +39,12 @@ export interface Booking {
   contact_email: string
   contact_phone: string
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
-  locked_until?: string
+  locked_until?: string | null
   pricing: Pricing
   payment: Payment
   passengers?: PassengerInfo[]
+  passengersCount?: number
+  seatCodes?: string[]
   trip_details?: {
     route?: { origin: string; destination: string }
     operator?: { name: string }
@@ -50,14 +52,16 @@ export interface Booking {
   }
   cancellation?: {
     reason?: string
-    refundAmount?: number
+    refund_amount?: number
+  } | null
+  e_ticket?: {
+    ticket_url?: string | null
+    qr_code_url?: string | null
   }
-  eTicket?: {
-    ticketUrl?: string
-    qrCodeUrl?: string
-  }
-  createdAt: string
-  updatedAt: string
+  created_at?: string
+  updated_at?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface BookingResponse {
@@ -213,16 +217,87 @@ export async function confirmPayment(
  */
 export async function cancelBooking(
   bookingId: string,
-  cancellationData: CancelBookingRequest
+  reason: string
 ): Promise<BookingResponse> {
   try {
     const response = await request(`/bookings/${bookingId}/cancel`, {
       method: 'PUT',
-      body: cancellationData,
+      body: { reason },
     })
     return response
   } catch (error) {
     console.error('Error cancelling booking:', error)
+    throw error
+  }
+}
+
+/**
+ * Get cancellation preview (refund calculation)
+ */
+export async function getCancellationPreview(
+  bookingId: string
+): Promise<BookingResponse> {
+  try {
+    const response = await request(
+      `/bookings/${bookingId}/cancellation-preview`,
+      {
+        method: 'GET',
+      }
+    )
+    return response
+  } catch (error) {
+    console.error('Error getting cancellation preview:', error)
+    throw error
+  }
+}
+
+/**
+ * Get modification preview (fees and current data)
+ */
+export async function getModificationPreview(
+  bookingId: string
+): Promise<BookingResponse> {
+  try {
+    const response = await request(
+      `/bookings/${bookingId}/modification-preview`,
+      {
+        method: 'GET',
+      }
+    )
+    return response
+  } catch (error) {
+    console.error('Error getting modification preview:', error)
+    throw error
+  }
+}
+
+/**
+ * Modify a booking (update passenger info or change seats)
+ */
+export async function modifyBooking(
+  bookingId: string,
+  modifications: {
+    passengerUpdates?: Array<{
+      ticketId: string
+      fullName?: string
+      phone?: string
+      documentId?: string
+    }>
+    seatChanges?: Array<{
+      ticketId: string
+      oldSeatCode: string
+      newSeatCode: string
+    }>
+  }
+): Promise<BookingResponse> {
+  try {
+    const response = await request(`/bookings/${bookingId}/modify`, {
+      method: 'PUT',
+      body: modifications,
+    })
+    return response
+  } catch (error) {
+    console.error('Error modifying booking:', error)
     throw error
   }
 }
