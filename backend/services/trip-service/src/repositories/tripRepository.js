@@ -35,7 +35,74 @@ class TripRepository {
 
   // Helper để lấy pickup/dropoff points (từ route_stops, tính time dựa trên departure_time + offset)
   async _getPointsForTrip(trip_id, route_id, departure_time) {
-    const query = `
+    // Route-level points: query `route_points` (canonical route-level pickup/dropoff offsets)
+    const routePointsQuery = `
+      SELECT point_id, name, address, departure_offset_minutes, arrival_offset_minutes, is_pickup, is_dropoff
+      FROM route_points
+      WHERE route_id = $1
+      ORDER BY sequence
+    `;
+    const routePointsRes = await pool.query(routePointsQuery, [route_id]);
+
+    if (routePointsRes.rowCount > 0) {
+      const rows = routePointsRes.rows;
+
+      // Compute absolute timestamptz for each point using departure_time + appropriate offset minutes
+      // For pickups prefer `departure_offset_minutes`; for dropoffs prefer `arrival_offset_minutes`.
+      // If a point is both pickup and dropoff we compute both times separately.
+      const points = rows.map((r) => {
+        const depOffset = parseInt(r.departure_offset_minutes ?? 0, 10);
+        const arrOffset = parseInt(r.arrival_offset_minutes ?? r.departure_offset_minutes ?? 0, 10);
+
+        let pickupTimeIso = null;
+        let dropoffTimeIso = null;
+        try {
+          const base = new Date(departure_time);
+          const t1 = new Date(base);
+          t1.setMinutes(t1.getMinutes() + depOffset);
+          pickupTimeIso = t1.toISOString();
+
+          const t2 = new Date(base);
+          t2.setMinutes(t2.getMinutes() + arrOffset);
+          dropoffTimeIso = t2.toISOString();
+        } catch (e) {
+          // keep nulls if parsing fails
+        }
+
+        return {
+          point_id: r.point_id,
+          name: r.name,
+          address: r.address,
+          pickup_time: pickupTimeIso,
+          dropoff_time: dropoffTimeIso,
+          is_pickup: r.is_pickup,
+          is_dropoff: r.is_dropoff,
+        };
+      });
+
+      const pickup = points
+        .filter((p) => p.is_pickup)
+        .map((p) => ({
+          point_id: p.point_id,
+          name: p.name,
+          address: p.address,
+          time: p.pickup_time,
+        }));
+
+      const dropoff = points
+        .filter((p) => p.is_dropoff)
+        .map((p) => ({
+          point_id: p.point_id,
+          name: p.name,
+          address: p.address,
+          time: p.dropoff_time,
+        }));
+
+      return { pickup_points: pickup, dropoff_points: dropoff };
+    }
+
+    // If no route_points defined, fallback to existing route_stops behaviour (compute from offsets)
+    const fallbackQuery = `
       SELECT 
         stop_id as point_id, stop_name as name, address, 
         ($1::timestamptz + INTERVAL '1 minute' * departure_offset_minutes) AS time
@@ -43,22 +110,29 @@ class TripRepository {
       WHERE route_id = $2
       ORDER BY sequence
     `;
-    const result = await pool.query(query, [departure_time, route_id]);
-    const points = result.rows.map(row => ({
+    const result = await pool.query(fallbackQuery, [departure_time, route_id]);
+    const points = result.rows.map((row) => ({
       point_id: row.point_id,
       name: row.name,
       address: row.address,
-      time: row.time.toISOString()
+      time: row.time ? row.time.toISOString() : null,
     }));
-    // Giả định tất cả là pickup/dropoff tương tự, nếu cần phân biệt thì split dựa trên sequence
-    return { pickup_points: points.slice(0, points.length / 2), dropoff_points: points.slice(points.length / 2) };
+
+    return {
+      pickup_points: points.slice(0, Math.floor(points.length / 2)),
+      dropoff_points: points.slice(Math.floor(points.length / 2)),
+    };
   }
 
   // Helper mapping từ DB Row sang Trip interface (snake_case)
   async _mapRowToTrip(row) {
     if (!row) return null;
 
-    const { pickup_points, dropoff_points } = await this._getPointsForTrip(row.trip_id, row.route_id, row.departure_time);
+    const { pickup_points, dropoff_points } = await this._getPointsForTrip(
+      row.trip_id,
+      row.route_id,
+      row.departure_time
+    );
 
     const total_seats = parseInt(row.total_seats);
     const booked_seats = parseInt(row.booked_seats || 0);
@@ -76,13 +150,13 @@ class TripRepository {
         origin: row.origin,
         destination: row.destination,
         distance_km: parseFloat(row.distance_km),
-        estimated_minutes: parseInt(row.estimated_minutes)
+        estimated_minutes: parseInt(row.estimated_minutes),
       },
       operator: {
         operator_id: row.operator_id,
         name: row.operator_name,
         rating: parseFloat(row.operator_rating || 0),
-        logo: row.operator_logo
+        logo: row.operator_logo,
       },
       bus: {
         bus_id: row.bus_id,
@@ -90,31 +164,31 @@ class TripRepository {
         plate_number: row.plate_number,
         seat_capacity: total_seats,
         bus_type: row.bus_type,
-        amenities: row.amenities || []
+        amenities: row.amenities || [],
       },
       schedule: {
         departure_time: row.departure_time.toISOString(),
         arrival_time: row.arrival_time.toISOString(),
-        duration
+        duration,
       },
       pricing: {
         base_price: parseFloat(row.base_price),
         currency: 'VND', // Mặc định
-        service_fee: 0 // Mặc định nếu thiếu
+        service_fee: 0, // Mặc định nếu thiếu
       },
       availability: {
         total_seats,
         available_seats: available_seats > 0 ? available_seats : 0,
-        occupancy_rate: total_seats > 0 ? parseFloat((booked_seats / total_seats).toFixed(2)) : 0
+        occupancy_rate: total_seats > 0 ? parseFloat((booked_seats / total_seats).toFixed(2)) : 0,
       },
       policies: row.policies || {
-        cancellation_policy: "Standard cancellation",
-        modification_policy: "Flexible",
-        refund_policy: "Refundable up to 24h"
+        cancellation_policy: 'Standard cancellation',
+        modification_policy: 'Flexible',
+        refund_policy: 'Refundable up to 24h',
       },
       pickup_points,
       dropoff_points,
-      status: row.status === 'scheduled' ? 'active' : row.status // Map để khớp interface
+      status: row.status === 'scheduled' ? 'active' : row.status, // Map để khớp interface
     };
   }
 
@@ -125,11 +199,15 @@ class TripRepository {
       RETURNING *
     `;
     const values = [
-      trip_data.route_id, trip_data.bus_id, trip_data.departure_time, trip_data.arrival_time,
-      trip_data.base_price, trip_data.policies || {}
+      trip_data.route_id,
+      trip_data.bus_id,
+      trip_data.departure_time,
+      trip_data.arrival_time,
+      trip_data.base_price,
+      trip_data.policies || {},
     ];
     const result = await pool.query(query, values);
-    
+
     return await this._mapRowToTrip(result.rows[0]);
   }
 
@@ -138,12 +216,30 @@ class TripRepository {
     const values = [];
     let index = 1;
 
-    if (trip_data.departure_time) { fields.push(`departure_time = $${index++}`); values.push(trip_data.departure_time); }
-    if (trip_data.arrival_time) { fields.push(`arrival_time = $${index++}`); values.push(trip_data.arrival_time); }
-    if (trip_data.base_price) { fields.push(`base_price = $${index++}`); values.push(trip_data.base_price); }
-    if (trip_data.bus_id) { fields.push(`bus_id = $${index++}`); values.push(trip_data.bus_id); }
-    if (trip_data.policies) { fields.push(`policies = $${index++}::jsonb`); values.push(trip_data.policies); }
-    if (trip_data.status) { fields.push(`status = $${index++}`); values.push(trip_data.status); }
+    if (trip_data.departure_time) {
+      fields.push(`departure_time = $${index++}`);
+      values.push(trip_data.departure_time);
+    }
+    if (trip_data.arrival_time) {
+      fields.push(`arrival_time = $${index++}`);
+      values.push(trip_data.arrival_time);
+    }
+    if (trip_data.base_price) {
+      fields.push(`base_price = $${index++}`);
+      values.push(trip_data.base_price);
+    }
+    if (trip_data.bus_id) {
+      fields.push(`bus_id = $${index++}`);
+      values.push(trip_data.bus_id);
+    }
+    if (trip_data.policies) {
+      fields.push(`policies = $${index++}::jsonb`);
+      values.push(trip_data.policies);
+    }
+    if (trip_data.status) {
+      fields.push(`status = $${index++}`);
+      values.push(trip_data.status);
+    }
 
     if (fields.length === 0) return await this.findById(id);
 
@@ -151,7 +247,7 @@ class TripRepository {
     values.push(id);
 
     const result = await pool.query(query, values);
-    
+
     if (result.rowCount === 0) return null;
     return await this._mapRowToTrip(result.rows[0]);
   }
@@ -190,7 +286,7 @@ class TripRepository {
       bus_type,
       limit = 20,
       page = 1,
-      sort
+      sort,
     } = filters;
 
     const offset = (page - 1) * limit;
@@ -199,37 +295,37 @@ class TripRepository {
     let where_clauses = [`t.status = 'active'`];
 
     // Build filters
-    if (origin) { 
-      where_clauses.push(`r.origin ILIKE $${index++}`); 
-      values.push(`%${origin}%`); 
+    if (origin) {
+      where_clauses.push(`r.origin ILIKE $${index++}`);
+      values.push(`%${origin}%`);
     }
-    if (destination) { 
-      where_clauses.push(`r.destination ILIKE $${index++}`); 
-      values.push(`%${destination}%`); 
+    if (destination) {
+      where_clauses.push(`r.destination ILIKE $${index++}`);
+      values.push(`%${destination}%`);
     }
-    if (date) { 
-      where_clauses.push(`DATE(t.departure_time) = $${index++}`); 
-      values.push(date); 
+    if (date) {
+      where_clauses.push(`DATE(t.departure_time) = $${index++}`);
+      values.push(date);
     }
-    if (price_min) { 
-      where_clauses.push(`t.base_price >= $${index++}`); 
-      values.push(price_min); 
+    if (price_min) {
+      where_clauses.push(`t.base_price >= $${index++}`);
+      values.push(price_min);
     }
-    if (price_max) { 
-      where_clauses.push(`t.base_price <= $${index++}`); 
-      values.push(price_max); 
+    if (price_max) {
+      where_clauses.push(`t.base_price <= $${index++}`);
+      values.push(price_max);
     }
-    if (departure_start) { 
-      where_clauses.push(`t.departure_time >= $${index++}`); 
-      values.push(departure_start); 
+    if (departure_start) {
+      where_clauses.push(`t.departure_time >= $${index++}`);
+      values.push(departure_start);
     }
-    if (departure_end) { 
-      where_clauses.push(`t.departure_time <= $${index++}`); 
-      values.push(departure_end); 
+    if (departure_end) {
+      where_clauses.push(`t.departure_time <= $${index++}`);
+      values.push(departure_end);
     }
-    if (bus_type) { 
-      where_clauses.push(`b.type = $${index++}`); 
-      values.push(bus_type); 
+    if (bus_type) {
+      where_clauses.push(`b.type = $${index++}`);
+      values.push(bus_type);
     }
 
     // Sort mapping
@@ -237,7 +333,7 @@ class TripRepository {
       'departure_time ASC': 't.departure_time ASC',
       'departure_time DESC': 't.departure_time DESC',
       'base_price ASC': 't.base_price ASC',
-      'base_price DESC': 't.base_price DESC'
+      'base_price DESC': 't.base_price DESC',
     };
     const order_by = sort_mapping[sort] || 't.departure_time ASC';
 
@@ -250,9 +346,9 @@ class TripRepository {
     values.push(limit, offset);
 
     const result = await pool.query(query, values);
-    
+
     // Map tất cả rows (parallel)
-    return Promise.all(result.rows.map(row => this._mapRowToTrip(row)));
+    return Promise.all(result.rows.map((row) => this._mapRowToTrip(row)));
   }
 
   async softDelete(id) {

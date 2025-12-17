@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { SeatMap } from '@/components/users/SeatMap'
+import { PickupDropoffSelector } from '@/components/users/PickupDropoffSelector'
 import GuestCheckout from '@/components/booking/GuestCheckout'
 import { ChevronLeft, ArrowRight, Lock, Clock, LogOut } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -58,12 +59,24 @@ export function SeatSelection() {
   const { tripId } = useParams<{ tripId: string }>()
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const { setSelectedTrip, setSelectedSeats: setBookingSeats } =
-    useBookingStore()
+  const {
+    setSelectedTrip,
+    setSelectedSeats: setBookingSeats,
+    setSelectedPickupPoint,
+    setSelectedDropoffPoint,
+    selectedPickupPoint: bookingPickupPoint,
+    selectedDropoffPoint: bookingDropoffPoint,
+  } = useBookingStore()
 
   const [trip, setTrip] = useState<Trip | null>(null)
   const [seatMapData, setSeatMapData] = useState<SeatMapData | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<string[]>([])
+  const [selectedPickup, setSelectedPickup] = useState<
+    Trip['pickup_points'][0] | null
+  >(null)
+  const [selectedDropoff, setSelectedDropoff] = useState<
+    Trip['dropoff_points'][0] | null
+  >(null)
   const [totalPrice, setTotalPrice] = useState(0)
   const [serviceFee, setServiceFee] = useState(0)
   const [totalWithFee, setTotalWithFee] = useState(0)
@@ -266,6 +279,24 @@ export function SeatSelection() {
   useEffect(() => {
     fetchTripAndSeats()
   }, [fetchTripAndSeats])
+
+  // Restore pickup/dropoff from booking store when trip is loaded
+  useEffect(() => {
+    if (trip && bookingPickupPoint && bookingDropoffPoint) {
+      // Check if the stored points still exist in this trip
+      const pickupExists = trip.pickup_points.some(
+        (p) => p.point_id === bookingPickupPoint.point_id
+      )
+      const dropoffExists = trip.dropoff_points.some(
+        (p) => p.point_id === bookingDropoffPoint.point_id
+      )
+
+      if (pickupExists && dropoffExists) {
+        setSelectedPickup(bookingPickupPoint)
+        setSelectedDropoff(bookingDropoffPoint)
+      }
+    }
+  }, [trip, bookingPickupPoint, bookingDropoffPoint])
 
   // Cleanup locks and timeouts when component unmounts
   useEffect(() => {
@@ -572,6 +603,24 @@ export function SeatSelection() {
       return
     }
 
+    // Require pickup/dropoff selection if route defines points
+    const requiresPickup = !!(
+      trip?.pickup_points && trip.pickup_points.length > 0
+    )
+    const requiresDropoff = !!(
+      trip?.dropoff_points && trip.dropoff_points.length > 0
+    )
+
+    if (requiresPickup && !selectedPickup) {
+      setError('Please select a pickup location before continuing')
+      return
+    }
+
+    if (requiresDropoff && !selectedDropoff) {
+      setError('Please select a dropoff location before continuing')
+      return
+    }
+
     // Save trip and seats to booking store before checkout
     if (trip) {
       // Convert Trip type to match booking store's expected format
@@ -589,6 +638,14 @@ export function SeatSelection() {
     }
     const selectedSeatObjects = getFilteredSelectedSeats()
     setBookingSeats(selectedSeatObjects.map((s) => s.seat_code))
+
+    // Save pickup and dropoff points to booking store
+    if (selectedPickup) {
+      setSelectedPickupPoint(selectedPickup)
+    }
+    if (selectedDropoff) {
+      setSelectedDropoffPoint(selectedDropoff)
+    }
 
     // Show checkout for all users (guests and authenticated)
     setShowGuestCheckout(true)
@@ -753,7 +810,7 @@ export function SeatSelection() {
 
           {/* Main Content Layout */}
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Left Column - Seat Map */}
+            {/* Left Column - Seat Map and Pickup/Dropoff */}
             <div className="flex-1 space-y-4">
               {/* Seat Map Component */}
               {seatMapData && (
@@ -781,6 +838,21 @@ export function SeatSelection() {
                     }
                   />
                 </div>
+              )}
+
+              {/* Pickup and Dropoff Selector Component */}
+              {trip && trip.pickup_points && trip.dropoff_points && (
+                <PickupDropoffSelector
+                  pickupPoints={trip.pickup_points}
+                  dropoffPoints={trip.dropoff_points}
+                  selectedPickup={selectedPickup}
+                  selectedDropoff={selectedDropoff}
+                  onPickupSelect={setSelectedPickup}
+                  onDropoffSelect={setSelectedDropoff}
+                  isActive={true}
+                  seatsSelected={getFilteredSelectedSeats().length}
+                  minSeatsRequired={1}
+                />
               )}
             </div>
 
@@ -860,7 +932,13 @@ export function SeatSelection() {
 
                   <Button
                     onClick={handleContinue}
-                    disabled={getFilteredSelectedSeats().length === 0}
+                    disabled={
+                      getFilteredSelectedSeats().length === 0 ||
+                      ((trip?.pickup_points?.length ?? 0) > 0 &&
+                        !selectedPickup) ||
+                      ((trip?.dropoff_points?.length ?? 0) > 0 &&
+                        !selectedDropoff)
+                    }
                     className="w-full mt-3"
                     size="sm"
                   >

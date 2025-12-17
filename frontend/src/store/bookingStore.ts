@@ -2,11 +2,16 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Trip } from '../api/trips'
 import type { PassengerInfo } from '../api/bookings'
+import type { PickupPoint, DropoffPoint } from '@/types/trip.types'
 
 export interface BookingState {
   // Selected trip and seats
   selectedTrip: Trip | null
   selectedSeats: string[]
+
+  // Pickup and dropoff points
+  selectedPickupPoint: PickupPoint | null
+  selectedDropoffPoint: DropoffPoint | null
 
   // Passenger information
   passengers: PassengerInfo[]
@@ -18,6 +23,8 @@ export interface BookingState {
   // Actions
   setSelectedTrip: (trip: Trip) => void
   setSelectedSeats: (seats: string[]) => void
+  setSelectedPickupPoint: (point: PickupPoint | null) => void
+  setSelectedDropoffPoint: (point: DropoffPoint | null) => void
   setPassengers: (passengers: PassengerInfo[]) => void
   setContactInfo: (email: string, phone: string) => void
   clearBooking: () => void
@@ -44,6 +51,8 @@ export const useBookingStore = create<BookingState>()(
       // Initial state
       selectedTrip: null,
       selectedSeats: [],
+      selectedPickupPoint: null,
+      selectedDropoffPoint: null,
       passengers: [],
       contactEmail: '',
       contactPhone: '',
@@ -56,6 +65,16 @@ export const useBookingStore = create<BookingState>()(
       // Set selected seats
       setSelectedSeats: (seats: string[]) => {
         set({ selectedSeats: seats })
+      },
+
+      // Set selected pickup point
+      setSelectedPickupPoint: (point: PickupPoint | null) => {
+        set({ selectedPickupPoint: point })
+      },
+
+      // Set selected dropoff point
+      setSelectedDropoffPoint: (point: DropoffPoint | null) => {
+        set({ selectedDropoffPoint: point })
       },
 
       // Set passenger information
@@ -73,6 +92,8 @@ export const useBookingStore = create<BookingState>()(
         set({
           selectedTrip: null,
           selectedSeats: [],
+          selectedPickupPoint: null,
+          selectedDropoffPoint: null,
           passengers: [],
           contactEmail: '',
           contactPhone: '',
@@ -97,6 +118,8 @@ export const useBookingStore = create<BookingState>()(
         // Only persist these fields
         selectedTrip: state.selectedTrip,
         selectedSeats: state.selectedSeats,
+        selectedPickupPoint: state.selectedPickupPoint,
+        selectedDropoffPoint: state.selectedDropoffPoint,
         passengers: state.passengers,
         contactEmail: state.contactEmail,
         contactPhone: state.contactPhone,

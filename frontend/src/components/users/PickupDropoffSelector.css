@@ -1,0 +1,195 @@
+/* ============================================================================
+   Pickup/Dropoff Selector - Modern Tailwind & Theme-based Styling
+   ============================================================================ */
+
+.pickup-dropoff-selector {
+  @apply border-0 shadow-md bg-card text-card-foreground p-6;
+}
+
+/* Disabled State */
+.pickup-dropoff-selector.pickup-dropoff-disabled {
+  @apply opacity-60 bg-muted;
+}
+
+.pickup-dropoff-disabled-content {
+  @apply flex items-center gap-3 p-4;
+}
+
+.pickup-dropoff-disabled-icon {
+  @apply text-muted-foreground flex-shrink-0;
+}
+
+.pickup-dropoff-disabled-text {
+  @apply flex-1;
+}
+
+.pickup-dropoff-disabled-title {
+  @apply font-semibold text-sm text-card-foreground mb-1;
+}
+
+.pickup-dropoff-disabled-message {
+  @apply text-xs text-muted-foreground;
+}
+
+/* Main Header */
+.pickup-dropoff-header-title {
+  @apply flex items-center gap-3 mb-5 pb-4 border-b border-border;
+}
+
+.pickup-dropoff-title-icon {
+  @apply text-primary flex-shrink-0;
+}
+
+.pickup-dropoff-main-title {
+  @apply text-lg font-bold text-card-foreground;
+}
+
+/* Section Container */
+.pickup-dropoff-section-container {
+  @apply mb-4;
+}
+
+.pickup-dropoff-section-container:last-of-type {
+  @apply mb-0;
+}
+
+/* Section Header */
+.pickup-dropoff-section-header {
+  @apply flex items-center justify-between gap-3 p-3 rounded-lg cursor-pointer 
+         transition-colors hover:bg-accent focus:outline-none focus:ring-2 
+         focus:ring-ring focus:ring-offset-2;
+}
+
+.pickup-dropoff-section-header:hover {
+  @apply bg-accent;
+}
+
+.pickup-dropoff-section-title {
+  @apply flex-1;
+}
+
+.pickup-dropoff-section-title h3 {
+  @apply text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-1;
+}
+
+.pickup-dropoff-section-selected {
+  @apply text-base font-medium text-card-foreground m-0;
+}
+
+.pickup-dropoff-section-chevron {
+  @apply text-muted-foreground transition-transform duration-300 flex-shrink-0;
+}
+
+.pickup-dropoff-section-chevron.open {
+  @apply rotate-180;
+}
+
+/* Options Container */
+.pickup-dropoff-options-container {
+  @apply mt-3 rounded-lg border border-border bg-muted/30 overflow-hidden;
+}
+
+.pickup-dropoff-no-options {
+  @apply flex flex-col items-center justify-center gap-2 py-6 px-4 text-muted-foreground;
+}
+
+.pickup-dropoff-no-options svg {
+  @apply text-muted-foreground;
+}
+
+.pickup-dropoff-no-options p {
+  @apply text-sm font-medium;
+}
+
+/* Options List */
+.pickup-dropoff-options {
+  @apply divide-y divide-border;
+}
+
+/* Radio Item */
+.pickup-dropoff-radio-item {
+  @apply flex items-center gap-3 p-3 cursor-pointer 
+         transition-colors hover:bg-accent/50;
+}
+
+.pickup-dropoff-radio-item:hover {
+  @apply bg-accent/50;
+}
+
+.pickup-dropoff-radio-input {
+  @apply sr-only;
+}
+
+.pickup-dropoff-radio-wrapper {
+  @apply flex-shrink-0 flex items-center justify-center;
+}
+
+.pickup-dropoff-radio-icon {
+  @apply text-muted-foreground transition-colors;
+}
+
+.pickup-dropoff-radio-icon.selected {
+  @apply text-primary;
+}
+
+/* Option Content */
+.pickup-dropoff-option-content {
+  @apply flex-1 min-w-0;
+}
+
+.pickup-dropoff-option-name {
+  @apply font-semibold text-card-foreground text-sm;
+}
+
+.pickup-dropoff-option-details {
+  @apply flex items-center gap-2 mt-1 text-xs text-muted-foreground;
+}
+
+.pickup-dropoff-option-address {
+  @apply truncate;
+}
+
+.pickup-dropoff-option-time {
+  @apply font-medium text-primary flex-shrink-0;
+}
+
+/* Divider */
+.pickup-dropoff-divider {
+  @apply border-b border-border my-4;
+}
+
+/* Completion Badge */
+.pickup-dropoff-completion-badge {
+  @apply flex items-center justify-center gap-2 mt-5 pt-4 border-t 
+         border-border p-3 rounded-lg bg-primary/5 text-primary text-sm font-medium;
+}
+
+.pickup-dropoff-completion-badge svg {
+  @apply flex-shrink-0;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .pickup-dropoff-section-header {
+    @apply p-2;
+  }
+
+  .pickup-dropoff-radio-item {
+    @apply p-2 gap-2;
+  }
+
+  .pickup-dropoff-option-details {
+    @apply flex-col gap-1 items-start;
+  }
+
+  .pickup-dropoff-option-time {
+    @apply block;
+  }
+}
+
+/* Dark Mode - Uses Tailwind's dark mode via system or class */
+@media (prefers-color-scheme: dark) {
+  .pickup-dropoff-section-header:hover {
+    @apply bg-accent;
+  }
+}

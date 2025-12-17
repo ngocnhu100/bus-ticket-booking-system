@@ -96,15 +96,20 @@ const History = () => {
     }).format(price)
   }
 
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+  // Format date (accept undefined safely)
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Unknown'
+    try {
+      return new Date(dateString).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return 'Unknown'
+    }
   }
 
   // View booking details

@@ -235,42 +235,44 @@ INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_min
 ON CONFLICT DO NOTHING;
 
 -- 6. Route Stops
-INSERT INTO route_stops (route_id, stop_name, sequence, arrival_offset_minutes, departure_offset_minutes) VALUES
+-- Insert stops with explicit pickup/dropoff flags.
+-- Rule: origin = pickup only, destination = dropoff only, intermediate stops allow both pickup and dropoff.
+INSERT INTO route_stops (route_id, stop_name, sequence, arrival_offset_minutes, departure_offset_minutes, is_pickup, is_dropoff) VALUES
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- 'Ho Chi Minh City', 1, 0, 0),
+ 'Ho Chi Minh City', 1, 0, 0, TRUE, FALSE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- 'Da Nang', 2, 540, 550),
+ 'Da Nang', 2, 540, 550, TRUE, TRUE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- 'Hanoi', 3, 1080, 1080),
+ 'Hanoi', 3, 1080, 1080, FALSE, TRUE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
- 'Ho Chi Minh City', 1, 0, 0),
+ 'Ho Chi Minh City', 1, 0, 0, TRUE, FALSE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
- 'Da Nang', 2, 540, 540),
+ 'Da Nang', 2, 540, 540, FALSE, TRUE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
- 'Hanoi', 1, 0, 0),
+ 'Hanoi', 1, 0, 0, TRUE, FALSE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
- 'Da Nang', 2, 360, 360),
+ 'Da Nang', 2, 360, 360, FALSE, TRUE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hue' LIMIT 1),
- 'Ho Chi Minh City', 1, 0, 0),
+ 'Ho Chi Minh City', 1, 0, 0, TRUE, FALSE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hue' LIMIT 1),
- 'Hue', 2, 600, 600),
+ 'Hue', 2, 600, 600, FALSE, TRUE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
- 'Hanoi', 1, 0, 0),
+ 'Hanoi', 1, 0, 0, TRUE, FALSE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
- 'Da Nang', 2, 360, 370),
+ 'Da Nang', 2, 360, 370, TRUE, TRUE),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
- 'Ho Chi Minh City', 3, 1080, 1080)
+ 'Ho Chi Minh City', 3, 1080, 1080, FALSE, TRUE)
 ON CONFLICT DO NOTHING;
 
 -- 7. Trips
