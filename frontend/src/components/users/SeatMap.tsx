@@ -226,9 +226,10 @@ export function SeatMap({
                           // - It's available, OR
                           // - It's locked by the current user, OR
                           // - It's currently selected by the user (allows deselection)
-                          // But NOT if it's locked by booking
+                          // But NOT if it's locked by booking OR occupied
                           const canToggleSeat =
                             seat.locked_by !== 'booking' &&
+                            seat.status !== 'occupied' &&
                             (seat.status === 'available' ||
                               isLockedByUser ||
                               isCurrentlySelected)

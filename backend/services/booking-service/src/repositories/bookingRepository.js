@@ -9,28 +9,32 @@ async function sanitizeUserId(value) {
   if (!value || value === 'null' || value === 'undefined') {
     return null;
   }
-  
+
   // UUID regex pattern
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  
+
   const strValue = String(value).trim();
-  
+
   // Check if already valid UUID
   if (uuidRegex.test(strValue)) {
     return strValue;
   }
-  
+
   // BACKWARD COMPATIBILITY: Check if it's an INTEGER from old JWT
   const intValue = parseInt(strValue, 10);
   if (!isNaN(intValue) && intValue > 0) {
-    console.warn(`[BookingRepository] Received INTEGER userId (${intValue}), likely from old JWT token. Please re-login to get UUID token.`);
-    
+    console.warn(
+      `[BookingRepository] Received INTEGER userId (${intValue}), likely from old JWT token. Please re-login to get UUID token.`
+    );
+
     // Try to lookup UUID by old integer ID (if you have a mapping table)
     // For now, return null and suggest re-login
-    console.warn('[BookingRepository] Solution: User must logout and login again to get fresh JWT with UUID.');
+    console.warn(
+      '[BookingRepository] Solution: User must logout and login again to get fresh JWT with UUID.'
+    );
     return null;
   }
-  
+
   // Invalid format
   console.error('[BookingRepository] Invalid userId format:', value);
   return null;
@@ -43,10 +47,10 @@ function sanitizeUUID(value) {
   if (!value || value === 'null' || value === 'undefined') {
     return null;
   }
-  
+
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const strValue = String(value).trim();
-  
+
   return uuidRegex.test(strValue) ? strValue : null;
 }
 
@@ -62,9 +66,9 @@ class BookingRepository {
       tripId: bookingData.tripId,
       userId: bookingData.userId,
       sanitizedUserId: sanitizeUUID(bookingData.userId),
-      contactEmail: bookingData.contactEmail
+      contactEmail: bookingData.contactEmail,
     });
-    
+
     const query = `
       INSERT INTO bookings (
         booking_reference,
@@ -82,9 +86,9 @@ class BookingRepository {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
     `;
-    
+
     const sanitizedUserId = sanitizeUUID(bookingData.userId);
-    
+
     const values = [
       bookingData.bookingReference,
       bookingData.tripId,
@@ -97,21 +101,21 @@ class BookingRepository {
       bookingData.serviceFee,
       bookingData.totalPrice,
       bookingData.currency || 'VND',
-      'unpaid'
+      'unpaid',
     ];
-    
+
     console.log('[BookingRepository] SQL values:', values);
     console.log('[BookingRepository] user_id will be:', sanitizedUserId);
-    
+
     const result = await db.query(query, values);
     const createdBooking = mapToBooking(result.rows[0]);
-    
+
     console.log('[BookingRepository] Booking created:', {
-      bookingId: createdBooking.bookingId,
-      userId: createdBooking.userId,
-      bookingReference: createdBooking.bookingReference
+      booking_id: createdBooking.booking_id,
+      user_id: createdBooking.user_id,
+      booking_reference: createdBooking.booking_reference,
     });
-    
+
     return createdBooking;
   }
 
@@ -123,11 +127,11 @@ class BookingRepository {
   async findById(bookingId) {
     const query = 'SELECT * FROM bookings WHERE booking_id = $1';
     const result = await db.query(query, [bookingId]);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToBooking(result.rows[0]);
   }
 
@@ -139,11 +143,11 @@ class BookingRepository {
   async findByReference(bookingReference) {
     const query = 'SELECT * FROM bookings WHERE booking_reference = $1';
     const result = await db.query(query, [bookingReference]);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToBooking(result.rows[0]);
   }
 
@@ -156,7 +160,7 @@ class BookingRepository {
   async findByUserId(userId, filters = {}) {
     // Sanitize and validate userId
     const sanitizedUserId = sanitizeUUID(userId);
-    
+
     if (!sanitizedUserId) {
       // Check if it's an INTEGER from old JWT
       const intValue = parseInt(String(userId), 10);
@@ -181,16 +185,23 @@ class BookingRepository {
         console.error('   - Verify users.user_id is UUID in database');
         console.error('   - Ensure auth-service generates UUID tokens');
         console.error('═══════════════════════════════════════════════════════════');
-        
+
         // Throw clear error instead of returning empty result
-        throw new Error('OLD_JWT_TOKEN_DETECTED: Please logout and login again to get a fresh token with UUID userId');
+        throw new Error(
+          'OLD_JWT_TOKEN_DETECTED: Please logout and login again to get a fresh token with UUID userId'
+        );
       } else {
         console.warn('[BookingRepository] Invalid userId provided:', userId);
         throw new Error('INVALID_USER_ID: userId must be a valid UUID');
       }
     }
-    
-    console.log('[BookingRepository] Searching bookings for userId:', sanitizedUserId, 'with filters:', filters);
+
+    console.log(
+      '[BookingRepository] Searching bookings for userId:',
+      sanitizedUserId,
+      'with filters:',
+      filters
+    );
 
     const {
       status = 'all',
@@ -199,7 +210,7 @@ class BookingRepository {
       page = 1,
       limit = 20,
       sortBy = 'created_at',
-      sortOrder = 'DESC'
+      sortOrder = 'DESC',
     } = filters;
 
     let query = 'SELECT * FROM bookings WHERE user_id = $1';
@@ -234,17 +245,17 @@ class BookingRepository {
 
     // Map camelCase to snake_case for sorting
     const sortColumnMap = {
-      'createdAt': 'created_at',
-      'updatedAt': 'updated_at',
-      'totalPrice': 'total_price',
-      'created_at': 'created_at',  // Support both formats
-      'updated_at': 'updated_at',
-      'total_price': 'total_price'
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
+      totalPrice: 'total_price',
+      created_at: 'created_at', // Support both formats
+      updated_at: 'updated_at',
+      total_price: 'total_price',
     };
-    
+
     const sortColumn = sortColumnMap[sortBy] || 'created_at';
     const sortDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    
+
     query += ` ORDER BY ${sortColumn} ${sortDirection}`;
     query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
     values.push(limit, (page - 1) * limit);
@@ -253,17 +264,17 @@ class BookingRepository {
     console.log('[BookingRepository] Query values:', values);
 
     const result = await db.query(query, values);
-    
+
     console.log(`[BookingRepository] Found ${result.rows.length} bookings (total: ${total})`);
-    
+
     return {
       bookings: result.rows.map(mapToBooking),
       pagination: {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -280,13 +291,13 @@ class BookingRepository {
       WHERE booking_id = $2
       RETURNING *
     `;
-    
+
     const result = await db.query(query, [status, bookingId]);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToBooking(result.rows[0]);
   }
 
@@ -308,20 +319,45 @@ class BookingRepository {
       WHERE booking_id = $4
       RETURNING *
     `;
-    
+
     const values = [
       paymentData.paymentStatus,
       paymentData.paymentMethod,
       paymentData.paidAt || null,
-      bookingId
+      bookingId,
     ];
-    
+
     const result = await db.query(query, values);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
+    return mapToBooking(result.rows[0]);
+  }
+
+  /**
+   * Assign a user_id to a booking if currently null
+   * @param {string} bookingId
+   * @param {string} userId
+   * @returns {Promise<object|null>} Updated booking
+   */
+  async updateUserId(bookingId, userId) {
+    const sanitizedUserId = sanitizeUUID(userId);
+    if (!sanitizedUserId) {
+      console.warn('[BookingRepository] updateUserId called with invalid userId:', userId);
+      return null;
+    }
+
+    const query = `
+      UPDATE bookings
+      SET user_id = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE booking_id = $2 AND (user_id IS NULL OR user_id = '')
+      RETURNING *
+    `;
+
+    const result = await db.query(query, [sanitizedUserId, bookingId]);
+    if (result.rows.length === 0) return null;
     return mapToBooking(result.rows[0]);
   }
 
@@ -342,19 +378,19 @@ class BookingRepository {
       WHERE booking_id = $3
       RETURNING *
     `;
-    
+
     const values = [
       cancellationData.reason || null,
       cancellationData.refundAmount || null,
-      bookingId
+      bookingId,
     ];
-    
+
     const result = await db.query(query, values);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToBooking(result.rows[0]);
   }
 
@@ -374,19 +410,15 @@ class BookingRepository {
       WHERE booking_id = $3
       RETURNING *
     `;
-    
-    const values = [
-      eTicketData.ticketUrl,
-      eTicketData.qrCodeUrl,
-      bookingId
-    ];
-    
+
+    const values = [eTicketData.ticketUrl, eTicketData.qrCodeUrl, bookingId];
+
     const result = await db.query(query, values);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToBooking(result.rows[0]);
   }
 
@@ -401,7 +433,7 @@ class BookingRepository {
       AND payment_status = 'unpaid'
       AND locked_until < CURRENT_TIMESTAMP
     `;
-    
+
     const result = await db.query(query);
     return result.rows.map(mapToBooking);
   }
@@ -421,9 +453,57 @@ class BookingRepository {
       AND b.status IN ('pending', 'confirmed')
       AND bp.seat_code = ANY($2)
     `;
-    
+
     const result = await db.query(query, [tripId, seatCodes]);
-    return result.rows.map(row => row.seat_code);
+    return result.rows.map((row) => row.seat_code);
+  }
+
+  /**
+   * Find upcoming confirmed bookings within a time window
+   * @param {Date} startTime - Start of time window
+   * @param {Date} endTime - End of time window
+   * @returns {Promise<Array>} Upcoming bookings
+   */
+  async findUpcomingTrips(startTime, endTime) {
+    const query = `
+      SELECT
+        b.booking_id,
+        b.booking_reference,
+        b.trip_id,
+        b.user_id,
+        b.contact_email,
+        b.contact_phone,
+        b.status,
+        b.payment_status,
+        b.total_price,
+        b.currency,
+        t.departure_time,
+        u.preferences
+      FROM bookings b
+      INNER JOIN trips t ON b.trip_id = t.trip_id
+      LEFT JOIN users u ON b.user_id = u.user_id
+      WHERE b.status = 'confirmed'
+      AND b.payment_status = 'paid'
+      AND t.departure_time BETWEEN $1 AND $2
+      AND b.contact_phone IS NOT NULL
+      AND b.contact_phone != ''
+    `;
+
+    const result = await db.query(query, [startTime, endTime]);
+    return result.rows.map((row) => ({
+      booking_id: row.booking_id,
+      booking_reference: row.booking_reference,
+      trip_id: row.trip_id,
+      user_id: row.user_id,
+      contact_email: row.contact_email,
+      contact_phone: row.contact_phone,
+      status: row.status,
+      payment_status: row.payment_status,
+      total_price: row.total_price,
+      currency: row.currency,
+      departure_time: row.departure_time,
+      preferences: row.preferences || {},
+    }));
   }
 }
 

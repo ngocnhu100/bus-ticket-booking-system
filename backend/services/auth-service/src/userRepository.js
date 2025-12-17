@@ -2,7 +2,14 @@ const pool = require('./database');
 
 class UserRepository {
   async create(userData) {
-    const { email, phone, passwordHash, fullName, role = 'passenger', emailVerified = false } = userData;
+    const {
+      email,
+      phone,
+      passwordHash,
+      fullName,
+      role = 'passenger',
+      emailVerified = false,
+    } = userData;
     const query = `
       INSERT INTO users (email, phone, password_hash, full_name, role, email_verified, created_at)
       VALUES ($1, $2, $3, $4, $5, $6, NOW())
@@ -26,7 +33,7 @@ class UserRepository {
   }
 
   async findById(userId) {
-    const query = 'SELECT user_id, email, phone, password_hash, full_name, role, google_id, email_verified, created_at FROM users WHERE user_id = $1';
+    const query = 'SELECT * FROM users WHERE user_id = $1';
     const result = await pool.query(query, [userId]);
     return result.rows[0];
   }
@@ -137,6 +144,46 @@ class UserRepository {
       RETURNING *
     `;
     const result = await pool.query(query, [attempts, lockUntil, userId]);
+    return result.rows[0];
+  }
+
+  async update(userId, updateData) {
+    const allowedFields = ['email', 'phone', 'fullName', 'avatar', 'preferences'];
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    // Map camelCase to snake_case
+    const fieldMap = {
+      email: 'email',
+      phone: 'phone',
+      fullName: 'full_name',
+      avatar: 'avatar',
+      preferences: 'preferences',
+    };
+
+    for (const [key, value] of Object.entries(updateData)) {
+      if (allowedFields.includes(key) && value !== undefined) {
+        const dbField = fieldMap[key];
+        updates.push(`${dbField} = $${paramIndex}`);
+        values.push(value);
+        paramIndex++;
+      }
+    }
+
+    if (updates.length === 0) {
+      // No updates to make, return current user
+      return this.findById(userId);
+    }
+
+    values.push(userId);
+    const query = `
+      UPDATE users
+      SET ${updates.join(', ')}, updated_at = NOW()
+      WHERE user_id = $${paramIndex}
+      RETURNING *
+    `;
+    const result = await pool.query(query, values);
     return result.rows[0];
   }
 }

@@ -296,7 +296,7 @@ export function SeatSelection() {
       if (!user || !tripId || !guestSessionId) return
 
       transferInProgressRef.current = true
-      setOperationInProgress(false)
+      setOperationInProgress(true) // Prevent useEffect from interfering
       setSeatMapLoading(true)
       try {
         const result = await transferGuestLocksApi(
@@ -307,9 +307,6 @@ export function SeatSelection() {
 
         // Add delay to ensure backend processes transfer before refreshing locks
         await new Promise((resolve) => setTimeout(resolve, 800))
-
-        // Refresh locks with new user context
-        await refreshLocks(tripId)
 
         // Check if any seats were rejected due to limit (use snake_case from backend)
         const rejectedSeats = result.data?.rejected_seats || []
@@ -402,6 +399,9 @@ export function SeatSelection() {
           }
         }
 
+        // Transfer complete, allow normal operations
+        setOperationInProgress(false)
+
         // Clear the guest session ID after successful transfer
         sessionStorage.removeItem('guestSessionId')
       } catch (error) {
@@ -422,14 +422,15 @@ export function SeatSelection() {
     transferGuestLocksOnLogin()
   }, [user, tripId, guestSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Calculate total price based on selected seats (excluding booking-locked seats)
+  // Calculate total price based on selected seats (excluding booking-locked and occupied seats)
   useEffect(() => {
     const filteredSeats =
       seatMapData?.seats?.filter(
         (seat) =>
           seat.seat_id &&
           selectedSeats.includes(seat.seat_id) &&
-          seat.locked_by !== 'booking'
+          seat.locked_by !== 'booking' &&
+          seat.status !== 'occupied'
       ) || []
     if (seatMapData && filteredSeats.length > 0) {
       const subtotal = filteredSeats.reduce((sum, seat) => {
@@ -595,26 +596,28 @@ export function SeatSelection() {
 
   const getSelectedSeatCodes = () => {
     if (!seatMapData?.seats) return '-'
-    // Filter out seats locked by "booking"
+    // Filter out seats locked by "booking" and occupied seats
     const selectedSeatObjects = seatMapData.seats.filter(
       (seat) =>
         seat.seat_id &&
         selectedSeats.includes(seat.seat_id) &&
-        seat.locked_by !== 'booking'
+        seat.locked_by !== 'booking' &&
+        seat.status !== 'occupied'
     )
     return selectedSeatObjects.length > 0
       ? selectedSeatObjects.map((seat) => seat.seat_code).join(', ')
       : '-'
   }
 
-  // Helper to get filtered selected seats (excluding booking-locked seats)
+  // Helper to get filtered selected seats (excluding booking-locked and occupied seats)
   const getFilteredSelectedSeats = () => {
     if (!seatMapData?.seats) return []
     return seatMapData.seats.filter(
       (seat) =>
         seat.seat_id &&
         selectedSeats.includes(seat.seat_id) &&
-        seat.locked_by !== 'booking'
+        seat.locked_by !== 'booking' &&
+        seat.status !== 'occupied'
     )
   }
 

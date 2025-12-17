@@ -8,7 +8,8 @@ class AuthService {
       socket: process.env.REDIS_URL && process.env.NODE_ENV === 'production' ? { tls: true } : {},
     });
 
-    this.redisClient.connect()
+    this.redisClient
+      .connect()
       .then(() => {
         console.log('🔌 AuthService: Redis client connected');
       })
@@ -40,7 +41,9 @@ class AuthService {
   }
 
   generateRefreshToken(payload) {
-    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }); // Using same secret for simplicity
+    return jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+    }); // Using same secret for simplicity
   }
 
   async storeRefreshToken(userId, refreshToken) {

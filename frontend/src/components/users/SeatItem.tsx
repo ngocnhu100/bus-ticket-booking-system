@@ -76,30 +76,23 @@ export function SeatItem({
     if (seat.locked_by === 'booking' && !hasExpiredLock) {
       return 'seat-locked'
     }
-    // Priority 2: If seat is explicitly selected by user, show selected
-    if (isSelected) return 'seat-selected'
-    // Priority 3: Only show as selected if lock exists AND hasn't expired
-    // AND the seat status from backend confirms it's locked
-    if (userLock && !isLockExpired && seat.status === 'locked') {
-      return 'seat-selected'
-    }
-    // Fallback: check if seat is locked by current user (from backend seat data)
-    if (
-      currentUserId &&
-      seat.locked_by === currentUserId &&
-      !isLockExpired &&
-      seat.status === 'locked'
-    ) {
-      return 'seat-selected'
-    }
-    // Use seat status from backend as source of truth, but only if lock is still valid
-    // Don't show locked status if we have no valid lock for this seat
-    if (seat.status === 'available') return 'seat-available'
+    // Priority 2: Backend status takes precedence
     if (seat.status === 'occupied') return 'seat-occupied'
-    // Treat any non-expired locked seat as locked visually so other-user locks
-    // use the same locked styling as booking locks. Interaction rules remain
-    // enforced elsewhere (SeatMap prevents toggling seats locked by others).
-    if (seat.status === 'locked') return 'seat-locked'
+    if (seat.status === 'locked') {
+      // If locked, check if it's locked by current user
+      if (currentUserId && seat.locked_by === currentUserId && !isLockExpired) {
+        return 'seat-selected' // Show as selected if locked by current user
+      }
+      if (userLock && !isLockExpired) {
+        return 'seat-selected' // Show as selected if user has a valid lock
+      }
+      return 'seat-locked' // Show as locked if locked by someone else
+    }
+    if (seat.status === 'available') {
+      return isSelected ? 'seat-selected' : 'seat-available'
+    }
+
+    // Fallback
     return 'seat-unavailable'
   }
 
@@ -114,7 +107,11 @@ export function SeatItem({
     }
 
     // Show checkmark for selected seats
-    if (isSelected) {
+    if (
+      isSelected &&
+      seat.status !== 'occupied' &&
+      seat.locked_by !== 'booking'
+    ) {
       return <Check className="w-4 h-4" />
     }
     // Show checkmark for seats locked by current user (only if lock is valid and backend agrees)
@@ -167,7 +164,8 @@ export function SeatItem({
         <span className="seat-code">{seat.seat_code}</span>
 
         {/* Countdown Timer for seats with valid user locks or current-user locks. */}
-        {seat.locked_by !== 'booking' &&
+        {seat.status !== 'occupied' &&
+          seat.locked_by !== 'booking' &&
           ((userLock && !isLockExpired) ||
             (currentUserId &&
               seat.locked_by === currentUserId &&

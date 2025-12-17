@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search,
   Mail,
@@ -185,6 +185,83 @@ export function BookingLookup() {
       setLoading(false)
     }
   }
+
+  // Extracted fetch logic so it can be called from useEffect when autoSearch param is present
+  const fetchBooking = async (
+    bookingRef: string,
+    email?: string | null,
+    phone?: string | null
+  ) => {
+    setError(null)
+    setBooking(null)
+
+    if (!bookingRef || !bookingRef.trim()) {
+      return
+    }
+
+    if (!(email && email.trim()) && !(phone && phone.trim())) {
+      // Don't perform auto-search if no contact info provided
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const params = new URLSearchParams()
+      params.append('bookingReference', bookingRef.trim())
+      if (email && email.trim()) params.append('email', email.trim())
+      if (phone && phone.trim()) params.append('phone', phone.trim())
+
+      const url = `${API_BASE_URL}/bookings/guest/lookup?${params.toString()}`
+      console.log('Auto Fetching:', url)
+
+      const response = await axios.get(url)
+
+      if (response.data.success) {
+        const bookingData = normalizeBookingData(response.data.data)
+        setBooking(bookingData)
+      } else {
+        setError('Booking not found')
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        const errorMessage =
+          err.response.data?.error?.message ||
+          'Booking not found or contact information does not match'
+        setError(errorMessage)
+      } else {
+        setError('An error occurred. Please try again.')
+      }
+      console.error('Auto lookup error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // On mount, read query params and optionally auto-search
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const br =
+        params.get('bookingReference') || params.get('booking_reference')
+      const email = params.get('email')
+      const phone = params.get('phone')
+      const auto = params.get('autoSearch') || params.get('auto_search')
+
+      if (br) setBookingReference(br)
+      if (email) setContactEmail(email)
+      if (phone) setContactPhone(phone)
+
+      if (br && (auto === '1' || auto === 'true')) {
+        // Perform auto lookup only when autoSearch present
+        fetchBooking(br, email, phone)
+      }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err) {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {

@@ -1,5 +1,8 @@
 const sgMail = require('@sendgrid/mail');
+const fetch = require('node-fetch');
 const { generateTicketEmailTemplate } = require('../templates/ticketEmailTemplate');
+const { generateBookingConfirmationTemplate } = require('../templates/bookingConfirmationTemplate');
+const { generateTripReminderTemplate } = require('../templates/tripReminderEmailTemplate');
 
 // Only set API key if it's provided
 if (process.env.SENDGRID_API_KEY) {
@@ -9,7 +12,9 @@ if (process.env.SENDGRID_API_KEY) {
   if (isProduction) {
     throw new Error('SendGrid API key is required in production but not configured.');
   } else {
-    console.warn('⚠️  SendGrid API key not set. Email sending will be disabled in development mode.');
+    console.warn(
+      '⚠️  SendGrid API key not set. Email sending will be disabled in development mode.'
+    );
   }
 }
 
@@ -65,7 +70,9 @@ class EmailService {
 
     // Check if SendGrid is configured
     if (!process.env.SENDGRID_API_KEY) {
-      console.log(`📧 [DEV MODE] Password reset email would be sent to ${email} with token ${token}`);
+      console.log(
+        `📧 [DEV MODE] Password reset email would be sent to ${email} with token ${token}`
+      );
       console.log(`📧 [DEV MODE] Reset URL: ${resetUrl}`);
       return { success: true, mode: 'development' };
     }
@@ -145,7 +152,9 @@ class EmailService {
   async sendPasswordChangedEmail(email, userName) {
     // Check if SendGrid is configured
     if (!process.env.SENDGRID_API_KEY) {
-      console.log(`📧 [DEV MODE] Password changed email would be sent to ${email} for user ${userName}`);
+      console.log(
+        `📧 [DEV MODE] Password changed email would be sent to ${email} for user ${userName}`
+      );
       return { success: true, mode: 'development' };
     }
 
@@ -183,12 +192,194 @@ class EmailService {
     }
   }
 
+  async sendBookingConfirmationEmail(email, bookingData) {
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(`📧 [DEV MODE] Booking confirmation email would be sent to ${email}`);
+      console.log(`📧 [DEV MODE] Booking Reference: ${bookingData.bookingReference}`);
+      return { success: true, mode: 'development' };
+    }
+
+    try {
+      // Prepare attachments and inline QR handling similar to ticket emails so QR renders reliably
+      const attachments = [];
+      let qrForTemplate = bookingData.qrCodeUrl;
+
+      if (bookingData.qrCodeUrl) {
+        try {
+          const dataUrlMatch = String(bookingData.qrCodeUrl).match(
+            /^data:(image\/[^;]+);base64,(.+)$/
+          );
+          if (dataUrlMatch) {
+            const mime = dataUrlMatch[1];
+            const base64 = dataUrlMatch[2];
+            const ext = mime.split('/')[1] || 'png';
+            const cid = `qr_${bookingData.bookingReference}`;
+            attachments.push({
+              content: base64,
+              filename: `${bookingData.bookingReference}-qr.${ext}`,
+              type: mime,
+              disposition: 'inline',
+              content_id: cid,
+            });
+            qrForTemplate = `cid:${cid}`;
+          } else if (/^https?:\/\//i.test(bookingData.qrCodeUrl)) {
+            const resQr = await fetch(bookingData.qrCodeUrl);
+            if (resQr.ok) {
+              const bufferQr = await resQr.buffer();
+              const base64Qr = bufferQr.toString('base64');
+              const contentType = resQr.headers.get('content-type') || 'image/png';
+              const ext = (contentType.split('/')[1] || 'png').split(';')[0];
+              const cid = `qr_${bookingData.bookingReference}`;
+              attachments.push({
+                content: base64Qr,
+                filename: `${bookingData.bookingReference}-qr.${ext}`,
+                type: contentType,
+                disposition: 'inline',
+                content_id: cid,
+              });
+              qrForTemplate = `cid:${cid}`;
+            } else {
+              console.warn(
+                `⚠️ Unable to fetch QR image from ${bookingData.qrCodeUrl} - status ${resQr.status}`
+              );
+            }
+          }
+        } catch (err) {
+          console.error('⚠️ Error processing booking QR code:', err.message || err);
+        }
+      }
+
+      // If bookingData already contains the e-ticket PDF as base64 (provided by booking-service), attach it directly.
+      if (bookingData.eTicketBase64) {
+        attachments.push({
+          content: bookingData.eTicketBase64,
+          filename: bookingData.eTicketFilename || `${bookingData.bookingReference}-e-ticket.pdf`,
+          type: 'application/pdf',
+          disposition: 'attachment',
+        });
+      }
+
+      const htmlContent = generateBookingConfirmationTemplate({
+        bookingReference: bookingData.bookingReference,
+        customerName: bookingData.customerName,
+        customerEmail: bookingData.customerEmail,
+        customerPhone: bookingData.customerPhone,
+        tripDetails: bookingData.tripDetails,
+        passengers: bookingData.passengers,
+        pricing: bookingData.pricing,
+        eTicketUrl: bookingData.eTicketUrl,
+        qrCodeUrl: qrForTemplate,
+        bookingDetailsUrl: bookingData.bookingDetailsUrl,
+        cancellationPolicy: bookingData.cancellationPolicy,
+        operatorContact: bookingData.operatorContact,
+      });
+
+      const msg = {
+        to: email,
+        from: DEFAULT_EMAIL_FROM,
+        subject: `Booking Confirmation - ${bookingData.bookingReference}`,
+        html: htmlContent,
+      };
+
+      // If an eTicket URL is provided and we did not already attach a base64 PDF, try to fetch the PDF and attach it to the email
+      if (bookingData.eTicketUrl && !bookingData.eTicketBase64) {
+        try {
+          const res = await fetch(bookingData.eTicketUrl);
+          if (res.ok) {
+            const buffer = await res.buffer();
+            const base64 = buffer.toString('base64');
+            attachments.push({
+              content: base64,
+              filename: `${bookingData.bookingReference}-e-ticket.pdf`,
+              type: 'application/pdf',
+              disposition: 'attachment',
+            });
+          } else {
+            console.warn(
+              `⚠️ Unable to fetch eTicket PDF from ${bookingData.eTicketUrl} - status ${res.status}`
+            );
+          }
+        } catch (err) {
+          console.error('⚠️ Error fetching eTicket PDF:', err.message || err);
+        }
+      }
+
+      // Attach any prepared inline QR or PDF attachments
+      if (attachments.length > 0) {
+        msg.attachments = attachments;
+      }
+
+      await sgMail.send(msg);
+      console.log(
+        `📧 Booking confirmation email sent to ${email} for ${bookingData.bookingReference}`
+      );
+      return { success: true, sent: true };
+    } catch (error) {
+      console.error('⚠️ Error sending booking confirmation email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send booking confirmation email');
+    }
+  }
+
   async sendTicketEmail(email, bookingData, ticketUrl, qrCode) {
     // Check if SendGrid is configured
     if (!process.env.SENDGRID_API_KEY) {
-      console.log(`📧 [DEV MODE] Ticket email would be sent to ${email} for booking ${bookingData.reference}`);
+      console.log(
+        `📧 [DEV MODE] Ticket email would be sent to ${email} for booking ${bookingData.reference}`
+      );
       console.log(`📧 [DEV MODE] Ticket URL: ${ticketUrl}`);
       return { success: true, mode: 'development' };
+    }
+
+    // Prepare attachments array for SendGrid
+    const attachments = [];
+
+    // If qrCode is provided as data URL or remote URL, try to attach it inline and replace
+    // the template src with a cid reference for better email client support.
+    let qrForTemplate = qrCode;
+
+    if (qrCode) {
+      try {
+        // Data URL (base64) - embed directly
+        const dataUrlMatch = String(qrCode).match(/^data:(image\/[^;]+);base64,(.+)$/);
+        if (dataUrlMatch) {
+          const mime = dataUrlMatch[1];
+          const base64 = dataUrlMatch[2];
+          const ext = mime.split('/')[1] || 'png';
+          const cid = `qr_${bookingData.reference}`;
+          attachments.push({
+            content: base64,
+            filename: `${bookingData.reference}-qr.${ext}`,
+            type: mime,
+            disposition: 'inline',
+            content_id: cid,
+          });
+          qrForTemplate = `cid:${cid}`;
+        } else if (/^https?:\/\//i.test(qrCode)) {
+          // Remote URL - try to fetch and attach inline
+          const resQr = await fetch(qrCode);
+          if (resQr.ok) {
+            const bufferQr = await resQr.buffer();
+            const base64Qr = bufferQr.toString('base64');
+            const contentType = resQr.headers.get('content-type') || 'image/png';
+            const ext = (contentType.split('/')[1] || 'png').split(';')[0];
+            const cid = `qr_${bookingData.reference}`;
+            attachments.push({
+              content: base64Qr,
+              filename: `${bookingData.reference}-qr.${ext}`,
+              type: contentType,
+              disposition: 'inline',
+              content_id: cid,
+            });
+            qrForTemplate = `cid:${cid}`;
+          } else {
+            console.warn(`⚠️ Unable to fetch QR image from ${qrCode} - status ${resQr.status}`);
+          }
+        }
+      } catch (err) {
+        console.error('⚠️ Error processing QR code for inline attachment:', err.message || err);
+      }
     }
 
     const htmlContent = generateTicketEmailTemplate({
@@ -201,23 +392,80 @@ class EmailService {
       contactEmail: bookingData.contactEmail,
       contactPhone: bookingData.contactPhone,
       ticketUrl,
-      qrCode
+      qrCode: qrForTemplate,
     });
 
     const msg = {
       to: email,
       from: DEFAULT_EMAIL_FROM,
       subject: `Your Bus Ticket - ${bookingData.reference}`,
-      html: htmlContent
+      html: htmlContent,
     };
 
     try {
+      // Attach the ticket PDF if a ticketUrl was provided
+      if (ticketUrl) {
+        try {
+          const res = await fetch(ticketUrl);
+          if (res.ok) {
+            const buffer = await res.buffer();
+            const base64 = buffer.toString('base64');
+            attachments.push({
+              content: base64,
+              filename: `${bookingData.reference}-e-ticket.pdf`,
+              type: 'application/pdf',
+              disposition: 'attachment',
+            });
+          } else {
+            console.warn(`⚠️ Unable to fetch ticket PDF from ${ticketUrl} - status ${res.status}`);
+          }
+        } catch (err) {
+          console.error('⚠️ Error fetching ticket PDF:', err.message || err);
+        }
+      }
+
+      // Attach any attachments we prepared (QR inline, PDF attachment)
+      if (attachments.length > 0) {
+        msg.attachments = attachments;
+      }
+
       await sgMail.send(msg);
       console.log(`📧 Ticket email sent to ${email} for booking ${bookingData.reference}`);
     } catch (error) {
       console.error('⚠️ Error sending ticket email:', error);
       console.error('⚠️ SendGrid response:', error.response?.body || error.message);
       throw new Error('Failed to send ticket email');
+    }
+  }
+
+  async sendTripReminderEmail(email, tripData, hoursUntilDeparture) {
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(
+        `📧 [DEV MODE] Trip reminder email would be sent to ${email} for booking ${tripData.bookingReference}`
+      );
+      return { success: true, mode: 'development' };
+    }
+
+    const htmlContent = await generateTripReminderTemplate(tripData, hoursUntilDeparture);
+
+    const msg = {
+      to: email,
+      from: DEFAULT_EMAIL_FROM,
+      subject: `Trip Reminder - ${tripData.tripName} (${hoursUntilDeparture}h)`,
+      html: htmlContent,
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(
+        `📧 Trip reminder email sent to ${email} for booking ${tripData.bookingReference} (${hoursUntilDeparture}h)`
+      );
+      return { success: true };
+    } catch (error) {
+      console.error('⚠️ Error sending trip reminder email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send trip reminder email');
     }
   }
 }

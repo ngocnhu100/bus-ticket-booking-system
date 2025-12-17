@@ -1,7 +1,10 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const bookingRepository = require('../repositories/bookingRepository');
 const passengerRepository = require('../repositories/passengerRepository');
 const redisClient = require('../redis');
+const ticketService = require('./ticketService');
 const {
   generateBookingReference,
   normalizeBookingReference,
@@ -90,9 +93,9 @@ class BookingService {
       contactPhone,
       status: 'pending',
       lockedUntil: calculateLockExpiration(),
-      subtotal: formatPrice(subtotal),
-      serviceFee: formatPrice(serviceFee),
-      totalPrice: formatPrice(totalPrice),
+      subtotal: subtotal,
+      serviceFee: serviceFee,
+      totalPrice: totalPrice,
       currency: 'VND',
     });
 
@@ -152,16 +155,16 @@ class BookingService {
       throw new Error('Booking not found');
     }
 
-    // Check authorization
-    if (userId && booking.userId && booking.userId !== userId) {
+    // Check authorization (DB returns snake_case fields)
+    if (userId && booking.user_id && booking.user_id !== userId) {
       throw new Error('Unauthorized to view this booking');
     }
 
     // Get passengers
     const passengers = await passengerRepository.findByBookingId(bookingId);
 
-    // Get trip details
-    const trip = await this.getTripById(booking.tripId);
+    // Get trip details (booking record has `trip_id` column)
+    const trip = await this.getTripById(booking.trip_id);
 
     return {
       ...booking,
@@ -197,8 +200,8 @@ class BookingService {
       throw new Error('Booking not found');
     }
 
-    // Verify contact email for guest bookings
-    if (!booking.userId && booking.contact_email !== contactEmail) {
+    // Verify contact email for guest bookings (DB uses snake_case)
+    if (!booking.user_id && booking.contact_email !== contactEmail) {
       throw new Error('Invalid booking reference or email');
     }
 
@@ -325,7 +328,7 @@ class BookingService {
    * @param {object} paymentData - Payment data
    * @returns {Promise<object>} Updated booking
    */
-  async confirmPayment(bookingId, paymentData) {
+  async confirmPayment(bookingId, paymentData, userId = null) {
     const booking = await bookingRepository.findById(bookingId);
 
     if (!booking) {
@@ -340,6 +343,19 @@ class BookingService {
       throw new Error('Booking already paid');
     }
 
+    // If request includes authenticated user and booking is a guest booking,
+    // assign the user_id to the booking so API responses include it.
+    if (!booking.user_id && userId) {
+      try {
+        const assigned = await bookingRepository.updateUserId(bookingId, userId);
+        if (assigned) {
+          Object.assign(booking, assigned);
+        }
+      } catch (err) {
+        console.warn('[BookingService] Failed to assign user_id to booking:', err.message || err);
+      }
+    }
+
     // Update payment status
     const updatedBooking = await bookingRepository.updatePayment(bookingId, {
       paymentStatus: 'paid',
@@ -347,11 +363,92 @@ class BookingService {
       paidAt: new Date(),
     });
 
+    // Read the updated booking to ensure transaction visibility
+    const verifiedBooking = await bookingRepository.findById(bookingId);
+    console.log(
+      `✅ Booking ${bookingId} status verified: ${verifiedBooking.status}, payment: ${verifiedBooking.payment.status}`
+    );
+
     // Clear expiration from Redis
     await redisClient.del(`booking:expiration:${bookingId}`);
 
-    // Send confirmation notification
-    await this.sendBookingConfirmation(updatedBooking);
+    // Clear Redis seat locks for this booking
+    try {
+      const passengers = await passengerRepository.findByBookingId(bookingId);
+      console.log(`🔍 Found ${passengers.length} passengers for booking ${bookingId}`);
+      const seatCodes = passengers.map((p) => p.seat_code);
+      console.log(`🎫 Seat codes to unlock: ${seatCodes.join(', ')}`);
+
+      if (seatCodes.length > 0) {
+        // Get trip ID from booking
+        const tripId = updatedBooking.trip_id;
+        const lockKeyPrefix = `seat:lock:${tripId}`;
+
+        // Delete all seat locks for this booking
+        const lockKeys = seatCodes.map((seatCode) => `${lockKeyPrefix}:${seatCode}`);
+        console.log(`🔑 Redis keys to delete: ${lockKeys.join(', ')}`);
+        if (lockKeys.length > 0) {
+          const deletedCount = await redisClient.del(...lockKeys);
+          console.log(`✅ Cleared ${deletedCount} Redis seat locks for booking ${bookingId}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error clearing Redis seat locks:', error);
+      // Don't throw - booking confirmation should succeed even if Redis cleanup fails
+    }
+
+    // Trigger ticket generation (PDF + QR). Prefer to wait a short time so
+    // the confirm-payment response can include `e_ticket` fields if generation
+    // completes quickly. If it doesn't finish within the timeout, allow it to
+    // continue in the background and return the response immediately.
+    try {
+      const ticketTimeoutMs = parseInt(process.env.TICKET_GENERATION_TIMEOUT_MS, 10) || 5000;
+
+      const ticketPromise = ticketService.processTicketGeneration(bookingId);
+
+      // Wait for either ticket generation or timeout
+      const ticketResult = await Promise.race([
+        ticketPromise,
+        new Promise((resolve) => setTimeout(() => resolve(null), ticketTimeoutMs)),
+      ]);
+
+      if (ticketResult) {
+        console.log(`🎫 Ticket generation completed within ${ticketTimeoutMs}ms for ${bookingId}`);
+        // Refresh booking to include ticket URLs written by the ticket service
+        try {
+          const refreshed = await bookingRepository.findById(bookingId);
+          if (refreshed) {
+            // Use refreshed booking as the response payload
+            // Note: bookingRepository.findById returns mapped booking object
+            Object.assign(updatedBooking, refreshed);
+          }
+        } catch (refreshErr) {
+          console.warn('⚠️ Failed to refresh booking after ticket generation:', refreshErr.message);
+        }
+      } else {
+        // Generation is still running in background — attach logging for completion
+        ticketPromise
+          .then(() =>
+            console.log(`🎫 Background ticket generation finished for booking ${bookingId}`)
+          )
+          .catch((err) =>
+            console.error(
+              `❌ Background ticket generation failed for booking ${bookingId}:`,
+              err.message || err
+            )
+          );
+        console.log(
+          `Ticket generation did not finish within ${ticketTimeoutMs}ms; returning response and continuing generation in background.`
+        );
+      }
+    } catch (err) {
+      console.error('❌ Failed to start/wait for ticket generation:', err.message || err);
+    }
+
+    // Send comprehensive booking confirmation email (non-blocking to avoid delaying API)
+    this.sendBookingConfirmationEmail(updatedBooking, paymentData).catch((err) => {
+      console.error('❌ Error sending booking confirmation email:', err.message || err);
+    });
 
     return updatedBooking;
   }
@@ -370,8 +467,8 @@ class BookingService {
       throw new Error('Booking not found');
     }
 
-    // Check authorization
-    if (booking.userId && booking.userId !== userId) {
+    // Check authorization (DB uses snake_case)
+    if (booking.user_id && booking.user_id !== userId) {
       throw new Error('Unauthorized to cancel this booking');
     }
 
@@ -381,6 +478,13 @@ class BookingService {
 
     if (booking.status === 'completed') {
       throw new Error('Cannot cancel completed booking');
+    }
+
+    // Prevent user-initiated cancellation for already paid & confirmed bookings.
+    if (booking.status === 'confirmed' && booking.payment && booking.payment.status === 'paid') {
+      throw new Error(
+        'Cannot cancel a confirmed booking with completed payment. Please contact support for refund requests.'
+      );
     }
 
     // Calculate refund based on cancellation policy
@@ -567,6 +671,220 @@ class BookingService {
         console.error('Trip Service response:', error.response.status, error.response.data);
       }
       return null;
+    }
+  }
+
+  /**
+   * Send comprehensive booking confirmation email with all details
+   * @param {object} booking - Booking object with payment info
+   * @param {object} paymentData - Payment data
+   */
+  async sendBookingConfirmationEmail(booking, paymentData) {
+    try {
+      // 1. Get full booking details including trip info
+      const tripDetails = await this.getTripById(booking.trip_id);
+      if (!tripDetails) {
+        console.warn('Trip details not found for booking confirmation email');
+        return;
+      }
+
+      // 2. Get passengers
+      const passengers = await passengerRepository.findByBookingId(booking.booking_id);
+
+      console.log(
+        `[BookingService] Sending booking confirmation email for ${booking.booking_reference}`
+      );
+
+      // 3. Prepare comprehensive booking data
+      const bookingConfirmationData = {
+        bookingReference: booking.booking_reference,
+        customerName: passengers[0]?.full_name || 'Valued Customer',
+        customerEmail: booking.contact_email,
+        customerPhone: booking.contact_phone,
+        tripDetails: {
+          origin: tripDetails.route?.origin || 'Unknown',
+          destination: tripDetails.route?.destination || 'Unknown',
+          departureTime: tripDetails.schedule?.departure_time,
+          arrivalTime: tripDetails.schedule?.arrival_time,
+          operatorName: tripDetails.operator?.name || 'Bus Operator',
+          busModel: tripDetails.bus?.model || 'Bus',
+          pickupPoint: tripDetails.pickup_points?.[0]?.name || 'TBD',
+          dropoffPoint: tripDetails.dropoff_points?.[0]?.name || 'TBD',
+        },
+        passengers: passengers.map((p) => ({
+          fullName: p.full_name,
+          documentId: p.document_id,
+          seatCode: p.seat_code,
+          seatPrice: parseFloat(tripDetails.pricing?.base_price) || 0,
+        })),
+        pricing: {
+          basePrice: parseFloat(tripDetails.pricing?.base_price) || 0,
+          subtotal: parseFloat(booking.pricing?.subtotal) || 0,
+          serviceFee: parseFloat(booking.pricing?.service_fee) || 0,
+          total: parseFloat(booking.pricing?.total) || 0,
+          paymentMethod: paymentData?.paymentMethod || 'Unknown',
+        },
+        // Prefer direct links stored on the booking (set by ticket generation).
+        // When constructing fallbacks, prefer `API_URL` so other services can reach the URL inside Docker networks.
+        eTicketUrl:
+          (booking.e_ticket && booking.e_ticket.ticket_url) ||
+          booking.ticket_url ||
+          `${process.env.API_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/bookings/${booking.booking_reference}/ticket`,
+        qrCodeUrl:
+          (booking.e_ticket && booking.e_ticket.qr_code_url) ||
+          booking.qr_code_url ||
+          `${process.env.API_URL || 'http://localhost:3000'}/api/bookings/${booking.booking_reference}/qr`,
+        bookingDetailsUrl: null,
+        cancellationPolicy: (() => {
+          const p = tripDetails.policies || {};
+          // Prefer explicit cancellation keys
+          if (p.cancellationPolicy) return p.cancellationPolicy;
+          if (p.cancellation_policy) return p.cancellation_policy;
+
+          // Construct a clear, professional cancellation policy from available fields.
+          // Try to convert concise values into full sentences for customer-facing copy.
+          const parts = [];
+
+          if (p.refund) {
+            const r = String(p.refund).toLowerCase();
+            if (r.includes('24')) {
+              parts.push('Full refund available if cancelled at least 24 hours before departure.');
+            } else if (r.includes('12')) {
+              parts.push('Full refund available if cancelled at least 12 hours before departure.');
+            } else if (r.includes('6')) {
+              parts.push(
+                'Partial refund available if cancelled at least 6 hours before departure.'
+              );
+            } else if (r.includes('no') || r.includes('none')) {
+              parts.push('No refund available for cancellations.');
+            } else {
+              parts.push(`Refund terms: ${p.refund}`);
+            }
+          }
+
+          if (p.changes) {
+            const c = String(p.changes).toLowerCase();
+            if (c.includes('allow')) {
+              parts.push(
+                "Changes to the booking are permitted and subject to the operator's policies."
+              );
+            } else if (c.includes('not')) {
+              parts.push('Changes to the booking are not permitted.');
+            } else {
+              parts.push(`Change policy: ${p.changes}`);
+            }
+          }
+
+          if (parts.length > 0) return parts.join(' ');
+
+          // Default fallback when no policy details are present
+          return 'Please contact the operator for cancellation details.';
+        })(),
+        operatorContact: {
+          phone: tripDetails.operator?.phone || '+84-XXX-XXXX',
+          email: tripDetails.operator?.email || 'operator@example.com',
+          website: tripDetails.operator?.website || 'www.operator.com',
+        },
+      };
+
+      // 4. Send email through notification service
+      const notificationServiceUrl =
+        process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+      // If an e-ticket file exists on disk (tickets directory), include base64 payload
+      try {
+        const ticketPublicUrl = bookingConfirmationData.eTicketUrl;
+        const filenameMatch =
+          ticketPublicUrl && String(ticketPublicUrl).match(/\/bookings\/tickets\/(.+)$/i);
+        if (filenameMatch && filenameMatch[1]) {
+          const filename = filenameMatch[1];
+          const ticketsDir = path.join(__dirname, '../../tickets');
+          const filePath = path.join(ticketsDir, filename);
+          if (fs.existsSync(filePath)) {
+            const buffer = await fs.promises.readFile(filePath);
+            bookingConfirmationData.eTicketBase64 = buffer.toString('base64');
+            bookingConfirmationData.eTicketFilename = filename;
+            console.log(
+              `📎 Attached local e-ticket file for booking ${booking.booking_reference}: ${filename}`
+            );
+          } else {
+            console.log(
+              `ℹ️ e-ticket file not found on disk for booking ${booking.booking_reference}: ${filePath}`
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('Could not attach local e-ticket file to booking data:', err.message || err);
+      }
+
+      const response = await axios.post(`${notificationServiceUrl}/send-booking-confirmation`, {
+        email: booking.contact_email,
+        bookingData: bookingConfirmationData,
+      });
+
+      if (response.data?.success) {
+        console.log(
+          `✅ Booking confirmation email sent to ${booking.contact_email} for ${booking.booking_reference}`
+        );
+      }
+
+      // 5. Send SMS confirmation if phone number is provided and user has opted in
+      let smsEnabled = false;
+
+      try {
+        if (booking && booking.user_id) {
+          const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
+          // Call auth service; supply userId as a query param for internal service lookup.
+          const profileRes = await axios.get(`${authServiceUrl}/auth/me`, {
+            params: { userId: booking.user_id },
+            timeout: 3000,
+          });
+
+          if (profileRes && profileRes.data && profileRes.data.data) {
+            const userProfile = profileRes.data.data;
+            if (
+              userProfile.preferences &&
+              (userProfile.preferences.send_sms === true ||
+                userProfile.nces?.receive_sms_notifications === true)
+            ) {
+              smsEnabled = true;
+            } else if (userProfile.preferences && userProfile.preferences.send_sms === false) {
+              smsEnabled = false;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(
+          `[BookingService] Could not fetch user profile for sms preference (userId=${booking && booking.user_id}): ${err.message}`
+        );
+      }
+
+      // Send SMS if enabled and phone number available
+      try {
+        if (smsEnabled && booking.contact_phone) {
+          const smsPayload = {
+            to: booking.contact_phone,
+            template: 'booking-confirmation-sms',
+            data: {
+              bookingReference: booking.booking_reference,
+              departureTime: tripDetails.schedule?.departure_time,
+              origin: tripDetails.route?.origin,
+              destination: tripDetails.route?.destination,
+            },
+          };
+          await axios.post(`${notificationServiceUrl}/send-sms`, smsPayload);
+          console.log(`✅ SMS booking confirmation sent to ${booking.contact_phone}`);
+        } else {
+          console.log('ℹ️ SMS not sent: not enabled or phone number missing');
+        }
+      } catch (err) {
+        console.warn(`⚠️ Failed to send SMS confirmation: ${err.message || err}`);
+      }
+    } catch (error) {
+      console.error(
+        `❌ Error sending booking confirmation email for ${booking.booking_reference}:`,
+        error.message
+      );
+      // Don't fail booking confirmation if email sending fails
     }
   }
 

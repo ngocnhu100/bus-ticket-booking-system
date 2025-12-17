@@ -82,10 +82,14 @@ class TripService {
     // Get locked seats from Redis
     const lockedSeats = await seatLockService.getLockedSeats(tripId);
 
-    // Update seat statuses based on locks
+    // Update seat statuses based on locks - but only for available seats
     seatMapData.seats.forEach((seat) => {
-      if (lockedSeats[seat.seat_code]) {
+      // Only apply Redis locks to available seats
+      // Occupied seats should stay occupied regardless of Redis locks
+      if (seat.status === 'available' && lockedSeats[seat.seat_code]) {
         seat.status = 'locked';
+        seat.locked_until = new Date(lockedSeats[seat.seat_code].expiresAt);
+        seat.locked_by = lockedSeats[seat.seat_code].userId;
       }
     });
 
