@@ -1,4 +1,5 @@
 import React from 'react'
+import StripeCardCheckout from '../StripeCardCheckout'
 
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, UserCheck } from 'lucide-react'
@@ -7,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
 import { createBooking } from '@/api/bookings'
 import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector'
-import { createPayment } from '@/api/payments'
+import { confirmPayment } from '@/api/bookings'
 import { useBookingStore } from '@/store/bookingStore'
 
 interface GuestCheckoutProps {
@@ -61,7 +62,11 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
     paymentUrl?: string
     qrCode?: string
     expiresAt?: string
+    provider?: string
+    clientSecret?: string
   } | null>(null)
+  const [bookingId, setBookingId] = React.useState<string | null>(null)
+  const [bookingCreated, setBookingCreated] = React.useState(false)
 
   const validateContactInfo = () => {
     const errors: { email?: string; phone?: string } = {}
@@ -92,82 +97,90 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
 
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault()
-
-    console.log('=== GuestCheckout handleSubmit DEBUG ===')
-    console.log('passengers:', passengers)
-    console.log('contactEmail:', contactEmail)
-    console.log('contactPhone:', contactPhone)
-    console.log('selectedTrip:', selectedTrip)
-    console.log('selectedTrip?.trip_id:', selectedTrip?.trip_id)
-    console.log('selectedSeats:', selectedSeats)
-
     setError(null)
     setIsSubmitting(true)
-
     try {
       if (!selectedPaymentMethod) {
         setError('Vui lòng chọn phương thức thanh toán.')
         setIsSubmitting(false)
         return
       }
-      // Validate contact info
       const contactValid = validateContactInfo()
       if (!contactValid || passengers.length === 0) {
         setIsSubmitting(false)
         return
       }
-
-      // Validate selectedTrip exists
       if (!selectedTrip?.trip_id) {
-        console.error(
-          'selectedTrip is missing or has no trip_id:',
-          selectedTrip
-        )
         throw new Error(
           'Trip information is missing. Please select seats again.'
         )
       }
-
-      // Prepare booking data
-      const bookingData = {
-        tripId: selectedTrip.trip_id,
-        seats: selectedSeats.map((s) => s.seat_code),
-        passengers: passengers,
-        contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone.trim(),
-        isGuestCheckout: !user,
+      let booking = null
+      let booking_id = bookingId
+      if (!bookingCreated && !bookingId) {
+        // Only create booking if not already created
+        const bookingData = {
+          tripId: selectedTrip.trip_id,
+          seats: selectedSeats.map((s) => s.seat_code),
+          passengers: passengers,
+          contactEmail: contactEmail.trim(),
+          contactPhone: contactPhone.trim(),
+          isGuestCheckout: !user,
+        }
+        const response = await createBooking(bookingData)
+        booking = response.data
+        booking_id = booking.booking_id
+        setBookingId(booking_id)
+        setBookingCreated(true)
+        sessionStorage.setItem('pendingBooking', JSON.stringify(booking))
       }
-
-      console.log('Creating booking with data:', bookingData)
-
-      // Call backend API to create booking
-      const response = await createBooking(bookingData)
-      const booking = response.data
-      // Store booking in sessionStorage for BookingReview
-      sessionStorage.setItem('pendingBooking', JSON.stringify(booking))
-
-      // Call payment API
+      // Always use booking_id from state/session
+      const idToPay =
+        booking_id ||
+        JSON.parse(sessionStorage.getItem('pendingBooking') || '{}').booking_id
+      console.log(
+        '[GuestCheckout] bookingId (idToPay) before confirmPayment:',
+        idToPay
+      )
+      if (!idToPay) throw new Error('Booking ID missing. Please try again.')
+      // DEBUG LOG: print all relevant info
+      console.log(
+        '[GuestCheckout] selectedPaymentMethod:',
+        selectedPaymentMethod
+      )
       const paymentPayload = {
-        bookingId: booking.booking_id,
+        bookingId: idToPay, // Đảm bảo backend nhận đúng bookingId
         paymentMethod: selectedPaymentMethod,
-        amount: booking.pricing?.total || 0,
-        returnUrl: window.location.origin + `/payment/callback`,
-        metadata: {
-          userAgent: navigator.userAgent,
-          ipAddress: '', // Optionally fill from backend or leave blank
-        },
+        amount: selectedTrip.pricing?.base_price + 20000 || 0,
+        transactionRef: undefined, // hoặc truyền ref nếu có
       }
-      const paymentRes = await createPayment(paymentPayload)
-      setPaymentResult(paymentRes.data)
-      if (paymentRes.data?.paymentUrl) {
-        window.location.href = paymentRes.data.paymentUrl
+      console.log('[GuestCheckout] paymentPayload:', paymentPayload)
+      type PaymentResponse = {
+        paymentUrl?: string
+        qrCode?: string
+        provider?: string
+        clientSecret?: string
+        data?: Record<string, unknown>
       }
-      // Call optional onSubmit callback if provided
+      const paymentRes: PaymentResponse = await confirmPayment(
+        idToPay,
+        paymentPayload
+      )
+      console.log('[GuestCheckout] confirmPayment response:', paymentRes)
+      setPaymentResult({
+        paymentUrl: paymentRes.paymentUrl,
+        qrCode: paymentRes.qrCode,
+        provider: paymentRes.provider,
+        clientSecret: paymentRes.clientSecret,
+        ...paymentRes.data,
+      })
+      if (paymentRes.paymentUrl) {
+        window.location.href = paymentRes.paymentUrl
+      }
       if (onSubmit) {
         onSubmit({ contactEmail, contactPhone, passengers })
       }
     } catch (err) {
-      console.error('Error creating booking:', err)
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -424,39 +437,65 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                   I agree to Terms and Conditions
                 </label>
               </div>
+              <div className="mb-2 text-sm text-gray-700">
+                <b>Phương thức thanh toán đã chọn:</b>{' '}
+                {selectedPaymentMethod || '(chưa chọn)'}
+              </div>
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={() => {
+                  console.log(
+                    '[GuestCheckout] selectedPaymentMethod:',
+                    selectedPaymentMethod
+                  )
+                  handleSubmit()
+                }}
                 disabled={isSubmitting || passengers.length === 0 || !agreed}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Processing Payment...' : 'Complete Payment'}
               </button>
-              {paymentResult && (
+              {paymentResult &&
+              paymentResult.provider === 'stripe' &&
+              paymentResult.clientSecret ? (
                 <div className="mt-6 p-4 border rounded-lg bg-green-50 text-green-800">
-                  <div>Thanh toán đã được khởi tạo.</div>
-                  {paymentResult.paymentUrl && (
-                    <div>
-                      <a
-                        href={paymentResult.paymentUrl}
-                        className="text-blue-600 underline"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Nhấn vào đây nếu không được chuyển hướng tự động
-                      </a>
-                    </div>
-                  )}
-                  {paymentResult.qrCode && (
-                    <div className="mt-2">
-                      <img
-                        src={paymentResult.qrCode}
-                        alt="QR Code"
-                        className="h-32"
+                  <div>Thanh toán thẻ - nhập thông tin thẻ để hoàn tất:</div>
+                  <div className="mt-4">
+                    {/* Render StripeCardCheckout */}
+                    <React.Suspense fallback={<div>Đang tải Stripe...</div>}>
+                      <StripeCardCheckout
+                        clientSecret={paymentResult.clientSecret}
                       />
-                    </div>
-                  )}
+                    </React.Suspense>
+                  </div>
                 </div>
+              ) : (
+                paymentResult && (
+                  <div className="mt-6 p-4 border rounded-lg bg-green-50 text-green-800">
+                    <div>Thanh toán đã được khởi tạo.</div>
+                    {paymentResult.paymentUrl && (
+                      <div>
+                        <a
+                          href={paymentResult.paymentUrl}
+                          className="text-blue-600 underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Nhấn vào đây nếu không được chuyển hướng tự động
+                        </a>
+                      </div>
+                    )}
+                    {paymentResult.qrCode && (
+                      <div className="mt-2">
+                        <img
+                          src={paymentResult.qrCode}
+                          alt="QR Code"
+                          className="h-32"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
               )}
             </div>
           </div>

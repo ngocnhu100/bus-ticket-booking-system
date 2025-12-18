@@ -100,8 +100,8 @@ const ensureGoogleSdk = () => {
 export const isGoogleOAuthReady = () =>
   Boolean(
     googleClientId &&
-      typeof window !== 'undefined' &&
-      window.google?.accounts?.id
+    typeof window !== 'undefined' &&
+    window.google?.accounts?.id
   )
 
 type GoogleSignInOptions = {
