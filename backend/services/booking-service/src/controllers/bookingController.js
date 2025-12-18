@@ -9,6 +9,47 @@ const {
 } = require('../validators/bookingValidators');
 
 class BookingController {
+    /**
+     * Idempotent internal confirm-payment endpoint for payment-service webhook
+     * POST /internal/:id/confirm-payment
+     */
+    async internalConfirmPayment(req, res) {
+      try {
+        const { id } = req.params;
+        // Confirm booking and trigger ticket generation (idempotent)
+        const confirmedBooking = await bookingService.confirmBooking(id);
+        if (!confirmedBooking) {
+          return res.status(404).json({
+            success: false,
+            error: { code: 'BOOKING_003', message: 'Booking not found' },
+            timestamp: new Date().toISOString()
+          });
+        }
+        // If already confirmed, just return success
+        if (confirmedBooking.status === 'confirmed' || confirmedBooking.payment_status === 'paid') {
+          return res.json({
+            success: true,
+            message: 'Booking already confirmed',
+            timestamp: new Date().toISOString()
+          });
+        }
+        // Get updated booking with ticket info (may not be available immediately)
+        const bookingWithTicket = await bookingService.getBookingById(id);
+        res.json({
+          success: true,
+          data: bookingWithTicket,
+          message: 'Booking confirmed successfully. Ticket is being generated and will be emailed to you shortly.',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('⚠️ Internal confirm booking error:', error);
+        return res.status(500).json({
+          success: false,
+          error: { code: 'SYS_001', message: 'Internal server error' },
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
   /**
    * Create a new booking
    * POST /bookings
@@ -333,13 +374,11 @@ class BookingController {
   async confirmPayment(req, res) {
     try {
       const { id } = req.params;
-
       // Validate request body
       const { error, value } = confirmPaymentSchema.validate({
         ...req.body,
         bookingId: id,
       });
-
       if (error) {
         return res.status(422).json({
           success: false,
@@ -349,18 +388,36 @@ class BookingController {
           },
         });
       }
-
-      const userId = req.user?.userId || req.user?.user_id || null;
-      const booking = await bookingService.confirmPayment(id, value, userId);
-
+      // Nếu không có token (req.user == null), chỉ cho phép nếu booking là guest
+      if (!req.user) {
+        const booking = await bookingService.getBookingById(id);
+        if (!booking || !booking.is_guest_checkout) {
+          return res.status(401).json({
+            success: false,
+            error: {
+              code: 'AUTH_005',
+              message: 'Guest payment only allowed for guest bookings',
+            },
+          });
+        }
+      }
+      // DEBUG LOG: print all relevant info
+      console.log('[BookingController] confirmPayment called');
+      console.log('req.body:', req.body);
+      console.log('value:', value);
+      console.log('value.paymentMethod:', value.paymentMethod);
+      const result = await bookingService.confirmPayment(id, value);
       return res.json({
         success: true,
-        data: booking,
-        message: 'Payment confirmed successfully',
+        paymentUrl: result.paymentUrl,
+        qrCode: result.qrCode,
+        data: result,
+        message: result.paymentUrl || result.qrCode
+          ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
+          : 'Payment confirmed successfully',
       });
     } catch (err) {
       console.error('Error confirming payment:', err);
-
       if (err.message.includes('not found')) {
         return res.status(404).json({
           success: false,
@@ -370,7 +427,6 @@ class BookingController {
           },
         });
       }
-
       if (err.message.includes('cancelled') || err.message.includes('already paid')) {
         return res.status(409).json({
           success: false,
@@ -380,7 +436,6 @@ class BookingController {
           },
         });
       }
-
       return res.status(500).json({
         success: false,
         error: {

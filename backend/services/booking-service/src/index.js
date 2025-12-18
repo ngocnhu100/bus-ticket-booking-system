@@ -42,6 +42,9 @@ app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment)
 app.put('/:id/cancel', optionalAuthenticate, bookingController.cancel);
 app.put('/:id/modify', optionalAuthenticate, bookingController.modifyBooking);
 
+// Internal idempotent confirm-payment endpoint for payment-service webhook
+app.post('/internal/:id/confirm-payment', bookingController.internalConfirmPayment);
+
 // Admin routes
 app.get('/admin/bookings', authenticate, authorize(['admin']), bookingController.getAllBookings);
 

@@ -64,12 +64,29 @@ export function PassengerInformationForm({
   ) => {
     setPassengersState((prev) => {
       const updated = [...prev]
+      let errorMsg: string | undefined = undefined
+      if (field === 'documentId') {
+        // Validate: must be 9-12 digits
+        if (!/^\d{9,12}$/.test(value)) {
+          errorMsg = value ? 'Document ID must be 9-12 digits' : undefined
+        }
+      }
+      if (field === 'phone') {
+        if (!value.trim()) {
+          errorMsg = 'Phone number is required'
+        } else {
+          const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
+          if (!phoneRegex.test(value.trim())) {
+            errorMsg = 'Invalid phone format (e.g., 0901234567)'
+          }
+        }
+      }
       updated[index] = {
         ...updated[index],
         [field]: value,
         errors: {
           ...updated[index].errors,
-          [field]: undefined, // Clear error when user types
+          [field]: errorMsg,
         },
       }
       return updated
@@ -88,12 +105,20 @@ export function PassengerInformationForm({
     [passengers]
   )
 
-  // Auto-sync passengers to parent when all have valid names
+  // Auto-sync passengers to parent when all required fields are valid
   useEffect(() => {
-    // Only sync if all passengers have valid full names
+    // All fields required: fullName, phone, documentId
     if (
       passengers.length > 0 &&
-      passengers.every((p) => p.fullName && p.fullName.trim().length >= 2)
+      passengers.every(
+        (p) =>
+          p.fullName &&
+          p.fullName.trim().length >= 2 &&
+          p.phone &&
+          p.phone.trim().length > 0 &&
+          p.documentId &&
+          p.documentId.trim().length > 0
+      )
     ) {
       const cleanedPassengers: PassengerInfo[] = passengers.map((p) => ({
         fullName: p.fullName.trim(),
@@ -150,10 +175,6 @@ export function PassengerInformationForm({
           <h2 className="text-2xl font-bold mb-2 text-foreground">
             Passenger Information
           </h2>
-          <p className="text-muted-foreground mb-6">
-            Please provide information for each passenger. Fields marked with *
-            are required.
-          </p>
 
           <div>
             {/* Passengers Section */}
@@ -185,6 +206,26 @@ export function PassengerInformationForm({
                         onChange={(e) =>
                           handleInputChange(index, 'fullName', e.target.value)
                         }
+                        onBlur={(e) => {
+                          let errorMsg: string | undefined = undefined
+                          const value = e.target.value
+                          if (!value.trim()) {
+                            errorMsg = 'Full name is required'
+                          } else if (value.trim().length < 2) {
+                            errorMsg = 'Full name must be at least 2 characters'
+                          }
+                          setPassengersState((prev) => {
+                            const updated = [...prev]
+                            updated[index] = {
+                              ...updated[index],
+                              errors: {
+                                ...updated[index].errors,
+                                fullName: errorMsg,
+                              },
+                            }
+                            return updated
+                          })
+                        }}
                         className={
                           passenger.errors?.fullName
                             ? 'border-red-500 focus:ring-red-500'
@@ -202,7 +243,7 @@ export function PassengerInformationForm({
                     {/* Phone Number */}
                     <div>
                       <label className="block text-sm font-semibold mb-2 text-foreground">
-                        Phone Number (Optional)
+                        Phone Number *
                       </label>
                       <Input
                         type="tel"
@@ -211,11 +252,37 @@ export function PassengerInformationForm({
                         onChange={(e) =>
                           handleInputChange(index, 'phone', e.target.value)
                         }
+                        onBlur={(e) => {
+                          // Validate required and format on blur
+                          let errorMsg: string | undefined = undefined
+                          const value = e.target.value
+                          if (!value.trim()) {
+                            errorMsg = 'Phone number is required'
+                          } else {
+                            const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
+                            if (!phoneRegex.test(value.trim())) {
+                              errorMsg =
+                                'Invalid phone format (e.g., 0901234567)'
+                            }
+                          }
+                          setPassengersState((prev) => {
+                            const updated = [...prev]
+                            updated[index] = {
+                              ...updated[index],
+                              errors: {
+                                ...updated[index].errors,
+                                phone: errorMsg,
+                              },
+                            }
+                            return updated
+                          })
+                        }}
                         className={
                           passenger.errors?.phone
                             ? 'border-red-500 focus:ring-red-500'
                             : ''
                         }
+                        required
                       />
                       {passenger.errors?.phone && (
                         <p className="text-red-500 text-sm mt-1">
@@ -227,7 +294,7 @@ export function PassengerInformationForm({
                     {/* Document ID */}
                     <div>
                       <label className="block text-sm font-semibold mb-2 text-foreground">
-                        ID/Passport Number (Optional)
+                        ID/Passport Number *
                       </label>
                       <Input
                         type="text"
@@ -236,11 +303,33 @@ export function PassengerInformationForm({
                         onChange={(e) =>
                           handleInputChange(index, 'documentId', e.target.value)
                         }
+                        onBlur={(e) => {
+                          // Validate required and format on blur
+                          let errorMsg: string | undefined = undefined
+                          const value = e.target.value
+                          if (!value.trim()) {
+                            errorMsg = 'Document ID must be 9-12 digits'
+                          } else if (!/^\d{9,12}$/.test(value)) {
+                            errorMsg = 'Document ID must be 9-12 digits'
+                          }
+                          setPassengersState((prev) => {
+                            const updated = [...prev]
+                            updated[index] = {
+                              ...updated[index],
+                              errors: {
+                                ...updated[index].errors,
+                                documentId: errorMsg,
+                              },
+                            }
+                            return updated
+                          })
+                        }}
                         className={
                           passenger.errors?.documentId
                             ? 'border-red-500 focus:ring-red-500'
                             : ''
                         }
+                        required
                       />
                       {passenger.errors?.documentId && (
                         <p className="text-red-500 text-sm mt-1">

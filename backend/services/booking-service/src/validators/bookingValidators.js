@@ -134,7 +134,7 @@ const cancelBookingSchema = Joi.object({
 const confirmPaymentSchema = Joi.object({
   bookingId: Joi.string().uuid().required(),
   paymentMethod: Joi.string()
-    .valid('momo', 'zalopay', 'vnpay', 'card', 'cash')
+    .valid('momo', 'zalopay', 'vnpay', 'card', 'cash', 'payos')
     .required()
     .messages({
       'any.only': 'Invalid payment method',

@@ -1,11 +1,14 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import StripeCardCheckout from '../StripeCardCheckout'
+
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, UserCheck } from 'lucide-react'
 import { PassengerInformationForm } from '@/components/booking/PassengerInformationForm'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
 import { createBooking } from '@/api/bookings'
+import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector'
+import { confirmPayment } from '@/api/bookings'
 import { useBookingStore } from '@/store/bookingStore'
 
 interface GuestCheckoutProps {
@@ -29,7 +32,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
   onBack,
 }) => {
   const { user } = useAuth()
-  const navigate = useNavigate()
+  // const navigate = useNavigate()
   const { selectedTrip } = useBookingStore()
 
   const selectedSeats = propSeats ?? []
@@ -48,7 +51,22 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
     }[]
   >([])
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [agreed, setAgreed] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = React.useState<
+    string | null
+  >(null)
+  const [paymentResult, setPaymentResult] = React.useState<{
+    paymentId?: string
+    status?: string
+    paymentUrl?: string
+    qrCode?: string
+    expiresAt?: string
+    provider?: string
+    clientSecret?: string
+  } | null>(null)
+  const [bookingId, setBookingId] = React.useState<string | null>(null)
+  const [bookingCreated, setBookingCreated] = React.useState(false)
 
   const validateContactInfo = () => {
     const errors: { email?: string; phone?: string } = {}
@@ -79,65 +97,90 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
 
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault()
-
-    console.log('=== GuestCheckout handleSubmit DEBUG ===')
-    console.log('passengers:', passengers)
-    console.log('contactEmail:', contactEmail)
-    console.log('contactPhone:', contactPhone)
-    console.log('selectedTrip:', selectedTrip)
-    console.log('selectedTrip?.trip_id:', selectedTrip?.trip_id)
-    console.log('selectedSeats:', selectedSeats)
-
     setError(null)
     setIsSubmitting(true)
-
     try {
-      // Validate contact info
+      if (!selectedPaymentMethod) {
+        setError('Vui lòng chọn phương thức thanh toán.')
+        setIsSubmitting(false)
+        return
+      }
       const contactValid = validateContactInfo()
       if (!contactValid || passengers.length === 0) {
         setIsSubmitting(false)
         return
       }
-
-      // Validate selectedTrip exists
       if (!selectedTrip?.trip_id) {
-        console.error(
-          'selectedTrip is missing or has no trip_id:',
-          selectedTrip
-        )
         throw new Error(
           'Trip information is missing. Please select seats again.'
         )
       }
-
-      // Prepare booking data
-      const bookingData = {
-        tripId: selectedTrip.trip_id,
-        seats: selectedSeats.map((s) => s.seat_code),
-        passengers: passengers,
-        contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone.trim(),
-        isGuestCheckout: !user,
+      let booking = null
+      let booking_id = bookingId
+      if (!bookingCreated && !bookingId) {
+        // Only create booking if not already created
+        const bookingData = {
+          tripId: selectedTrip.trip_id,
+          seats: selectedSeats.map((s) => s.seat_code),
+          passengers: passengers,
+          contactEmail: contactEmail.trim(),
+          contactPhone: contactPhone.trim(),
+          isGuestCheckout: !user,
+        }
+        const response = await createBooking(bookingData)
+        booking = response.data
+        booking_id = booking.booking_id
+        setBookingId(booking_id)
+        setBookingCreated(true)
+        sessionStorage.setItem('pendingBooking', JSON.stringify(booking))
       }
-
-      console.log('Creating booking with data:', bookingData)
-
-      // Call backend API
-      const response = await createBooking(bookingData)
-      console.log('Booking created successfully:', response.data)
-
-      // Store booking in sessionStorage for BookingReview
-      sessionStorage.setItem('pendingBooking', JSON.stringify(response.data))
-
-      // Navigate to review page with bookingId
-      navigate(`/booking/${response.data.booking_id}/review`)
-
-      // Call optional onSubmit callback if provided
+      // Always use booking_id from state/session
+      const idToPay =
+        booking_id ||
+        JSON.parse(sessionStorage.getItem('pendingBooking') || '{}').booking_id
+      console.log(
+        '[GuestCheckout] bookingId (idToPay) before confirmPayment:',
+        idToPay
+      )
+      if (!idToPay) throw new Error('Booking ID missing. Please try again.')
+      // DEBUG LOG: print all relevant info
+      console.log(
+        '[GuestCheckout] selectedPaymentMethod:',
+        selectedPaymentMethod
+      )
+      const paymentPayload = {
+        bookingId: idToPay, // Đảm bảo backend nhận đúng bookingId
+        paymentMethod: selectedPaymentMethod,
+        amount: selectedTrip.pricing?.base_price + 20000 || 0,
+        transactionRef: undefined, // hoặc truyền ref nếu có
+      }
+      console.log('[GuestCheckout] paymentPayload:', paymentPayload)
+      type PaymentResponse = {
+        paymentUrl?: string
+        qrCode?: string
+        provider?: string
+        clientSecret?: string
+        data?: Record<string, unknown>
+      }
+      const paymentRes: PaymentResponse = await confirmPayment(
+        idToPay,
+        paymentPayload
+      )
+      console.log('[GuestCheckout] confirmPayment response:', paymentRes)
+      setPaymentResult({
+        paymentUrl: paymentRes.paymentUrl,
+        qrCode: paymentRes.qrCode,
+        provider: paymentRes.provider,
+        clientSecret: paymentRes.clientSecret,
+        ...paymentRes.data,
+      })
+      if (paymentRes.paymentUrl) {
+        window.location.href = paymentRes.paymentUrl
+      }
       if (onSubmit) {
         onSubmit({ contactEmail, contactPhone, passengers })
       }
     } catch (err) {
-      console.error('Error creating booking:', err)
       const errorMessage =
         err instanceof Error
           ? err.message
@@ -149,161 +192,315 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
   }
 
   return (
-    <div>
-      <Card className="max-w-4xl mx-auto mb-8 rounded-2xl shadow-xl border border-border/70 bg-white dark:bg-slate-900">
-        <CardHeader className="pb-0 pt-6 flex flex-col items-center">
-          <div className="flex items-center gap-2 mb-2">
-            <UserCheck className="w-7 h-7 text-primary" />
-            <CardTitle className="text-3xl font-bold text-center text-foreground">
-              {user ? 'Passenger Information' : 'Guest Checkout'}
-            </CardTitle>
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      {/* Custom Header for Checkout (same as Seat Selection) */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white shadow-sm dark:bg-slate-950 dark:border-slate-800">
+        <nav className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* Back Button and Logo */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              disabled={isSubmitting}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <div
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => (window.location.href = '/')}
+            >
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">🚌</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:inline">
+                BusGo
+              </span>
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="pt-2 pb-8 px-4 md:px-8">
-          {/* Back button */}
-          {onBack && (
-            <div className="mb-6 flex">
-              <Button
-                type="button"
-                onClick={onBack}
-                variant="outline"
-                className="gap-2 px-4 py-2 rounded-full shadow-sm border-primary text-primary hover:bg-primary/10"
-                disabled={isSubmitting}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Back to Seat Selection
-              </Button>
-            </div>
-          )}
-
-          {/* Error message */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
-            </div>
-          )}
-
-          <div className="mb-8">
-            <Card className="border rounded-xl shadow-sm bg-white dark:bg-slate-800">
-              <CardHeader className="p-4 pb-0">
-                <CardTitle className="text-lg font-semibold text-primary">
-                  Contact Information
-                </CardTitle>
+          {/* Security Icon */}
+          <div className="flex items-center gap-2">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" stroke="#22c55e" strokeWidth="2" />
+              <path
+                d="M8 12l2 2 4-4"
+                stroke="#22c55e"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span className="text-green-700 font-semibold">Bảo mật</span>
+          </div>
+        </nav>
+      </header>
+      <div className="max-w-5xl mx-auto my-8 p-4">
+        {/* Main layout: Passenger Details 6/10, Order Summary 4/10, Payment Method below */}
+        <div className="grid grid-cols-1 md:grid-cols-10 gap-8">
+          {/* Left: Passenger Details (6/10) */}
+          <div className="md:col-span-6">
+            {/* Removed 'Back to Seat Selection' button for design consistency */}
+            <Card className="mb-6">
+              <CardHeader className="pb-0 pt-4">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-6 h-6 text-primary" />
+                  <CardTitle className="text-xl font-bold text-foreground mb-0">
+                    Passenger Details
+                  </CardTitle>
+                </div>
               </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-foreground">
-                      Contact Email *
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="your.email@example.com"
-                      value={contactEmail}
-                      onChange={(e) => {
-                        setContactEmail(e.target.value)
-                        setContactErrors((prev) => ({
-                          ...prev,
-                          email: undefined,
-                        }))
-                      }}
-                      onBlur={() => {
-                        if (!contactEmail.trim()) {
-                          setContactErrors((prev) => ({
-                            ...prev,
-                            email: 'Email is required',
-                          }))
-                        } else {
-                          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-                          if (!emailRegex.test(contactEmail.trim())) {
-                            setContactErrors((prev) => ({
-                              ...prev,
-                              email: 'Invalid email format',
-                            }))
-                          }
-                        }
-                      }}
-                      className={
-                        'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
-                        (contactErrors.email
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input')
-                      }
-                      required
-                    />
-                    {contactErrors.email && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {contactErrors.email}
-                      </p>
-                    )}
+              <CardContent className="pt-2 pb-4 px-2 md:px-4">
+                {/* Contact Information UI with border and rounded corners */}
+                <div className="mb-6 border border-black rounded-xl bg-white dark:bg-slate-900 p-4">
+                  <div className="text-lg font-bold text-primary mb-2">
+                    Contact Information
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-foreground">
-                      Contact Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="0901234567"
-                      value={contactPhone}
-                      onChange={(e) => {
-                        setContactPhone(e.target.value)
-                        setContactErrors((prev) => ({
-                          ...prev,
-                          phone: undefined,
-                        }))
-                      }}
-                      onBlur={() => {
-                        if (!contactPhone.trim()) {
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-semibold mb-2 text-foreground">
+                        Contact Email *
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="your.email@example.com"
+                        value={contactEmail}
+                        onChange={(e) => {
+                          setContactEmail(e.target.value)
                           setContactErrors((prev) => ({
                             ...prev,
-                            phone: 'Phone number is required',
+                            email: undefined,
                           }))
-                        } else {
-                          const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
-                          if (!phoneRegex.test(contactPhone.trim())) {
+                        }}
+                        onBlur={() => {
+                          if (!contactEmail.trim()) {
                             setContactErrors((prev) => ({
                               ...prev,
-                              phone: 'Invalid phone format (e.g., 0901234567)',
+                              email: 'Email is required',
                             }))
+                          } else {
+                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                            if (!emailRegex.test(contactEmail.trim())) {
+                              setContactErrors((prev) => ({
+                                ...prev,
+                                email: 'Invalid email format',
+                              }))
+                            }
                           }
+                        }}
+                        className={
+                          'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
+                          (contactErrors.email
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-input')
                         }
-                      }}
-                      className={
-                        'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
-                        (contactErrors.phone
-                          ? 'border-red-500 focus:ring-red-500'
-                          : 'border-input')
-                      }
-                      required
-                    />
-                    {contactErrors.phone && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {contactErrors.phone}
-                      </p>
-                    )}
+                        required
+                      />
+                      {contactErrors.email && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {contactErrors.email}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-2 text-foreground">
+                        Contact Phone *
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="0901234567"
+                        value={contactPhone}
+                        onChange={(e) => {
+                          setContactPhone(e.target.value)
+                          setContactErrors((prev) => ({
+                            ...prev,
+                            phone: undefined,
+                          }))
+                        }}
+                        onBlur={() => {
+                          if (!contactPhone.trim()) {
+                            setContactErrors((prev) => ({
+                              ...prev,
+                              phone: 'Phone number is required',
+                            }))
+                          } else {
+                            const phoneRegex = /^(\+84|0)[0-9]{9,10}$/
+                            if (!phoneRegex.test(contactPhone.trim())) {
+                              setContactErrors((prev) => ({
+                                ...prev,
+                                phone:
+                                  'Invalid phone format (e.g., 0901234567)',
+                              }))
+                            }
+                          }
+                        }}
+                        className={
+                          'w-full rounded-lg border px-3 py-2 bg-background text-foreground placeholder:text-muted-foreground/70 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 dark:border-[#d0d0d0] ' +
+                          (contactErrors.phone
+                            ? 'border-red-500 focus:ring-red-500'
+                            : 'border-input')
+                        }
+                        required
+                      />
+                      {contactErrors.phone && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {contactErrors.phone}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
+                {/* Passenger Information Form */}
+                <PassengerInformationForm
+                  seatInfos={selectedSeats}
+                  onSubmit={(data) => setPassengers(data)}
+                />
               </CardContent>
             </Card>
           </div>
-          <div className="mb-8">
-            <PassengerInformationForm
-              seatInfos={selectedSeats}
-              onSubmit={(data) => setPassengers(data)}
-            />
+          {/* Right: Order Summary (4/10) */}
+          <div className="md:col-span-4">
+            <Card className="mb-6">
+              <CardHeader className="pb-0 pt-4">
+                <CardTitle className="text-lg font-bold text-primary">
+                  Order Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-2 pb-4 px-2 md:px-4">
+                {selectedTrip && (
+                  <div className="space-y-2">
+                    <div className="font-medium">
+                      Trip: {selectedTrip.route.origin} →{' '}
+                      {selectedTrip.route.destination}
+                    </div>
+                    <div>
+                      Date: {selectedTrip.schedule.departure_time.slice(0, 10)}
+                    </div>
+                    <div>
+                      Departure:{' '}
+                      {selectedTrip.schedule.departure_time.slice(11, 16)}
+                    </div>
+                    <div>Operator: {selectedTrip.operator.name}</div>
+                    <div>
+                      Seats: {selectedSeats.map((s) => s.seat_code).join(', ')}
+                    </div>
+                    <div>Passengers: {selectedSeats.length}</div>
+                    <div className="border-t my-2"></div>
+                    <div>
+                      Fare:{' '}
+                      {selectedTrip.pricing.base_price.toLocaleString('vi-VN')}{' '}
+                      VND
+                    </div>
+                    <div>Service fee: 20,000 VND</div>
+                    <div className="font-bold text-lg">
+                      Total:{' '}
+                      {(selectedTrip.pricing.base_price + 20000).toLocaleString(
+                        'vi-VN'
+                      )}{' '}
+                      VND
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            {/* Payment Method below both columns */}
+            <div className="md:col-span-10">
+              <Card className="mb-6">
+                <CardHeader className="pb-0 pt-4">
+                  <CardTitle className="text-lg font-bold text-primary">
+                    Payment Method
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-2 pb-4 px-2 md:px-4">
+                  <PaymentMethodSelector
+                    amount={
+                      selectedTrip ? selectedTrip.pricing.base_price + 20000 : 0
+                    }
+                    onSelect={(method: { key: string }) =>
+                      setSelectedPaymentMethod(method.key)
+                    }
+                  />
+                  {error && !isSubmitting && (
+                    <div className="mt-2 text-red-600 text-sm">{error}</div>
+                  )}
+                </CardContent>
+              </Card>
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="agree"
+                  className="mr-2"
+                  required
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                />
+                <label htmlFor="agree" className="text-sm">
+                  I agree to Terms and Conditions
+                </label>
+              </div>
+              <div className="mb-2 text-sm text-gray-700">
+                <b>Phương thức thanh toán đã chọn:</b>{' '}
+                {selectedPaymentMethod || '(chưa chọn)'}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  console.log(
+                    '[GuestCheckout] selectedPaymentMethod:',
+                    selectedPaymentMethod
+                  )
+                  handleSubmit()
+                }}
+                disabled={isSubmitting || passengers.length === 0 || !agreed}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg text-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Processing Payment...' : 'Complete Payment'}
+              </button>
+              {paymentResult &&
+              paymentResult.provider === 'stripe' &&
+              paymentResult.clientSecret ? (
+                <div className="mt-6 p-4 border rounded-lg bg-green-50 text-green-800">
+                  <div>Thanh toán thẻ - nhập thông tin thẻ để hoàn tất:</div>
+                  <div className="mt-4">
+                    {/* Render StripeCardCheckout */}
+                    <React.Suspense fallback={<div>Đang tải Stripe...</div>}>
+                      <StripeCardCheckout
+                        clientSecret={paymentResult.clientSecret}
+                      />
+                    </React.Suspense>
+                  </div>
+                </div>
+              ) : (
+                paymentResult && (
+                  <div className="mt-6 p-4 border rounded-lg bg-green-50 text-green-800">
+                    <div>Thanh toán đã được khởi tạo.</div>
+                    {paymentResult.paymentUrl && (
+                      <div>
+                        <a
+                          href={paymentResult.paymentUrl}
+                          className="text-blue-600 underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Nhấn vào đây nếu không được chuyển hướng tự động
+                        </a>
+                      </div>
+                    )}
+                    {paymentResult.qrCode && (
+                      <div className="mt-2">
+                        <img
+                          src={paymentResult.qrCode}
+                          alt="QR Code"
+                          className="h-32"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
           </div>
-          <div className="flex justify-center mt-8">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || passengers.length === 0}
-              className="bg-primary hover:bg-primary/90 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full shadow-md dark:shadow-blue-500/20 text-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Creating Booking...' : 'Continue to Summary'}
-            </button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

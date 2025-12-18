@@ -4,6 +4,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Dashboard from './pages/users/Dashboard'
+import PaymentResult from './pages/PaymentResult'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
@@ -66,6 +67,7 @@ const App = () => (
             <Sonner />
             <Routes>
               {/* Public routes */}
+              <Route path="/payment-result" element={<PaymentResult />} />
               <Route path="/" element={<Landing />} />
               <Route
                 path="/trip-search-results"
