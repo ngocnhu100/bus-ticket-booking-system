@@ -247,7 +247,7 @@ export function BookingStatusTable({ data }: BookingStatusChartProps) {
             ) : (
               <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <Pie
-                  data={rawData}
+                  data={rawData as Record<string, string | number>[]}
                   cx="50%"
                   cy="45%"
                   outerRadius={80}

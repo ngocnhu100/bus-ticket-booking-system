@@ -173,7 +173,7 @@ export function TopRoutesList({ data, limit = 5 }: TopRoutesListProps) {
           ) : (
             <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <Pie
-                data={chartData}
+                data={chartData as Record<string, string | number>[]}
                 cx="50%"
                 cy="45%"
                 outerRadius={80}
@@ -181,7 +181,7 @@ export function TopRoutesList({ data, limit = 5 }: TopRoutesListProps) {
                 dataKey={selectedMetric}
                 nameKey="route"
               >
-                {chartData.map((entry, index) => (
+                {chartData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={getRouteColor(index)} />
                 ))}
               </Pie>

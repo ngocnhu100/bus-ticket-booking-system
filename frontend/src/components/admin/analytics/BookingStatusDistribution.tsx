@@ -114,10 +114,9 @@ export function BookingStatusDistribution({
               <Tooltip
                 formatter={(
                   value: number,
-                  name: string,
-                  props: { payload: { percentage: number } }
+                  item: { payload?: { percentage?: number } }
                 ) => [
-                  `${value.toLocaleString()} (${props.payload.percentage}%)`,
+                  `${value.toLocaleString()} (${item.payload?.percentage}%)`,
                   'Count',
                 ]}
                 labelFormatter={(label) => formatStatusLabel(label)}
@@ -137,7 +136,7 @@ export function BookingStatusDistribution({
           ) : (
             <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <Pie
-                data={statusDistribution}
+                data={statusDistribution as Record<string, string | number>[]}
                 cx="50%"
                 cy="45%"
                 outerRadius={80}
@@ -155,10 +154,9 @@ export function BookingStatusDistribution({
               <Tooltip
                 formatter={(
                   value: number,
-                  name: string,
-                  props: { payload: { percentage: number } }
+                  item: { payload?: { percentage?: number } }
                 ) => [
-                  `${value.toLocaleString()} (${props.payload.percentage}%)`,
+                  `${value.toLocaleString()} (${item.payload?.percentage}%)`,
                   'Count',
                 ]}
                 labelFormatter={(label) => formatStatusLabel(label)}
