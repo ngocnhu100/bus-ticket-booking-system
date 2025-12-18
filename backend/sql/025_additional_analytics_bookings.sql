@@ -210,24 +210,24 @@ WHERE status = 'confirmed'
   AND created_at < CURRENT_TIMESTAMP - INTERVAL '2 hours';
 
 -- Add some passenger details for the bookings (optional)
-INSERT INTO bookings_passenger (
-    booking_id, full_name, phone, seat_number, id_number, birth_date
+INSERT INTO booking_passengers (
+    booking_id, seat_code, price, full_name, phone, document_id
 ) VALUES
 -- Add passengers for some of the bookings
 ((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251218001' LIMIT 1),
- 'Nguyen Van A', '+84987654321', '1A', '123456789', '1990-01-01'),
+ '1A', 500000, 'Nguyen Van A', '+84987654321', '123456789'),
 
 ((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251218002' LIMIT 1),
- 'Tran Thi B', '+84111222333', '2B', '987654321', '1985-05-15'),
+ '2B', 480000, 'Tran Thi B', '+84111222333', '987654321'),
 
 ((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251217001' LIMIT 1),
- 'Le Van C', '+84123456789', 'VIP1A', '456789123', '1992-08-20'),
+ 'VIP1A', 350000, 'Le Van C', '+84123456789', '456789123'),
 
 ((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251217002' LIMIT 1),
- 'Pham Thi D', '+84991112233', '3C', '789123456', '1988-12-10'),
+ '3C', 520000, 'Pham Thi D', '+84991112233', '789123456'),
 
 ((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216001' LIMIT 1),
- 'Hoang Van E', '+84995554433', '4A', '321654987', '1995-03-25');
+ '4A', 350000, 'Hoang Van E', '+84995554433', '321654987');
 
 -- Display summary of inserted data
 SELECT
