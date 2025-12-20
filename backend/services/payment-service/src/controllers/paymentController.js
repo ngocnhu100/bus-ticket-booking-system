@@ -1,5 +1,4 @@
 // controllers/paymentController.js
-
 const payosService = require('../services/gateways/payosService');
 const momoService = require('../services/gateways/momoService');
 const zalopayService = require('../services/gateways/zalopayService');
@@ -14,87 +13,62 @@ async function createPayment(req, res) {
     console.log('req.body:', body);
     console.log('paymentMethod:', body.paymentMethod);
     console.log('headers:', req.headers);
-    let bookingId = req.params && req.params.bookingId ? req.params.bookingId : body.bookingId;
-    if (body.paymentMethod === 'card') {
-      // Tích hợp Stripe
-      try {
-        // Stripe expects amount in the smallest currency unit (e.g. VND -> VND, USD -> cents)
-        const amount = body.amount;
-        console.log('[Stripe] Creating PaymentIntent with:', { amount, currency: body.currency || 'vnd', bookingId });
-        const paymentIntent = await cardService.createPaymentIntent({
-          amount,
-          currency: body.currency || 'vnd',
-          metadata: { bookingId: bookingId?.toString() },
-        });
-        console.log('[Stripe] PaymentIntent created:', paymentIntent && paymentIntent.id, paymentIntent && paymentIntent.status, paymentIntent && paymentIntent.client_secret);
-        const response = {
-          success: true,
-          clientSecret: paymentIntent.client_secret,
-          provider: 'stripe',
-          bookingId,
-        };
-        console.log('[Stripe] Response to frontend:', response);
-        return res.json(response);
-      } catch (err) {
-        console.error('[Stripe] createPaymentIntent error:', err, err && err.raw);
-        return res.status(500).json({ success: false, message: 'Stripe payment failed', error: err.message, raw: err.raw });
-      }
-    }
     if (body.paymentMethod === 'momo') {
       // Tích hợp MoMo
-      console.log('[PaymentController] bookingId used for MoMo:', bookingId)
       const momoResult = await momoService.createMomoPayment({
         amount: body.amount,
         orderInfo: body.description || 'Thanh toán MoMo',
-        bookingId,
+        bookingId: body.bookingId,
       });
       if (momoResult && momoResult.payUrl) {
         return res.json({
           success: true,
           paymentUrl: momoResult.payUrl,
           qrCode: momoResult.qrCodeUrl || undefined,
-          bookingId,
           ...momoResult,
         });
       } else {
-        return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', bookingId, ...momoResult });
+        return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', ...momoResult });
       }
     }
-    if (body.paymentMethod === 'zalopay' || body.method === 'zalopay') {
+    if (body.paymentMethod === 'payos') {
+      // Tích hợp PayOS
+      const result = await payosService.createPayment(body);
+      return res.json(result);
+    }
+    if (body.paymentMethod === 'zalopay') {
       // Tích hợp ZaloPay
-      try {
-        console.log('[PaymentController] Trước khi gọi createZaloPayPayment:', { amount: body.amount, bookingId });
-        const zaloResult = await zalopayService.createZaloPayPayment({
-          amount: body.amount,
-          bookingId
-        });
-        console.log('[ZaloPay] create result:', zaloResult);
-        if (zaloResult.return_code !== 1 || !zaloResult.order_url) {
-          return res.status(400).json({
-            success: false,
-            message: zaloResult.return_message || 'ZaloPay create order failed',
-            zaloResult,
-          });
-        }
+      const zaloResult = await zalopayService.createZaloPayPayment({
+        amount: body.amount,
+        description: body.description || 'Thanh toán ZaloPay',
+        bookingId: body.bookingId,
+      });
+      if (zaloResult && zaloResult.payUrl) {
         return res.json({
           success: true,
-          paymentUrl: zaloResult.order_url,
-          provider: 'zalopay',
-          bookingId,
+          paymentUrl: zaloResult.payUrl,
+          qrCode: zaloResult.qrCodeUrl || undefined,
           ...zaloResult,
         });
-      } catch (err) {
-        console.error('[ZaloPay] create error:', err);
-        return res.status(500).json({
-          success: false,
-          message: 'ZaloPay exception',
-          error: err.message,
-        });
+      } else {
+        return res.status(400).json({ success: false, message: zaloResult.message || 'ZaloPay payment failed', ...zaloResult });
       }
     }
-    // Mặc định PayOS
-    const result = await payosService.createPayment(body);
-    res.json({ ...result, bookingId });
+    if (body.paymentMethod === 'card') {
+      // Tích hợp Stripe/Card
+      try {
+        const paymentIntent = await cardService.createPaymentIntent({
+          amount: body.amount,
+          currency: body.currency || 'vnd',
+          metadata: { bookingId: body.bookingId },
+        });
+        return res.json({ success: true, paymentIntent });
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+    // Nếu không khớp phương thức nào, trả về lỗi
+    return res.status(400).json({ success: false, message: 'Invalid payment method' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Create payment failed', error: err.message });
