@@ -1,6 +1,9 @@
 // controllers/paymentController.js
+
 const payosService = require('../services/gateways/payosService');
 const momoService = require('../services/gateways/momoService');
+const zalopayService = require('../services/gateways/zalopayService');
+const cardService = require('../services/gateways/cardService');
 const { verifyPayOSSignature } = require('../utils/webhookVerifier');
 
 async function createPayment(req, res) {
@@ -11,27 +14,87 @@ async function createPayment(req, res) {
     console.log('req.body:', body);
     console.log('paymentMethod:', body.paymentMethod);
     console.log('headers:', req.headers);
+    let bookingId = req.params && req.params.bookingId ? req.params.bookingId : body.bookingId;
+    if (body.paymentMethod === 'card') {
+      // Tích hợp Stripe
+      try {
+        // Stripe expects amount in the smallest currency unit (e.g. VND -> VND, USD -> cents)
+        const amount = body.amount;
+        console.log('[Stripe] Creating PaymentIntent with:', { amount, currency: body.currency || 'vnd', bookingId });
+        const paymentIntent = await cardService.createPaymentIntent({
+          amount,
+          currency: body.currency || 'vnd',
+          metadata: { bookingId: bookingId?.toString() },
+        });
+        console.log('[Stripe] PaymentIntent created:', paymentIntent && paymentIntent.id, paymentIntent && paymentIntent.status, paymentIntent && paymentIntent.client_secret);
+        const response = {
+          success: true,
+          clientSecret: paymentIntent.client_secret,
+          provider: 'stripe',
+          bookingId,
+        };
+        console.log('[Stripe] Response to frontend:', response);
+        return res.json(response);
+      } catch (err) {
+        console.error('[Stripe] createPaymentIntent error:', err, err && err.raw);
+        return res.status(500).json({ success: false, message: 'Stripe payment failed', error: err.message, raw: err.raw });
+      }
+    }
     if (body.paymentMethod === 'momo') {
       // Tích hợp MoMo
+      console.log('[PaymentController] bookingId used for MoMo:', bookingId)
       const momoResult = await momoService.createMomoPayment({
         amount: body.amount,
         orderInfo: body.description || 'Thanh toán MoMo',
-        bookingId: body.bookingId,
+        bookingId,
       });
       if (momoResult && momoResult.payUrl) {
         return res.json({
           success: true,
           paymentUrl: momoResult.payUrl,
           qrCode: momoResult.qrCodeUrl || undefined,
+          bookingId,
           ...momoResult,
         });
       } else {
-        return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', ...momoResult });
+        return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', bookingId, ...momoResult });
+      }
+    }
+    if (body.paymentMethod === 'zalopay' || body.method === 'zalopay') {
+      // Tích hợp ZaloPay
+      try {
+        console.log('[PaymentController] Trước khi gọi createZaloPayPayment:', { amount: body.amount, bookingId });
+        const zaloResult = await zalopayService.createZaloPayPayment({
+          amount: body.amount,
+          bookingId
+        });
+        console.log('[ZaloPay] create result:', zaloResult);
+        if (zaloResult.return_code !== 1 || !zaloResult.order_url) {
+          return res.status(400).json({
+            success: false,
+            message: zaloResult.return_message || 'ZaloPay create order failed',
+            zaloResult,
+          });
+        }
+        return res.json({
+          success: true,
+          paymentUrl: zaloResult.order_url,
+          provider: 'zalopay',
+          bookingId,
+          ...zaloResult,
+        });
+      } catch (err) {
+        console.error('[ZaloPay] create error:', err);
+        return res.status(500).json({
+          success: false,
+          message: 'ZaloPay exception',
+          error: err.message,
+        });
       }
     }
     // Mặc định PayOS
     const result = await payosService.createPayment(body);
-    res.json(result);
+    res.json({ ...result, bookingId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Create payment failed', error: err.message });

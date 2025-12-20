@@ -9,6 +9,38 @@ const {
 } = require('../validators/bookingValidators');
 
 class BookingController {
+      /**
+       * Guest lookup booking by bookingId (no auth required)
+       * GET /:id/guest
+       */
+      async guestLookupBookingById(req, res) {
+        try {
+          const { id } = req.params;
+          const booking = await bookingService.getBookingById(id);
+          if (!booking) {
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+          }
+          // Only allow guest bookings (no userId)
+          if (booking.userId) {
+            return res.status(403).json({ success: false, message: 'Not a guest booking' });
+          }
+          // Đảm bảo trả về paymentStatus và status ở cấp 1 của data
+          let paymentStatus = null;
+          if (booking.payment && booking.payment.status) paymentStatus = booking.payment.status;
+          else if (booking.payment_status) paymentStatus = booking.payment_status;
+          else if (typeof booking.status === 'string') paymentStatus = booking.status;
+          if (typeof paymentStatus === 'string') paymentStatus = paymentStatus.toUpperCase();
+          const status = booking.status || null;
+          // Đảm bảo luôn có paymentStatus (chữ hoa) trong object data, kể cả khi null
+          return res.json({
+            success: true,
+            data: Object.assign({}, booking, { paymentStatus, status })
+          });
+        } catch (err) {
+          console.error('[GuestLookup] Error:', err);
+          return res.status(500).json({ success: false, message: 'Internal server error' });
+        }
+      }
     /**
      * Idempotent internal confirm-payment endpoint for payment-service webhook
      * POST /internal/:id/confirm-payment
@@ -407,10 +439,13 @@ class BookingController {
       console.log('value:', value);
       console.log('value.paymentMethod:', value.paymentMethod);
       const result = await bookingService.confirmPayment(id, value);
+      // Forward các trường đặc biệt ra top-level để FE dễ lấy
       return res.json({
         success: true,
         paymentUrl: result.paymentUrl,
         qrCode: result.qrCode,
+        clientSecret: result.clientSecret,
+        provider: result.provider,
         data: result,
         message: result.paymentUrl || result.qrCode
           ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
@@ -447,66 +482,13 @@ class BookingController {
   }
 
   /**
-   * Get cancellation policy preview
-   * GET /bookings/:id/cancellation-preview
-   */
-  async getCancellationPreview(req, res) {
-    try {
-      const { id } = req.params;
-      const userId = req.user?.userId || req.user?.user_id || null;
-
-      const preview = await bookingService.getCancellationPreview(id, userId);
-
-      return res.json({
-        success: true,
-        data: preview,
-        message: 'Cancellation preview retrieved successfully',
-        timestamp: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('Error getting cancellation preview:', err);
-
-      if (err.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            code: 'BOOK_002',
-            message: 'Booking not found',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      if (err.message.includes('Unauthorized')) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 'AUTH_003',
-            message: 'Unauthorized to view this booking',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'SYS_001',
-          message: 'Failed to retrieve cancellation preview',
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
-  /**
-   * Cancel a booking with refund processing
+   * Cancel a booking
    * PUT /bookings/:id/cancel
    */
   async cancel(req, res) {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId || req.user?.user_id || null;
+      const userId = req.user?.userId || req.user?.user_id;
 
       // Validate request body
       const { error, value } = cancelBookingSchema.validate(req.body);
@@ -517,7 +499,6 @@ class BookingController {
             code: 'VAL_001',
             message: error.details.map((d) => d.message).join(', '),
           },
-          timestamp: new Date().toISOString(),
         });
       }
 
@@ -526,8 +507,7 @@ class BookingController {
       return res.json({
         success: true,
         data: result,
-        message: 'Booking cancelled successfully. Refund will be processed within 3-5 business days.',
-        timestamp: new Date().toISOString(),
+        message: 'Booking cancelled successfully',
       });
     } catch (err) {
       console.error('Error cancelling booking:', err);
@@ -539,7 +519,6 @@ class BookingController {
             code: 'BOOK_002',
             message: 'Booking not found',
           },
-          timestamp: new Date().toISOString(),
         });
       }
 
@@ -550,7 +529,6 @@ class BookingController {
             code: 'AUTH_003',
             message: 'Unauthorized to cancel this booking',
           },
-          timestamp: new Date().toISOString(),
         });
       }
 
@@ -561,7 +539,6 @@ class BookingController {
             code: 'BOOK_004',
             message: err.message,
           },
-          timestamp: new Date().toISOString(),
         });
       }
 
@@ -571,7 +548,6 @@ class BookingController {
           code: 'SYS_001',
           message: 'Failed to cancel booking',
         },
-        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -698,137 +674,6 @@ class BookingController {
       service: 'booking-service',
       timestamp: new Date().toISOString(),
     });
-  }
-
-  /**
-   * Get modification policy preview
-   * GET /bookings/:id/modification-preview
-   */
-  async getModificationPreview(req, res) {
-    try {
-      const { id } = req.params;
-      const userId = req.user?.userId || req.user?.user_id || null;
-
-      const preview = await bookingService.getModificationPreview(id, userId);
-
-      return res.json({
-        success: true,
-        data: preview,
-        message: 'Modification preview retrieved successfully',
-        timestamp: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('Error getting modification preview:', err);
-
-      if (err.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            code: 'BOOK_002',
-            message: 'Booking not found',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      if (err.message.includes('Unauthorized')) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 'AUTH_003',
-            message: 'Unauthorized to view this booking',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'SYS_001',
-          message: 'Failed to retrieve modification preview',
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
-  /**
-   * Modify a booking (update passenger info or change seats)
-   * PUT /bookings/:id/modify
-   */
-  async modifyBooking(req, res) {
-    try {
-      const { id } = req.params;
-      const userId = req.user?.userId || req.user?.user_id || null;
-
-      // Validate request body
-      const modifications = req.body;
-
-      if (!modifications.passengerUpdates && !modifications.seatChanges) {
-        return res.status(422).json({
-          success: false,
-          error: {
-            code: 'VAL_001',
-            message: 'At least one modification (passengerUpdates or seatChanges) is required',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      const result = await bookingService.modifyBooking(id, userId, modifications);
-
-      return res.json({
-        success: true,
-        data: result,
-        message: 'Booking modified successfully. Updated e-ticket has been sent to your email.',
-        timestamp: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error('Error modifying booking:', err);
-
-      if (err.message.includes('not found')) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            code: 'BOOK_002',
-            message: 'Booking not found',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      if (err.message.includes('Unauthorized')) {
-        return res.status(403).json({
-          success: false,
-          error: {
-            code: 'AUTH_003',
-            message: 'Unauthorized to modify this booking',
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      if (err.message.includes('not available') || err.message.includes('not allowed')) {
-        return res.status(409).json({
-          success: false,
-          error: {
-            code: 'BOOK_005',
-            message: err.message,
-          },
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        error: {
-          code: 'SYS_001',
-          message: 'Failed to modify booking',
-        },
-        timestamp: new Date().toISOString(),
-      });
-    }
   }
 }
 
