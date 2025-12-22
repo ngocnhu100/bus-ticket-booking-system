@@ -293,6 +293,54 @@ app.use('/analytics', authenticate, authorize(['admin']), async (req, res) => {
   }
 });
 
+// Chatbot service routes (Supports both guest and authenticated users)
+app.use('/chatbot', async (req, res) => {
+  try {
+    const chatbotServiceUrl = process.env.CHATBOT_SERVICE_URL || 'http://localhost:3007';
+    const queryString = Object.keys(req.query).length
+      ? '?' + new URLSearchParams(req.query).toString()
+      : '';
+
+    console.log(
+      `🤖 Proxying ${req.method} ${req.originalUrl} to ${chatbotServiceUrl}${req.path}${queryString}`
+    );
+
+    const response = await axios({
+      method: req.method,
+      url: `${chatbotServiceUrl}${req.path}${queryString}`,
+      data: req.body,
+      headers: {
+        authorization: req.headers.authorization, // Optional - supports both guest and authenticated
+        'content-type': 'application/json',
+      },
+      timeout: 30000, // AI responses may take longer
+    });
+
+    console.log(`✅ Chatbot service responded with status ${response.status}`);
+
+    // Forward response headers
+    Object.keys(response.headers).forEach((key) => {
+      if (key !== 'transfer-encoding') res.setHeader(key, response.headers[key]);
+    });
+
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`❌ Chatbot service error:`, error.message);
+
+    if (error.response) {
+      console.log(`❌ Chatbot service responded with error status ${error.response.status}`);
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      console.log(`❌ Chatbot service unavailable or timeout`);
+      res.status(503).json({
+        success: false,
+        error: { code: 'GATEWAY_006', message: 'Chatbot service unavailable' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+});
+
 // Dashboard routes (API composition - aggregates data from multiple services)
 app.get('/dashboard/summary', authenticate, async (req, res) => {
   try {
@@ -763,6 +811,9 @@ if (process.env.NODE_ENV !== 'test') {
     );
     console.log(
       `📊 Analytics Service: ${process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3006'}`
+    );
+    console.log(
+      `🤖 Chatbot Service: ${process.env.CHATBOT_SERVICE_URL || 'http://localhost:3007'}`
     );
   });
 }

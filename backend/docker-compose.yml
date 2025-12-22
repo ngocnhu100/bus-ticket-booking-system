@@ -198,6 +198,44 @@ services:
       - ./services/analytics-service:/app
       - /app/node_modules
 
+  # Chatbot Service
+  chatbot-service:
+    build:
+      context: ./services/chatbot-service
+      dockerfile: Dockerfile
+    container_name: bus-ticket-chatbot-service
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bus_ticket_dev
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY:-your-google-ai-api-key}
+      - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-2.5-flash}
+      - GOOGLE_AI_TEMPERATURE=${GOOGLE_AI_TEMPERATURE:-0.7}
+      - GOOGLE_AI_MAX_TOKENS=${GOOGLE_AI_MAX_TOKENS:-1000}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - TRIP_SERVICE_URL=http://trip-service:3002
+      - BOOKING_SERVICE_URL=http://booking-service:3004
+      - SESSION_EXPIRY_MINUTES=30
+      - MAX_CONVERSATION_HISTORY=20
+    ports:
+      - "3007:3007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./services/chatbot-service:/app
+      - /app/node_modules
+
   # API Gateway
   api-gateway:
     build:
@@ -212,6 +250,7 @@ services:
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
       - BOOKING_SERVICE_URL=http://booking-service:3004
       - ANALYTICS_SERVICE_URL=http://analytics-service:3006
+      - CHATBOT_SERVICE_URL=http://chatbot-service:3007
       - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
     ports:
       - "3000:3000"
