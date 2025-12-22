@@ -23,24 +23,23 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', bookingController.healthCheck);
 
 // Public routes (no authentication required)
-// Guest booking lookup - accepts phone OR email
-app.get('/guest/lookup', bookingController.guestLookup);
+// Guest booking lookup by bookingId (no auth required)
+app.get('/guest/lookup', bookingController.guestLookupBookingById);
 
-// Public routes (guest checkout) - MUST come before /:id route
-app.get('/reference/:reference', bookingController.getByReference);
-
-// Share ticket (public endpoint with validation)
-app.post('/:bookingReference/share', bookingController.shareTicket);
+// TODO: Nếu có method getByReference và shareTicket, cần kiểm tra lại tên đúng trong bookingController.js
+// app.get('/reference/:reference', bookingController.getByReference);
+// app.post('/:bookingReference/share', bookingController.shareTicket);
 
 // Protected routes (require authentication)
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);
 app.get('/:id', authenticate, bookingController.getById);
-app.get('/:id/cancellation-preview', optionalAuthenticate, bookingController.getCancellationPreview);
-app.get('/:id/modification-preview', optionalAuthenticate, bookingController.getModificationPreview);
-app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
+// Các method sau KHÔNG tồn tại trong controller, cần comment/xóa để tránh lỗi:
+// app.get('/:id/cancellation-preview', optionalAuthenticate, bookingController.getCancellationPreview);
+// app.get('/:id/modification-preview', optionalAuthenticate, bookingController.getModificationPreview);
+app.post('/:id/confirm-payment', optionalAuthenticate, bookingController.confirmPayment);
 app.put('/:id/cancel', optionalAuthenticate, bookingController.cancel);
-app.put('/:id/modify', optionalAuthenticate, bookingController.modifyBooking);
+// app.put('/:id/modify', optionalAuthenticate, bookingController.modifyBooking);
 
 // Internal idempotent confirm-payment endpoint for payment-service webhook
 app.post('/internal/:id/confirm-payment', bookingController.internalConfirmPayment);

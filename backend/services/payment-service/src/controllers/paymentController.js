@@ -1,6 +1,8 @@
 // controllers/paymentController.js
 const payosService = require('../services/gateways/payosService');
 const momoService = require('../services/gateways/momoService');
+const zalopayService = require('../services/gateways/zalopayService');
+const cardService = require('../services/gateways/cardService');
 const { verifyPayOSSignature } = require('../utils/webhookVerifier');
 
 async function createPayment(req, res) {
@@ -29,9 +31,44 @@ async function createPayment(req, res) {
         return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', ...momoResult });
       }
     }
-    // Mặc định PayOS
-    const result = await payosService.createPayment(body);
-    res.json(result);
+    if (body.paymentMethod === 'payos') {
+      // Tích hợp PayOS
+      const result = await payosService.createPayment(body);
+      return res.json(result);
+    }
+    if (body.paymentMethod === 'zalopay') {
+      // Tích hợp ZaloPay
+      const zaloResult = await zalopayService.createZaloPayPayment({
+        amount: body.amount,
+        description: body.description || 'Thanh toán ZaloPay',
+        bookingId: body.bookingId,
+      });
+      if (zaloResult && zaloResult.payUrl) {
+        return res.json({
+          success: true,
+          paymentUrl: zaloResult.payUrl,
+          qrCode: zaloResult.qrCodeUrl || undefined,
+          ...zaloResult,
+        });
+      } else {
+        return res.status(400).json({ success: false, message: zaloResult.message || 'ZaloPay payment failed', ...zaloResult });
+      }
+    }
+    if (body.paymentMethod === 'card') {
+      // Tích hợp Stripe/Card
+      try {
+        const paymentIntent = await cardService.createPaymentIntent({
+          amount: body.amount,
+          currency: body.currency || 'vnd',
+          metadata: { bookingId: body.bookingId },
+        });
+        return res.json({ success: true, paymentIntent });
+      } catch (err) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
+    }
+    // Nếu không khớp phương thức nào, trả về lỗi
+    return res.status(400).json({ success: false, message: 'Invalid payment method' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Create payment failed', error: err.message });
