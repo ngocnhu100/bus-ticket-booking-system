@@ -386,6 +386,29 @@ class BookingService {
    */
   async confirmPayment(bookingId, paymentData, userId = null) {
     const booking = await bookingRepository.findById(bookingId);
+    // Nếu có paymentMethod (momo, payos, ...) thì gọi payment-service để lấy paymentUrl/qrCode
+    if (paymentData.paymentMethod && paymentData.paymentMethod !== 'none') {
+        try {
+          const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3004';
+          const payRes = await axios.post(`${paymentServiceUrl}/api/payment`, {
+            amount: booking.pricing?.total || booking.total_price,
+            bookingId: bookingId,
+            paymentMethod: paymentData.paymentMethod,
+            description: `Thanh toán vé xe BK${booking.booking_reference}`,
+          });
+          if (payRes.data && payRes.data.success && (payRes.data.paymentUrl || payRes.data.qrCode)) {
+            return {
+              paymentUrl: payRes.data.paymentUrl,
+              qrCode: payRes.data.qrCode,
+              message: 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.',
+            };
+          } else {
+            throw new Error(payRes.data?.message || 'Không lấy được link thanh toán');
+          }
+        } catch (err) {
+          throw new Error('Tạo giao dịch thanh toán thất bại: ' + (err.message || err));
+        }
+      }
 
     if (!booking) {
       throw new Error('Booking not found');
