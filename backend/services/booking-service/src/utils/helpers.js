@@ -111,6 +111,22 @@ function mapToBooking(row) {
     status: row.status,
     locked_until: row.locked_until,
     is_guest_checkout: row.is_guest_checkout === true || row.is_guest_checkout === 1,
+    has_rating: row.has_rating === true || row.has_rating === 1,
+    trip_details: row.origin
+      ? {
+          route: {
+            origin: row.origin,
+            destination: row.destination,
+          },
+          schedule: {
+            departure_time: row.departure_time,
+            arrival_time: row.arrival_time,
+          },
+          operator: {
+            name: row.operator_name,
+          },
+        }
+      : null,
     pricing: {
       subtotal: parseFloat(row.subtotal),
       service_fee: parseFloat(row.service_fee),

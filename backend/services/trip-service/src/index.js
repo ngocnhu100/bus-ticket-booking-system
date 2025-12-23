@@ -10,6 +10,7 @@ const busModelController = require('./controllers/busModelController');
 const busController = require('./controllers/busController');
 const adminOperatorController = require('./controllers/adminOperatorController');
 const seatLockController = require('./controllers/seatLockController');
+const ratingController = require('./controllers/ratingController');
 
 const { authenticate, authorize, optionalAuthenticate } = require('./middleware/authMiddleware');
 const lockCleanupService = require('./services/lockCleanupService');
@@ -78,7 +79,12 @@ app.post('/routes/:id/stops', authenticate, authorize(['admin']), routeControlle
 // --- Admin: Bus model management ---
 app.post('/bus-models', authenticate, authorize(['admin']), busModelController.create);
 app.put('/bus-models/:id', authenticate, authorize(['admin']), busModelController.update);
-app.post('/bus-models/:id/seat-layout', authenticate, authorize(['admin']), busModelController.setSeatLayout);
+app.post(
+  '/bus-models/:id/seat-layout',
+  authenticate,
+  authorize(['admin']),
+  busModelController.setSeatLayout
+);
 app.get('/bus-models/:id', authenticate, authorize(['admin']), busModelController.getById);
 
 // --- Admin: Bus management ---
@@ -88,17 +94,17 @@ app.put('/buses/:id', authenticate, authorize(['admin']), busController.update);
 app.delete('/buses/:id', authenticate, authorize(['admin']), busController.delete);
 
 // API kiểm tra xe có trống không (rất quan trọng khi tạo chuyến)
-app.get('/buses/:id/availability', authenticate, authorize(['admin']), busController.checkAvailability);
+app.get(
+  '/buses/:id/availability',
+  authenticate,
+  authorize(['admin']),
+  busController.checkAvailability
+);
 
 // ============================= ADMIN: OPERATOR MANAGEMENT (mới thêm - thẳng trong index.js) =============================
 
 // 1. Danh sách nhà xe + filter + phân trang + thống kê số tuyến, số xe
-app.get(
-  '/admin/operators',
-  authenticate,
-  authorize(['admin']),
-  adminOperatorController.getList
-);
+app.get('/admin/operators', authenticate, authorize(['admin']), adminOperatorController.getList);
 
 // 2. Duyệt / Từ chối nhà xe
 app.put(
@@ -108,10 +114,39 @@ app.put(
   adminOperatorController.approveOperator
 );
 
+// ============================= RATINGS & REVIEWS (Customer Feedback System) =============================
+
+// Submit a rating for a completed booking
+app.post('/ratings', authenticate, ratingController.submitRating);
+
+// Check if a booking has a rating
+app.get('/ratings/check/:bookingId', ratingController.checkBookingRating);
+
+// Get rating stats for a trip (public)
+app.get('/:tripId/ratings', ratingController.getTripRatings);
+
+// Get reviews for a trip with pagination (public)
+app.get('/:tripId/reviews', ratingController.getTripReviews);
+
+// Get rating stats for an operator (public)
+app.get('/operators/:operatorId/ratings', ratingController.getOperatorRatings);
+
+// Get reviews for an operator with pagination (public)
+app.get('/operators/:operatorId/reviews', ratingController.getOperatorReviews);
+
+// Update a review (within 24 hours)
+app.patch('/ratings/:ratingId', authenticate, ratingController.updateReview);
+
+// Delete a review
+app.delete('/ratings/:ratingId', authenticate, ratingController.deleteReview);
+
+// Vote on review helpfulness
+app.post('/ratings/:ratingId/votes', authenticate, ratingController.voteHelpful);
+
 // --- Error handling ---
-app.use((err, req, res, next) => { 
-    console.error('Trip Service Error:', err);
-    res.status(500).json({ error: 'Internal Trip Service Error', details: err.message });
+app.use((err, req, res, next) => {
+  console.error('Trip Service Error:', err);
+  res.status(500).json({ error: 'Internal Trip Service Error', details: err.message });
 });
 
 if (process.env.NODE_ENV !== 'test') {

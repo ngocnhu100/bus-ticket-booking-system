@@ -91,7 +91,8 @@ class BookingRepository {
 
     const sanitizedUserId = sanitizeUUID(bookingData.userId);
 
-    const isGuestFlag = bookingData.isGuestCheckout === true || bookingData.is_guest_checkout === true ? true : false;
+    const isGuestFlag =
+      bookingData.isGuestCheckout === true || bookingData.is_guest_checkout === true ? true : false;
     const values = [
       bookingData.bookingReference,
       bookingData.tripId,
@@ -105,12 +106,12 @@ class BookingRepository {
       bookingData.totalPrice,
       bookingData.currency || 'VND',
       'unpaid',
-      isGuestFlag
+      isGuestFlag,
     ];
     console.log('[BookingRepository] SQL values:', values);
     console.log('[BookingRepository] user_id will be:', sanitizedUserId);
     console.log('[BookingRepository] is_guest_checkout DB value:', isGuestFlag);
-    
+
     const result = await db.query(query, values);
     const createdBooking = mapToBooking(result.rows[0]);
 
@@ -217,13 +218,22 @@ class BookingRepository {
       sortOrder = 'DESC',
     } = filters;
 
-    let query = 'SELECT * FROM bookings WHERE user_id = $1';
+    let query = `SELECT bookings.*, (ratings.rating_id IS NOT NULL) as has_rating,
+                         trips.departure_time, trips.arrival_time,
+                         routes.origin, routes.destination,
+                         operators.name as operator_name
+                  FROM bookings
+                  LEFT JOIN ratings ON ratings.booking_id = bookings.booking_id
+                  LEFT JOIN trips ON trips.trip_id = bookings.trip_id
+                  LEFT JOIN routes ON routes.route_id = trips.route_id
+                  LEFT JOIN operators ON operators.operator_id = routes.operator_id
+                  WHERE bookings.user_id = $1`;
     const values = [sanitizedUserId];
     let paramIndex = 2;
 
     // Add status filter
     if (status !== 'all') {
-      query += ` AND status = $${paramIndex}`;
+      query += ` AND bookings.status = $${paramIndex}`;
       values.push(status);
       paramIndex++;
       console.log(`[BookingRepository] Filtering by status: ${status}`);
@@ -243,8 +253,23 @@ class BookingRepository {
     }
 
     // Get total count
-    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*)');
-    const countResult = await db.query(countQuery, values);
+    let countQuery = `SELECT COUNT(*) FROM bookings 
+                      LEFT JOIN ratings ON ratings.booking_id = bookings.booking_id 
+                      LEFT JOIN trips ON trips.trip_id = bookings.trip_id
+                      LEFT JOIN routes ON routes.route_id = trips.route_id
+                      LEFT JOIN operators ON operators.operator_id = routes.operator_id
+                      WHERE bookings.user_id = $1`;
+
+    const countValues = [sanitizedUserId];
+    let countParamIndex = 2;
+
+    // Add status filter to count query
+    if (status !== 'all') {
+      countQuery += ` AND bookings.status = $${countParamIndex}`;
+      countValues.push(status);
+    }
+
+    const countResult = await db.query(countQuery, countValues);
     const total = parseInt(countResult.rows[0].count, 10);
 
     // Map camelCase to snake_case for sorting

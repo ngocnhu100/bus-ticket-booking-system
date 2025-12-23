@@ -152,12 +152,12 @@ ON CONFLICT DO NOTHING;
 
 -- 3. Operators
 INSERT INTO operators (name, contact_email, contact_phone, status, rating, logo_url) VALUES
-('Sapaco Tourist', 'contact@sapaco.vn', '+84-28-1234-5678', 'approved', 4.5, 'https://example.com/sapaco-logo.png'),
-('The Sinh Tourist', 'info@thesinh.vn', '+84-24-8765-4321', 'approved', 4.2, 'https://example.com/thesinh-logo.png'),
-('Futa Bus Lines', 'support@futa.vn', '+84-28-9876-5432', 'approved', 4.0, 'https://example.com/futa-logo.png'),
-('Giant I', 'info@gianti.vn', '+84-28-1111-2222', 'approved', 4.3, 'https://example.com/gianti-logo.png'),
-('Kumho Samco', 'contact@kumhosamco.vn', '+84-24-3333-4444', 'approved', 4.1, 'https://example.com/kumho-logo.png'),
-('Sao Viet', 'support@saoviet.vn', '+84-28-5555-6666', 'approved', 3.9, 'https://example.com/saoviet-logo.png')
+('Sapaco Tourist', 'contact@sapaco.vn', '+84-28-1234-5678', 'approved', 0.0, 'https://example.com/sapaco-logo.png'),
+('The Sinh Tourist', 'info@thesinh.vn', '+84-24-8765-4321', 'approved', 0.0, 'https://example.com/thesinh-logo.png'),
+('Futa Bus Lines', 'support@futa.vn', '+84-28-9876-5432', 'approved', 0.0, 'https://example.com/futa-logo.png'),
+('Giant I', 'info@gianti.vn', '+84-28-1111-2222', 'approved', 0.0, 'https://example.com/gianti-logo.png'),
+('Kumho Samco', 'contact@kumhosamco.vn', '+84-24-3333-4444', 'approved', 0.0, 'https://example.com/kumho-logo.png'),
+('Sao Viet', 'support@saoviet.vn', '+84-28-5555-6666', 'approved', 0.0, 'https://example.com/saoviet-logo.png')
 ON CONFLICT DO NOTHING;
 
 -- 4. Buses

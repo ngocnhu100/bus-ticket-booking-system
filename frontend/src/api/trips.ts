@@ -84,6 +84,239 @@ export interface TripSearchResponse {
   timestamp: string
 }
 
+// ============================================================================
+// RATING API INTERFACES AND FUNCTIONS
+// ============================================================================
+
+export interface RatingSubmission {
+  bookingId: string
+  tripId: string
+  ratings: Record<string, number>
+  review?: string
+  photos?: File[] // File objects for upload
+}
+
+export interface RatingAPIRequest {
+  bookingId: string
+  tripId: string
+  ratings: Record<string, number>
+  review?: string
+  photos?: string[] // base64 encoded images for API
+}
+
+export interface RatingResponse {
+  success: boolean
+  data: {
+    ratingId: string
+    message: string
+  }
+  timestamp: string
+}
+
+export interface OperatorRatingStats {
+  averages: {
+    overall: number
+    cleanliness: number
+    driver_behavior: number
+    punctuality: number
+    comfort: number
+    value_for_money: number
+  }
+  distribution: Record<string, string> // "5": "40.0", etc.
+  totalRatings: number
+  reviewsCount: number
+}
+
+export interface OperatorRatingResponse {
+  operatorId: string
+  stats: OperatorRatingStats | null
+  message?: string
+}
+
+export interface ReviewData {
+  id: string
+  authorName: string
+  authorEmail?: string
+  rating: number
+  categoryRatings: Record<string, number>
+  reviewText?: string
+  photos?: string[]
+  route?: string
+  seatType?: string
+  createdAt: Date | string
+  updatedAt?: Date | string
+  helpfulCount?: number
+  userHelpful?: boolean
+  isAuthor?: boolean
+  canEdit?: boolean
+  canDelete?: boolean
+}
+
+/**
+ * Fetch rating statistics for an operator
+ * Public endpoint - no authentication required
+ */
+export async function getOperatorRatings(
+  operatorId: string
+): Promise<OperatorRatingResponse> {
+  try {
+    const response = await apiRequest(
+      `/trips/operators/${operatorId}/ratings`,
+      {
+        method: 'GET',
+      }
+    )
+    return response
+  } catch (error) {
+    console.error('Failed to fetch operator ratings:', error)
+    throw error
+  }
+}
+
+/**
+ * Submit a rating for a completed trip/booking
+ * Requires authentication
+ */
+export async function submitRating(
+  ratingData: RatingSubmission
+): Promise<RatingResponse> {
+  try {
+    // Convert File objects to base64 strings for API
+    let photosBase64: string[] | undefined
+    if (ratingData.photos && ratingData.photos.length > 0) {
+      photosBase64 = await Promise.all(
+        ratingData.photos.map((file) => {
+          return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.onerror = reject
+            reader.readAsDataURL(file)
+          })
+        })
+      )
+    }
+
+    const apiData: RatingAPIRequest = {
+      bookingId: ratingData.bookingId,
+      tripId: ratingData.tripId,
+      ratings: ratingData.ratings,
+      review: ratingData.review,
+      photos: photosBase64,
+    }
+
+    const response = await apiRequest('/trips/ratings', {
+      method: 'POST',
+      body: apiData,
+    })
+    return response
+  } catch (error: unknown) {
+    // Re-throw with more context
+    if (
+      error &&
+      typeof error === 'object' &&
+      'status' in error &&
+      'code' in error &&
+      ((error as unknown).status === 401 ||
+        (error as unknown).code === 'AUTH_001' ||
+        (error as unknown).code === 'AUTH_002')
+    ) {
+      console.error('🔐 Authentication failed for ratings submission', error)
+      throw new Error('Please log in again to submit your review')
+    }
+    throw error
+  }
+}
+
+/**
+ * Fetch reviews for an operator
+ * Public endpoint - no authentication required
+ */
+export async function getOperatorReviews(
+  operatorId: string,
+  params?: {
+    page?: number
+    limit?: number
+    sortBy?: 'recent' | 'helpful' | 'rating-high' | 'rating-low'
+    rating?: number
+  }
+): Promise<{
+  success: boolean
+  data: ReviewData[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+  message?: string
+}> {
+  try {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.sortBy) queryParams.append('sort', params.sortBy)
+    if (params?.rating) queryParams.append('rating', params.rating.toString())
+
+    const queryString = queryParams.toString()
+    const url = queryString
+      ? `/trips/operators/${operatorId}/reviews?${queryString}`
+      : `/trips/operators/${operatorId}/reviews`
+
+    const response = await apiRequest(url, {
+      method: 'GET',
+    })
+    return response
+  } catch (error) {
+    console.error('Failed to fetch operator reviews:', error)
+    throw error
+  }
+}
+
+/**
+ * Fetch reviews for a specific trip
+ * Public endpoint - no authentication required
+ */
+export async function getTripReviews(
+  tripId: string,
+  params?: {
+    page?: number
+    limit?: number
+    sortBy?: 'recent' | 'helpful' | 'rating-high' | 'rating-low'
+    rating?: number
+  }
+): Promise<{
+  success: boolean
+  data: ReviewData[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+  message?: string
+}> {
+  try {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.sortBy) queryParams.append('sort', params.sortBy)
+    if (params?.rating) queryParams.append('rating', params.rating.toString())
+
+    const queryString = queryParams.toString()
+    const url = queryString
+      ? `/trips/${tripId}/reviews?${queryString}`
+      : `/trips/${tripId}/reviews`
+
+    const response = await apiRequest(url, {
+      method: 'GET',
+    })
+    return response
+  } catch (error) {
+    console.error('Failed to fetch trip reviews:', error)
+    throw error
+  }
+}
+
 export async function searchTrips(
   params: TripSearchParams
 ): Promise<TripSearchResponse> {

@@ -17,6 +17,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { format } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 import type { Trip } from '@/types/trip.types'
+import { ReviewsList } from '@/components/reviews/ReviewsList'
+import { useState, useEffect } from 'react'
+import { getOperatorReviews, getOperatorRatings } from '@/api/trips'
+import type { ReviewData } from '@/components/reviews/ReviewCard'
+import type { OperatorRatingStats } from '@/api/trips'
 
 interface TripDetailsProps {
   trip: Trip
@@ -24,6 +29,118 @@ interface TripDetailsProps {
 
 export function TripDetails({ trip }: TripDetailsProps) {
   const navigate = useNavigate()
+  const [reviews, setReviews] = useState<ReviewData[]>([])
+  const [reviewsLoading, setReviewsLoading] = useState(false)
+  const [reviewsSortBy, setReviewsSortBy] = useState<
+    'recent' | 'helpful' | 'rating-high' | 'rating-low'
+  >('recent')
+  const [reviewsRatingFilter, setReviewsRatingFilter] = useState<number | null>(
+    null
+  )
+  const [reviewsPage, setReviewsPage] = useState(1)
+  const [hasMoreReviews, setHasMoreReviews] = useState(false)
+  const [operatorStats, setOperatorStats] =
+    useState<OperatorRatingStats | null>(null)
+
+  // Fetch operator stats when component mounts
+  useEffect(() => {
+    // Skip API calls for mock data operator IDs (they're not UUIDs)
+    if (trip.operator.operator_id.startsWith('operator_')) {
+      setOperatorStats(null)
+      return
+    }
+
+    const fetchOperatorStats = async () => {
+      try {
+        const response = await getOperatorRatings(trip.operator.operator_id)
+        if (response.stats) {
+          setOperatorStats(response.stats)
+        }
+      } catch (error) {
+        console.error('Failed to fetch operator stats:', error)
+        setOperatorStats(null)
+      }
+    }
+
+    fetchOperatorStats()
+  }, [trip.operator.operator_id])
+
+  // Fetch reviews when component mounts or filters change
+  useEffect(() => {
+    // Skip API calls for mock data operator IDs (they're not UUIDs)
+    if (trip.operator.operator_id.startsWith('operator_')) {
+      setReviews([])
+      setReviewsLoading(false)
+      setHasMoreReviews(false)
+      return
+    }
+
+    const fetchReviews = async () => {
+      setReviewsLoading(true)
+      try {
+        console.log('Fetching reviews with:', {
+          operatorId: trip.operator.operator_id,
+          page: reviewsPage,
+          sortBy: reviewsSortBy,
+          rating: reviewsRatingFilter,
+        })
+
+        const response = await getOperatorReviews(trip.operator.operator_id, {
+          page: reviewsPage,
+          limit: 10,
+          sortBy: reviewsSortBy,
+          rating: reviewsRatingFilter || undefined,
+        })
+
+        console.log('Reviews response:', response)
+        console.log('Response data:', response.data)
+
+        if (response.success && response.data) {
+          const reviewData = response.data.map((review) => {
+            console.log('Mapping review:', review)
+            return {
+              ...review,
+              createdAt: new Date(review.createdAt),
+              updatedAt: review.updatedAt
+                ? new Date(review.updatedAt)
+                : undefined,
+            }
+          })
+
+          console.log('Mapped reviews:', reviewData)
+
+          if (reviewsPage === 1) {
+            console.log('Setting reviews (page 1):', reviewData)
+            setReviews(reviewData)
+          } else {
+            console.log(
+              'Appending reviews (page',
+              reviewsPage,
+              '):',
+              reviewData
+            )
+            setReviews((prev) => [...prev, ...reviewData])
+          }
+
+          setHasMoreReviews(reviewsPage < response.pagination.totalPages)
+        }
+      } catch (error) {
+        console.error('Failed to fetch reviews:', error)
+        setReviews([])
+        setHasMoreReviews(false)
+      } finally {
+        setReviewsLoading(false)
+      }
+    }
+
+    fetchReviews()
+  }, [
+    trip.operator.operator_id,
+    trip.route,
+    reviewsPage,
+    reviewsSortBy,
+    reviewsRatingFilter,
+  ])
 
   // Helper function to format time
   const formatTime = (timeString: string) => {
@@ -78,7 +195,7 @@ export function TripDetails({ trip }: TripDetailsProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <TabsList
-          className="grid w-full grid-cols-5 mb-6"
+          className="grid w-full grid-cols-6 mb-6"
           onClick={(e) => e.stopPropagation()}
         >
           <TabsTrigger value="points" onClick={(e) => e.stopPropagation()}>
@@ -95,6 +212,9 @@ export function TripDetails({ trip }: TripDetailsProps) {
           </TabsTrigger>
           <TabsTrigger value="stops" onClick={(e) => e.stopPropagation()}>
             Route Stops
+          </TabsTrigger>
+          <TabsTrigger value="reviews" onClick={(e) => e.stopPropagation()}>
+            Reviews
           </TabsTrigger>
         </TabsList>
 
@@ -353,6 +473,31 @@ export function TripDetails({ trip }: TripDetailsProps) {
               </p>
             </div>
           )}
+        </TabsContent>
+
+        {/* Reviews Tab */}
+        <TabsContent value="reviews" className="space-y-6">
+          <ReviewsList
+            reviews={reviews}
+            isLoading={reviewsLoading}
+            onLoadMore={async () => {
+              setReviewsPage((prev) => prev + 1)
+            }}
+            hasMore={hasMoreReviews}
+            sortBy={reviewsSortBy}
+            onSortChange={(sort) => {
+              setReviewsSortBy(
+                sort as 'recent' | 'helpful' | 'rating-high' | 'rating-low'
+              )
+              setReviewsPage(1) // Reset to first page when sorting changes
+            }}
+            ratingFilter={reviewsRatingFilter}
+            onRatingFilterChange={(rating) => {
+              setReviewsRatingFilter(rating)
+              setReviewsPage(1) // Reset to first page when filter changes
+            }}
+            operatorStats={operatorStats}
+          />
         </TabsContent>
       </Tabs>
 

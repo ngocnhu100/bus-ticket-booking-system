@@ -12,7 +12,13 @@ class TripRepository {
         r.route_id, r.origin, r.destination, r.distance_km, r.estimated_minutes,
         
         -- Operator info
-        o.operator_id, o.name as operator_name, o.rating as operator_rating, o.logo_url as operator_logo,
+        o.operator_id, o.name as operator_name, 
+        COALESCE((
+          SELECT AVG(rating.overall_rating) 
+          FROM ratings rating 
+          WHERE rating.operator_id = o.operator_id AND rating.is_approved = true
+        ), 0) as operator_rating, 
+        o.logo_url as operator_logo,
         
         -- Bus info
         b.bus_id, b.plate_number, b.type as bus_type, bm.name as bus_model,

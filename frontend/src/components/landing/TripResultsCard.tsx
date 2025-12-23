@@ -18,12 +18,14 @@ interface TripResultsCardProps {
   trip: Trip
   onSelectTrip?: (tripId: string) => void
   isSelected?: boolean
+  ratingCount?: number
 }
 
 export function TripResultsCard({
   trip,
   onSelectTrip,
   isSelected = false,
+  ratingCount,
 }: TripResultsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const navigate = useNavigate()
@@ -61,8 +63,7 @@ export function TripResultsCard({
   const seatType = trip.bus.bus_type
   const availableSeats = trip.availability.available_seats
 
-  // Optional properties (for future use or when extended in API)
-  const reviewCount = 0
+  const totalRatingCount = ratingCount || 0
   const discount: number | undefined = undefined
   const originalPrice: number | undefined = undefined
   const isBestPrice = false
@@ -104,12 +105,15 @@ export function TripResultsCard({
               <h3 className="font-semibold text-foreground text-sm md:text-base">
                 {operatorName}
               </h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                <span className="text-xs md:text-sm font-medium">
-                  {operatorRating.toFixed(1)} ({reviewCount.toLocaleString()})
-                </span>
-              </div>
+              {totalRatingCount > 0 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span className="text-xs md:text-sm font-medium">
+                    {operatorRating.toFixed(1)} (
+                    {totalRatingCount.toLocaleString()})
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

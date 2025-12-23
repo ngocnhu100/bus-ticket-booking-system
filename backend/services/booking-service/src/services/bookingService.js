@@ -310,11 +310,31 @@ class BookingService {
   async getUserBookings(userId, filters) {
     const result = await bookingRepository.findByUserId(userId, filters);
 
-    // Enrich each booking with passengers count and trip details
+    // Enrich each booking with passengers count, rating status, and trip details
     const enrichedBookings = await Promise.all(
       result.bookings.map(async (booking) => {
         const passengers = await passengerRepository.findByBookingId(booking.booking_id);
-        
+
+        // Check if booking has a rating
+        let hasRating = false;
+        try {
+          const tripServiceUrl = process.env.TRIP_SERVICE_URL || 'http://localhost:3002';
+          const ratingResponse = await axios.get(
+            `${tripServiceUrl}/ratings/check/${booking.booking_id}`,
+            {
+              headers: {
+                'x-user-id': userId,
+              },
+              timeout: 5000,
+            }
+          );
+          hasRating = ratingResponse.data?.hasRating || false;
+        } catch (error) {
+          // If rating check fails, assume no rating (don't break booking loading)
+          console.warn(`Failed to check rating for booking ${booking.booking_id}:`, error.message);
+          hasRating = false;
+        }
+
         // Fetch trip details
         let tripDetails = null;
         try {
@@ -335,13 +355,17 @@ class BookingService {
             };
           }
         } catch (error) {
-          console.error(`Failed to fetch trip details for booking ${booking.booking_id}:`, error.message);
+          console.error(
+            `Failed to fetch trip details for booking ${booking.booking_id}:`,
+            error.message
+          );
         }
 
         return {
           ...booking,
           passengersCount: passengers.length,
           seatCodes: passengers.map((p) => p.seat_code),
+          hasRating,
           trip_details: tripDetails,
         };
       })
@@ -580,9 +604,11 @@ class BookingService {
 
     // Check authorization - only owner can cancel (support both user_id and userId)
     const bookingUserId = booking.user_id || booking.userId;
-    
+
     if (bookingUserId && bookingUserId !== userId && userId !== null) {
-      console.error(`[BookingService] Unauthorized cancellation attempt by ${userId} for booking owned by ${bookingUserId}`);
+      console.error(
+        `[BookingService] Unauthorized cancellation attempt by ${userId} for booking owned by ${bookingUserId}`
+      );
       throw new Error('Unauthorized to cancel this booking');
     }
 
@@ -649,11 +675,7 @@ class BookingService {
     if (seatCodes.length > 0) {
       try {
         console.log(`[BookingService] Releasing locks for seats: ${seatCodes.join(', ')}`);
-        await this.releaseLocksForCancelledBooking(
-          booking.trip_id,
-          seatCodes,
-          bookingUserId
-        );
+        await this.releaseLocksForCancelledBooking(booking.trip_id, seatCodes, bookingUserId);
         console.log(`[BookingService] Successfully released seat locks`);
       } catch (error) {
         console.error(`[BookingService] Failed to release seat locks:`, error);
@@ -792,9 +814,7 @@ class BookingService {
           }
 
           if (booking.payment_status === 'paid') {
-            console.log(
-              `⏰ [ExpirationJob] Skipping booking ${bookingRef}: already paid`
-            );
+            console.log(`⏰ [ExpirationJob] Skipping booking ${bookingRef}: already paid`);
             continue;
           }
 
@@ -837,17 +857,13 @@ class BookingService {
           // STEP 5: Release seat locks atomically
           if (seatCodes.length > 0) {
             try {
-              console.log(
-                `⏰ [ExpirationJob] Releasing locks for seats: ${seatCodes.join(', ')}`
-              );
+              console.log(`⏰ [ExpirationJob] Releasing locks for seats: ${seatCodes.join(', ')}`);
               await this.releaseLocksForCancelledBooking(
                 booking.trip_id,
                 seatCodes,
                 booking.user_id
               );
-              console.log(
-                `⏰ [ExpirationJob] Successfully released seat locks for ${bookingRef}`
-              );
+              console.log(`⏰ [ExpirationJob] Successfully released seat locks for ${bookingRef}`);
             } catch (error) {
               console.error(
                 `⏰ [ExpirationJob] Failed to release seat locks for ${bookingRef}:`,
@@ -1415,10 +1431,7 @@ class BookingService {
    * @returns {Promise<object>} Modification policy and fee preview
    */
   async getModificationPreview(bookingId, userId = null) {
-    const {
-      getModificationTier,
-      getAllModificationTiers,
-    } = require('../utils/modificationPolicy');
+    const { getModificationTier, getAllModificationTiers } = require('../utils/modificationPolicy');
 
     // Get booking
     const booking = await bookingRepository.findById(bookingId);
@@ -1548,9 +1561,7 @@ class BookingService {
     if (modifications.seatChanges && modifications.seatChanges.length > 0) {
       const tripServiceUrl = process.env.TRIP_SERVICE_URL || 'http://localhost:3002';
 
-      console.log(
-        `[BookingService] Processing ${modifications.seatChanges.length} seat change(s)`
-      );
+      console.log(`[BookingService] Processing ${modifications.seatChanges.length} seat change(s)`);
 
       for (const seatChange of modifications.seatChanges) {
         const { ticketId, oldSeatCode, newSeatCode } = seatChange;
@@ -1621,11 +1632,7 @@ class BookingService {
         } catch (error) {
           // Rollback any previously locked seats
           if (newSeats.length > 0) {
-            await this.releaseLocksForCancelledBooking(
-              booking.trip_id,
-              newSeats,
-              bookingUserId
-            );
+            await this.releaseLocksForCancelledBooking(booking.trip_id, newSeats, bookingUserId);
           }
           throw new Error(`Failed to lock new seat ${newSeatCode}: ${error.message}`);
         }

@@ -171,10 +171,13 @@ export function SearchForm() {
 
   // Handle repeat search
   const handleRepeatSearch = (searchItem: SearchHistoryItem) => {
+    // Parse the date string (YYYY-MM-DD) properly to avoid locale issues
+    const [year, month, day] = searchItem.date.split('-').map(Number)
+    const parsedDate = new Date(year, month - 1, day) // month is 0-indexed in Date constructor
     setFormData({
       from: searchItem.origin,
       to: searchItem.destination,
-      date: new Date(searchItem.date),
+      date: parsedDate,
       passengers: searchItem.passengers,
     })
     // Trigger search after form is updated

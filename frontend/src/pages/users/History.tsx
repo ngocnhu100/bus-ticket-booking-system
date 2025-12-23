@@ -3,10 +3,18 @@ import { DashboardLayout } from '../../components/users/DashboardLayout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
+  SubmitRatingForm,
+  type RatingSubmission,
+  type RatingFormState,
+} from '@/components/reviews'
+import { useAuth } from '@/context/AuthContext'
+import { ArrowRight, Mail, Phone } from 'lucide-react'
+import {
   getUserBookings,
   type Booking,
   type BookingFilters,
 } from '@/api/bookings'
+import { submitRating } from '@/api/trips'
 import '@/styles/admin.css'
 
 /**
@@ -19,10 +27,18 @@ import '@/styles/admin.css'
  * - Status indicators
  */
 const History = () => {
+  const { token, logout } = useAuth()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [selectedBookingForRating, setSelectedBookingForRating] =
+    useState<Booking | null>(null)
+  const [ratingFormState, setRatingFormState] = useState<
+    Record<string, RatingFormState>
+  >({})
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false)
+  const [ratingError, setRatingError] = useState<string | null>(null)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -67,6 +83,20 @@ const History = () => {
     fetchBookings()
   }, [fetchBookings])
 
+  // Disable background scroll when modal is open
+  useEffect(() => {
+    if (selectedBooking || selectedBookingForRating) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [selectedBooking, selectedBookingForRating])
+
   // Status badge styling
   const getStatusBadge = (status: Booking['status']) => {
     const styles = {
@@ -96,20 +126,35 @@ const History = () => {
     }).format(price)
   }
 
-  // Format date (accept undefined safely)
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Unknown'
-    try {
-      return new Date(dateString).toLocaleDateString('vi-VN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    } catch {
-      return 'Unknown'
+  // Format date
+  const formatDate = (date: string | Date) => {
+    if (!date) return 'N/A'
+    let d: Date
+    if (date instanceof Date) {
+      d = date
+    } else {
+      // Handle PostgreSQL timestamp format: '2025-12-22 09:32:05.2593+00'
+      const isoString = date.replace(' ', 'T').replace(/\+(\d{2})$/, '+$1:00')
+      d = new Date(isoString)
     }
+    if (isNaN(d.getTime())) return 'Invalid Date'
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d)
+  }
+
+  // Check if booking is within 60-day rating window
+  const isWithinRatingWindow = (departureTime: string) => {
+    const tripDate = new Date(departureTime)
+    const now = new Date()
+    const daysSince = Math.floor(
+      (now.getTime() - tripDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    return daysSince <= 60
   }
 
   // View booking details
@@ -120,6 +165,94 @@ const History = () => {
   // Close details modal
   const handleCloseDetails = () => {
     setSelectedBooking(null)
+  }
+
+  // Close rating modal
+  const handleCloseRating = () => {
+    setSelectedBookingForRating(null)
+  }
+
+  // Handle rating form state changes
+  const handleRatingFormStateChange = useCallback(
+    (bookingId: string, state: RatingFormState) => {
+      setRatingFormState((prev) => ({
+        ...prev,
+        [bookingId]: state,
+      }))
+    },
+    []
+  )
+
+  // Callback for rating form state changes
+  const handleRatingStateChange = useCallback(
+    (state: RatingFormState) => {
+      if (selectedBookingForRating) {
+        handleRatingFormStateChange(selectedBookingForRating.booking_id, state)
+      }
+    },
+    [selectedBookingForRating, handleRatingFormStateChange]
+  )
+
+  // Handle rating submission
+  const handleSubmitRating = async (ratingData: RatingSubmission) => {
+    setIsSubmittingRating(true)
+    setRatingError(null)
+
+    try {
+      // Check if user is still authenticated
+      if (!token) {
+        setRatingError('Your session has expired. Please log in again.')
+        logout()
+        return
+      }
+
+      // Prepare rating data for API
+      const apiData = {
+        bookingId: ratingData.bookingId,
+        tripId: ratingData.tripId,
+        ratings: ratingData.ratings,
+        review: ratingData.review,
+        // TODO: Handle photos conversion to base64
+        // photos: ratingData.photos ? await convertFilesToBase64(ratingData.photos) : undefined,
+      }
+
+      // Call API to submit rating
+      await submitRating(apiData)
+
+      // Immediately update the booking to mark it as rated (optimistic update)
+      setBookings((prevBookings) =>
+        prevBookings.map((booking) =>
+          booking.booking_id === ratingData.bookingId
+            ? { ...booking, hasRating: true }
+            : booking
+        )
+      )
+
+      // Close the rating modal
+      setSelectedBookingForRating(null)
+
+      // Refresh bookings to show updated state (in background)
+      fetchBookings()
+      // Clear saved form state after successful submission
+      setRatingFormState((prev) => {
+        const newState = { ...prev }
+        delete newState[ratingData.bookingId]
+        return newState
+      })
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to submit rating'
+
+      // Check if it's an authentication error
+      if (message.includes('log in') || message.includes('session')) {
+        logout()
+      }
+
+      setRatingError(message)
+      throw err
+    } finally {
+      setIsSubmittingRating(false)
+    }
   }
 
   return (
@@ -252,64 +385,88 @@ const History = () => {
         {!isLoading && !error && bookings.length > 0 && (
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <Card
-                key={booking.booking_id}
-                className="p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  {/* Left Side - Booking Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold">
-                        {booking.booking_reference}
-                      </h3>
-                      {getStatusBadge(booking.status)}
-                    </div>
-
-                    {booking.trip_details && (
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <p className="font-medium text-foreground">
-                          {booking.trip_details.route?.origin} →{' '}
-                          {booking.trip_details.route?.destination}
-                        </p>
-                        <p>
-                          {booking.trip_details.operator?.name || 'N/A'} •
-                          {booking.passengers && booking.passengers.length > 0
-                            ? ` ${booking.passengers.length} seat(s)`
-                            : ' N/A'}
-                        </p>
-                        <p>Booked: {formatDate(booking.createdAt)}</p>
+              <div key={booking.booking_id} className="space-y-3">
+                <Card className="p-6 hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    {/* Left Side - Booking Info */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold">
+                          {booking.booking_reference}
+                        </h3>
+                        {getStatusBadge(booking.status)}
                       </div>
-                    )}
 
-                    {/* Contact Info */}
-                    <div className="mt-2 text-sm text-muted-foreground">
-                      <p>📧 {booking.contact_email}</p>
-                      <p>📱 {booking.contact_phone}</p>
+                      {booking.trip_details && (
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p className="font-medium text-foreground flex items-center gap-2">
+                            {booking.trip_details.route?.origin}
+                            <ArrowRight className="w-4 h-4" />
+                            {booking.trip_details.route?.destination}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Contact Info */}
+                      <div className="mt-3">
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p className="flex items-center gap-2">
+                            <Mail className="w-4 h-4" />
+                            {booking.contact_email}
+                          </p>
+                          <p className="flex items-center gap-2">
+                            <Phone className="w-4 h-4" />
+                            {booking.contact_phone}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Side - Price and Actions */}
+                    <div className="flex flex-col items-end gap-3">
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">
+                          Total Price
+                        </p>
+                        <p className="text-xl font-bold text-primary">
+                          {formatPrice(booking.pricing.total)}
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewDetails(booking)}
+                        >
+                          View Details
+                        </Button>
+                        {booking.status === 'completed' &&
+                          isWithinRatingWindow(
+                            booking.trip_details?.schedule?.departure_time || ''
+                          ) &&
+                          !booking.hasRating && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() =>
+                                setSelectedBookingForRating(booking)
+                              }
+                            >
+                              Submit Review
+                            </Button>
+                          )}
+                      </div>
                     </div>
                   </div>
+                </Card>
 
-                  {/* Right Side - Price and Actions */}
-                  <div className="flex flex-col items-end gap-3">
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">
-                        Total Price
-                      </p>
-                      <p className="text-xl font-bold text-primary">
-                        {formatPrice(booking.pricing.total)}
-                      </p>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewDetails(booking)}
-                    >
-                      View Details
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+                {ratingError && (
+                  <Card className="p-4 bg-destructive/10 border-destructive/20">
+                    <p className="text-sm text-destructive">{ratingError}</p>
+                  </Card>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -365,8 +522,18 @@ const History = () => {
 
         {/* Booking Details Modal */}
         {selectedBooking && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleCloseDetails()
+              }
+            }}
+          >
+            <Card
+              className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-6">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -395,9 +562,10 @@ const History = () => {
                   <div className="mb-6">
                     <h4 className="font-semibold mb-2">Trip Information</h4>
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 space-y-2 text-sm">
-                      <p>
-                        <span className="text-muted-foreground">Route:</span>{' '}
-                        {selectedBooking.trip_details.route?.origin} →{' '}
+                      <p className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Route:</span>
+                        {selectedBooking.trip_details.route?.origin}
+                        <ArrowRight className="w-4 h-4" />
                         {selectedBooking.trip_details.route?.destination}
                       </p>
                       <p>
@@ -430,27 +598,14 @@ const History = () => {
                 )}
 
                 {/* Passengers */}
-                {selectedBooking.passengers &&
-                  selectedBooking.passengers.length > 0 && (
+                {selectedBooking.seatCodes &&
+                  selectedBooking.seatCodes.length > 0 && (
                     <div className="mb-6">
-                      <h4 className="font-semibold mb-2">Passengers</h4>
-                      <div className="space-y-2">
-                        {selectedBooking.passengers.map((passenger, idx) => (
-                          <div
-                            key={idx}
-                            className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-sm"
-                          >
-                            <p className="font-medium">{passenger.fullName}</p>
-                            <p className="text-muted-foreground">
-                              Seat: {passenger.seatCode}
-                            </p>
-                            {passenger.phone && (
-                              <p className="text-muted-foreground">
-                                Phone: {passenger.phone}
-                              </p>
-                            )}
-                          </div>
-                        ))}
+                      <h4 className="font-semibold mb-2">Seats</h4>
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm">
+                        <p className="text-muted-foreground">
+                          Seat Codes: {selectedBooking.seatCodes.join(', ')}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -470,7 +625,7 @@ const History = () => {
                         Service Fee:
                       </span>
                       <span>
-                        {formatPrice(selectedBooking.pricing.serviceFee)}
+                        {formatPrice(selectedBooking.pricing.service_fee)}
                       </span>
                     </div>
                     <div className="border-t border-gray-300 dark:border-gray-600 pt-2 flex justify-between font-bold">
@@ -517,6 +672,71 @@ const History = () => {
                     Close
                   </Button>
                 </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Rating Modal */}
+        {selectedBookingForRating && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleCloseRating()
+              }
+            }}
+          >
+            <Card
+              className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">Submit Your Review</h2>
+                  <Button variant="ghost" size="sm" onClick={handleCloseRating}>
+                    ✕
+                  </Button>
+                </div>
+
+                {/* Trip Info */}
+                <div className="mb-6">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm">
+                    <p className="font-medium flex items-center gap-2">
+                      {selectedBookingForRating.trip_details?.route?.origin}
+                      <ArrowRight className="w-4 h-4" />
+                      {
+                        selectedBookingForRating.trip_details?.route
+                          ?.destination
+                      }
+                    </p>
+                    <p className="text-muted-foreground">
+                      {selectedBookingForRating.trip_details?.operator?.name} •{' '}
+                      {selectedBookingForRating.booking_reference}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Rating Form */}
+                <SubmitRatingForm
+                  bookingId={selectedBookingForRating.booking_id}
+                  bookingReference={selectedBookingForRating.booking_reference}
+                  tripReference={selectedBookingForRating.trip_id}
+                  onSubmit={handleSubmitRating}
+                  onCancel={handleCloseRating}
+                  isLoading={isSubmittingRating}
+                  initialValues={
+                    ratingFormState[selectedBookingForRating.booking_id]
+                  }
+                  onStateChange={handleRatingStateChange}
+                />
+
+                {ratingError && (
+                  <div className="mt-4 flex gap-3 p-3 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+                    <p className="text-sm font-medium">{ratingError}</p>
+                  </div>
+                )}
               </div>
             </Card>
           </div>

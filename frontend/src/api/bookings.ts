@@ -62,6 +62,7 @@ export interface Booking {
   updated_at?: string
   createdAt?: string
   updatedAt?: string
+  hasRating?: boolean
 }
 
 export interface BookingResponse {
