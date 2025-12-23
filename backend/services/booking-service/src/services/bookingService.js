@@ -103,6 +103,7 @@ class BookingService {
       serviceFee: serviceFee,
       totalPrice: totalPrice,
       currency: 'VND',
+      isGuestCheckout: userId == null,
     });
 
     // 6. Create passenger records with validated price

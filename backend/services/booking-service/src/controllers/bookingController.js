@@ -77,6 +77,11 @@ class BookingController {
       console.log('[BookingController] extracted userId:', userId);
       console.log('[BookingController] booking data:', JSON.stringify(value, null, 2));
 
+
+      // Nếu không có userId (guest), set isGuestCheckout = true
+      if (!userId) {
+        value.isGuestCheckout = true;
+      }
       // Create booking
       const booking = await bookingService.createBooking(value, userId);
 
@@ -406,16 +411,33 @@ class BookingController {
       console.log('req.body:', req.body);
       console.log('value:', value);
       console.log('value.paymentMethod:', value.paymentMethod);
-      const result = await bookingService.confirmPayment(id, value);
-      return res.json({
-        success: true,
-        paymentUrl: result.paymentUrl,
-        qrCode: result.qrCode,
-        data: result,
-        message: result.paymentUrl || result.qrCode
-          ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
-          : 'Payment confirmed successfully',
-      });
+      // Kiểm tra user đăng nhập hay guest
+      if (req.user) {
+        console.log('User đã đăng nhập:', req.user.email || req.user.id);
+        // Xử lý xác nhận thanh toán cho user đã đăng nhập
+        const result = await bookingService.confirmPayment(id, value, req.user);
+        return res.json({
+          success: true,
+          paymentUrl: result.paymentUrl,
+          qrCode: result.qrCode,
+          data: result,
+          message: result.paymentUrl || result.qrCode
+            ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
+            : 'Payment confirmed successfully',
+        });
+      } else {
+        console.log('Guest thanh toán...');
+        const result = await bookingService.confirmPayment(id, value, null);
+        return res.json({
+          success: true,
+          paymentUrl: result.paymentUrl,
+          qrCode: result.qrCode,
+          data: result,
+          message: result.paymentUrl || result.qrCode
+            ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
+            : 'Payment confirmed successfully',
+        });
+      }
     } catch (err) {
       console.error('Error confirming payment:', err);
       if (err.message.includes('not found')) {
