@@ -25,13 +25,15 @@ class OperatorRepository {
 
     const result = await pool.query(query, values);
 
-    // Đếm tổng + thống kê routes & buses
+    // Đếm tổng + thống kê routes & buses & ratings
     const enriched = await Promise.all(
       result.rows.map(async (op) => {
         const stats = await pool.query(
           `SELECT 
              (SELECT COUNT(*) FROM routes WHERE operator_id = $1) as total_routes,
-             (SELECT COUNT(*) FROM buses WHERE operator_id = $1) as total_buses`,
+             (SELECT COUNT(*) FROM buses WHERE operator_id = $1) as total_buses,
+             (SELECT COUNT(*) FROM ratings WHERE operator_id = $1 AND is_approved = true) as total_ratings,
+             (SELECT AVG(overall_rating) FROM ratings WHERE operator_id = $1 AND is_approved = true) as avg_rating`,
           [op.operator_id]
         );
         return {
@@ -40,7 +42,8 @@ class OperatorRepository {
           contactEmail: op.contact_email,
           contactPhone: op.contact_phone,
           status: op.status,
-          rating: parseFloat(op.rating),
+          rating: parseFloat(stats.rows[0].avg_rating) || 0.0,
+          ratingCount: parseInt(stats.rows[0].total_ratings),
           logoUrl: op.logo_url,
           approvedAt: op.approved_at,
           createdAt: op.created_at,
@@ -50,20 +53,49 @@ class OperatorRepository {
       })
     );
 
-    const countResult = await pool.query(`SELECT COUNT(*) FROM operators ${where.length > 0 ? 'WHERE ' + where.join(' AND ') : ''}`, values.slice(0, -2));
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM operators ${where.length > 0 ? 'WHERE ' + where.join(' AND ') : ''}`,
+      values.slice(0, -2)
+    );
     const total = parseInt(countResult.rows[0].count);
 
-    return { data: enriched, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      data: enriched,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
-    async findById(operatorId) {
-        const query = `
+  async findById(operatorId) {
+    const query = `
         SELECT operator_id, name, contact_email, contact_phone, status, rating
         FROM operators 
         WHERE operator_id = $1
     `;
     const result = await pool.query(query, [operatorId]);
-    return result.rowCount > 0 ? result.rows[0] : null;
+
+    if (result.rowCount === 0) return null;
+
+    const op = result.rows[0];
+
+    // Get rating stats
+    const ratingStats = await pool.query(
+      `SELECT 
+         COUNT(*) as total_ratings,
+         AVG(overall_rating) as avg_rating
+       FROM ratings 
+       WHERE operator_id = $1 AND is_approved = true`,
+      [operatorId]
+    );
+
+    return {
+      operatorId: op.operator_id,
+      name: op.name,
+      contactEmail: op.contact_email,
+      contactPhone: op.contact_phone,
+      status: op.status,
+      rating: parseFloat(ratingStats.rows[0].avg_rating) || 0.0,
+      ratingCount: parseInt(ratingStats.rows[0].total_ratings),
+    };
   }
 
   async updateStatus(operatorId, { approved, notes }) {

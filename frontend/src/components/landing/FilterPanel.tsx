@@ -102,6 +102,32 @@ function Checkbox({ id, label, checked, onChange }: CheckboxProps) {
   )
 }
 
+interface RadioButtonProps {
+  id: string
+  name: string
+  label: React.ReactNode
+  checked: boolean
+  onChange: (checked: boolean) => void
+}
+
+function RadioButton({ id, name, label, checked, onChange }: RadioButtonProps) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer group">
+      <input
+        id={id}
+        name={name}
+        type="radio"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded-full border-2 border-input accent-primary cursor-pointer"
+      />
+      <span className="text-sm text-foreground group-hover:text-primary transition-colors">
+        {label}
+      </span>
+    </label>
+  )
+}
+
 interface RangeSliderProps {
   min: number
   max: number
@@ -189,7 +215,6 @@ export function FilterPanel({
   onFiltersChange,
   onClearFilters,
   availableOperators,
-  operatorRatings,
   resultsCount,
 }: FilterPanelProps) {
   // Check if any filters are active
@@ -213,6 +238,7 @@ export function FilterPanel({
   const getAmenitiesCount = () => filters.amenities.length
   const getSeatAvailabilityCount = () => (filters.minSeatsAvailable > 0 ? 1 : 0)
   const getSeatLocationCount = () => filters.seatLocations.length
+  const getRatingFilterCount = () => (filters.minRating > 0 ? 1 : 0)
 
   // Calculate total active filters
   const getTotalActiveFilters = () =>
@@ -222,15 +248,8 @@ export function FilterPanel({
     getBusTypesCount() +
     getAmenitiesCount() +
     getSeatAvailabilityCount() +
-    getSeatLocationCount()
-
-  // Calculate rating counts
-  const getRatingCount = (minRating: number) => {
-    return availableOperators.filter((operatorName) => {
-      const rating = operatorRatings[operatorName]
-      return rating && rating >= minRating
-    }).length
-  }
+    getSeatLocationCount() +
+    getRatingFilterCount()
 
   return (
     <Card className="p-0 h-fit sticky top-20 bg-card border-border">
@@ -309,20 +328,39 @@ export function FilterPanel({
             activeCount={getOperatorsCount()}
           >
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {availableOperators.map((operator) => (
-                <Checkbox
-                  key={operator}
-                  id={operator}
-                  label={operator}
-                  checked={filters.operators.includes(operator)}
-                  onChange={(checked) => {
-                    const newOperators = checked
-                      ? [...filters.operators, operator]
-                      : filters.operators.filter((o) => o !== operator)
-                    onFiltersChange({ ...filters, operators: newOperators })
-                  }}
-                />
-              ))}
+              {/* All operators option */}
+              <RadioButton
+                id="operator-all"
+                name="operator"
+                label="All operators"
+                checked={filters.operators.length === 0}
+                onChange={(checked) => {
+                  if (checked) {
+                    onFiltersChange({ ...filters, operators: [] })
+                  }
+                }}
+              />
+              {availableOperators.map((operator) => {
+                const isSelected = filters.operators.includes(operator)
+                return (
+                  <RadioButton
+                    key={operator}
+                    id={operator}
+                    name="operator"
+                    label={
+                      <div className="flex items-center justify-between w-full">
+                        <span>{operator}</span>
+                      </div>
+                    }
+                    checked={isSelected}
+                    onChange={(checked) => {
+                      // Radio button behavior: only one operator can be selected
+                      const newOperators = checked ? [operator] : []
+                      onFiltersChange({ ...filters, operators: newOperators })
+                    }}
+                  />
+                )
+              })}
             </div>
           </CollapsibleSection>
         )}
@@ -379,9 +417,10 @@ export function FilterPanel({
         >
           <div className="space-y-2">
             {seatAvailabilityOptions.map((option) => (
-              <Checkbox
+              <RadioButton
                 key={option.value}
                 id={`seats-${option.value}`}
+                name="seats"
                 label={option.label}
                 checked={filters.minSeatsAvailable === option.value}
                 onChange={(checked) => {
@@ -420,18 +459,37 @@ export function FilterPanel({
         </CollapsibleSection>
 
         {/* Minimum Rating */}
-        <CollapsibleSection title="Operator Rating" defaultOpen={false}>
+        <CollapsibleSection
+          title="Operator Rating"
+          defaultOpen={false}
+          activeCount={getRatingFilterCount()}
+        >
           <div className="space-y-2">
+            {/* All ratings option */}
+            <RadioButton
+              id="rating-all"
+              name="rating"
+              label="All ratings"
+              checked={filters.minRating === 0}
+              onChange={(checked) => {
+                if (checked) {
+                  onFiltersChange({
+                    ...filters,
+                    minRating: 0,
+                  })
+                }
+              }}
+            />
             {[5, 4, 3, 2, 1].map((rating) => (
-              <Checkbox
+              <RadioButton
                 key={rating}
                 id={`rating-${rating}`}
+                name="rating"
                 label={
                   <div className="flex items-center gap-1">
+                    <span>{rating}</span>
                     <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span>
-                      {rating}+ stars ({getRatingCount(rating)})
-                    </span>
+                    <span>+</span>
                   </div>
                 }
                 checked={filters.minRating === rating}

@@ -26,6 +26,7 @@ import {
 } from '@/constants/filterConstants'
 import { useSearchHistory } from '@/hooks/useSearchHistory'
 import { useAuth } from '@/context/AuthContext'
+import { getOperatorRatings } from '@/api/trips'
 
 // API functions
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -64,13 +65,49 @@ export function TripSearchResults() {
     searchParams.get('from') || searchParams.get('origin') || 'Ho Chi Minh'
   const destination =
     searchParams.get('to') || searchParams.get('destination') || 'Lam Dong'
-  const date =
-    searchParams.get('date') || new Date().toISOString().split('T')[0]
+
+  // Parse date from URL with validation to ensure YYYY-MM-DD format
+  let date = searchParams.get('date')
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+
+  // Ensure date is in valid YYYY-MM-DD format
+  if (!date || !dateRegex.test(date)) {
+    // If date is missing or invalid, use today's date in YYYY-MM-DD format
+    const today = new Date()
+    // Manually construct YYYY-MM-DD to avoid any locale issues
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    date = `${year}-${month}-${day}`
+  }
+
+  // Additional validation - parse date string and ensure it's valid
+  const [dateYear, dateMonth, dateDay] = date.split('-').map(Number)
+  if (
+    isNaN(dateYear) ||
+    isNaN(dateMonth) ||
+    isNaN(dateDay) ||
+    dateMonth < 1 ||
+    dateMonth > 12 ||
+    dateDay < 1 ||
+    dateDay > 31
+  ) {
+    // If date components are invalid, use today
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    date = `${year}-${month}-${day}`
+  }
+
   const passengers = searchParams.get('passengers') || '1'
 
   // State for trips data
 
   const [trips, setTrips] = useState<Trip[]>(mockTrips)
+  const [operatorRatingCounts, setOperatorRatingCounts] = useState<
+    Record<string, number>
+  >({})
   const hasAddedSearchRef = useRef(false)
   const hasFetchedTripsRef = useRef<string | false>(false)
 
@@ -97,6 +134,14 @@ export function TripSearchResults() {
     // TODO: Implement API call to GET /trips/search
     const fetchTrips = async () => {
       try {
+        // Validate date format (should be YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+        if (!dateRegex.test(date)) {
+          console.error('Invalid date format:', date)
+          setTrips(mockTrips)
+          return
+        }
+
         const data = await searchTrips({
           origin,
           destination,
@@ -123,6 +168,48 @@ export function TripSearchResults() {
       hasAddedSearchRef.current = true
     }
   }, [origin, destination, date, passengers, addSearch])
+
+  // Fetch operator rating counts when trips change
+  useEffect(() => {
+    const fetchOperatorRatingCounts = async () => {
+      if (trips.length === 0) return
+
+      // Get unique operators from trips
+      const uniqueOperators = [
+        ...new Set(trips.map((trip) => trip.operator.operator_id)),
+      ]
+
+      try {
+        const ratingCounts: Record<string, number> = {}
+
+        // Fetch rating stats for each operator
+        for (const operatorId of uniqueOperators) {
+          // Skip API calls for mock data operator IDs (they're not UUIDs)
+          if (operatorId.startsWith('operator_')) {
+            ratingCounts[operatorId] = 0
+            continue
+          }
+
+          try {
+            const ratingStats = await getOperatorRatings(operatorId)
+            ratingCounts[operatorId] = ratingStats.stats?.totalRatings || 0
+          } catch (error) {
+            console.error(
+              `Failed to fetch ratings for operator ${operatorId}:`,
+              error
+            )
+            ratingCounts[operatorId] = 0 // Default to 0 if fetch fails
+          }
+        }
+
+        setOperatorRatingCounts(ratingCounts)
+      } catch (error) {
+        console.error('Failed to fetch operator rating counts:', error)
+      }
+    }
+
+    fetchOperatorRatingCounts()
+  }, [trips])
 
   // State management
   const [filters, setFilters] = useState<Filters>({
@@ -607,6 +694,9 @@ export function TripSearchResults() {
                       trip={trip}
                       onSelectTrip={handleSelectTrip}
                       isSelected={selectedTripId === trip.trip_id}
+                      ratingCount={
+                        operatorRatingCounts[trip.operator.operator_id] || 0
+                      }
                     />
                   ))}
                 </div>

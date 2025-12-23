@@ -324,7 +324,11 @@ const getTripReviews = async (req, res) => {
     const reviews = reviewsResult.rows.map((review) => {
       let photos = [];
       try {
-        photos = review.photos ? JSON.parse(review.photos) : [];
+        if (review.photos && typeof review.photos === 'string' && review.photos.trim()) {
+          photos = JSON.parse(review.photos);
+        } else if (Array.isArray(review.photos)) {
+          photos = review.photos;
+        }
       } catch (error) {
         console.warn('Failed to parse photos for review', review.rating_id, error);
         photos = [];
@@ -546,7 +550,7 @@ const getOperatorRatings = async (req, res) => {
 
     // Get all approved ratings for the operator
     const ratingsResult = await db.query(
-      `SELECT 
+      `SELECT
                 AVG(overall_rating) as avg_overall,
                 AVG(cleanliness_rating) as avg_cleanliness,
                 AVG(driver_behavior_rating) as avg_driver_behavior,
@@ -620,7 +624,7 @@ const getOperatorReviews = async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    // Determine sort order
+    // Determine sort order for operator reviews
     let orderBy = 'r.created_at DESC';
     switch (sort) {
       case 'helpful':
@@ -666,9 +670,13 @@ const getOperatorReviews = async (req, res) => {
                 r.created_at,
                 r.updated_at,
                 u.full_name as author_name,
-                u.email as author_email
+                u.email as author_email,
+                rt.origin,
+                rt.destination
             FROM ratings r
             LEFT JOIN users u ON r.user_id = u.user_id
+            LEFT JOIN trips t ON r.trip_id = t.trip_id
+            LEFT JOIN routes rt ON t.route_id = rt.route_id
             WHERE r.operator_id = $1 AND r.is_approved = TRUE AND r.review_text IS NOT NULL
             ORDER BY ${orderBy}
             LIMIT $2 OFFSET $3`,
@@ -678,14 +686,20 @@ const getOperatorReviews = async (req, res) => {
     const reviews = reviewsResult.rows.map((review) => {
       let photos = [];
       try {
-        photos = review.photos ? JSON.parse(review.photos) : [];
+        if (review.photos && typeof review.photos === 'string' && review.photos.trim()) {
+          photos = JSON.parse(review.photos);
+        } else if (Array.isArray(review.photos)) {
+          photos = review.photos;
+        }
       } catch (error) {
         console.warn('Failed to parse photos for review', review.rating_id, error);
         photos = [];
       }
       return {
-        ...review,
-        photos,
+        id: review.rating_id,
+        authorName: review.author_name,
+        authorEmail: review.author_email,
+        rating: review.overall_rating,
         categoryRatings: {
           cleanliness: review.cleanliness_rating,
           driver_behavior: review.driver_behavior_rating,
@@ -693,19 +707,30 @@ const getOperatorReviews = async (req, res) => {
           comfort: review.comfort_rating,
           value_for_money: review.value_for_money_rating,
         },
+        reviewText: review.review_text,
+        photos,
+        route:
+          review.origin && review.destination ? `${review.origin} - ${review.destination}` : null,
+        createdAt: review.created_at,
+        updatedAt: review.updated_at,
+        helpfulCount: review.helpful_count || 0,
+        userHelpful: false, // TODO: implement user helpful votes
+        isAuthor: false, // TODO: implement author check
+        canEdit: false, // TODO: implement edit permissions
+        canDelete: false, // TODO: implement delete permissions
       };
     });
 
     res.json({
-      operatorId,
-      reviews,
+      success: true,
+      data: reviews,
       pagination: {
-        currentPage: page,
-        pageSize: limit,
-        totalReviews: total,
+        page: page,
+        limit: limit,
+        total: total,
         totalPages: Math.ceil(total / limit),
-        hasMore: page * limit < total,
       },
+      message: 'Reviews retrieved successfully',
     });
   } catch (error) {
     console.error('Error getting operator reviews:', error);
