@@ -140,3 +140,6 @@ vite.config.ts.timestamp-*
 
 #document
 /document
+
+# Bỏ qua file PDF vé tự sinh
+tickets/*.pdf

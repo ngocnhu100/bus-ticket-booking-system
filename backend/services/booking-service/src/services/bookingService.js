@@ -387,28 +387,46 @@ class BookingService {
   async confirmPayment(bookingId, paymentData, userId = null) {
     const booking = await bookingRepository.findById(bookingId);
     // Nếu có paymentMethod (momo, payos, ...) thì gọi payment-service để lấy paymentUrl/qrCode
+    // Kiểm tra trạng thái payment trước khi cho phép thanh toán lại
+    if (booking.payment_status === 'paid') {
+      throw new Error('Booking already paid. Cannot pay again.');
+    }
     if (paymentData.paymentMethod && paymentData.paymentMethod !== 'none') {
-        try {
-          const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3004';
-          const payRes = await axios.post(`${paymentServiceUrl}/api/payment`, {
-            amount: booking.pricing?.total || booking.total_price,
-            bookingId: bookingId,
-            paymentMethod: paymentData.paymentMethod,
-            description: `Thanh toán vé xe BK${booking.booking_reference}`,
-          });
-          if (payRes.data && payRes.data.success && (payRes.data.paymentUrl || payRes.data.qrCode)) {
+      try {
+        const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3004';
+        const payRes = await axios.post(`${paymentServiceUrl}/api/payment`, {
+          amount: booking.pricing?.total || booking.total_price,
+          bookingId: bookingId,
+          paymentMethod: paymentData.paymentMethod,
+          description: `Thanh toán vé xe BK${booking.booking_reference}`,
+        });
+        if (payRes.data && payRes.data.success) {
+          // Nếu là Stripe/card thì trả về clientSecret
+          if (paymentData.paymentMethod === 'card' && payRes.data.paymentIntent) {
+            return {
+              clientSecret: payRes.data.paymentIntent.client_secret,
+              paymentIntent: payRes.data.paymentIntent,
+              provider: 'stripe',
+              message: 'Stripe payment intent created. Use clientSecret on frontend.'
+            };
+          }
+          // Các phương thức khác trả về paymentUrl/qrCode như cũ
+          if (payRes.data.paymentUrl || payRes.data.qrCode) {
             return {
               paymentUrl: payRes.data.paymentUrl,
               qrCode: payRes.data.qrCode,
               message: 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.',
             };
-          } else {
-            throw new Error(payRes.data?.message || 'Không lấy được link thanh toán');
           }
-        } catch (err) {
-          throw new Error('Tạo giao dịch thanh toán thất bại: ' + (err.message || err));
+          // Nếu không có gì thì báo lỗi chung
+          throw new Error('Không lấy được thông tin thanh toán phù hợp');
+        } else {
+          throw new Error(payRes.data?.message || 'Không lấy được link thanh toán');
         }
+      } catch (err) {
+        throw new Error('Tạo giao dịch thanh toán thất bại: ' + (err.message || err));
       }
+    }
 
     if (!booking) {
       throw new Error('Booking not found');

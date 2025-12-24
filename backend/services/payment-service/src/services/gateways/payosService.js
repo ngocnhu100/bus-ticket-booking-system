@@ -61,11 +61,16 @@ async function createPayment(body) {
 
   // PayOS: description max 25 chars, must match in both signature and payload
   const safeDescription = (body.description || '').slice(0, 25);
+  // orderCode: PayOS yêu cầu là số duy nhất, không được null
+  let orderCode = Number(body.orderId);
+  if (!orderCode || isNaN(orderCode)) {
+    // Nếu không có orderId, sinh số ngẫu nhiên dựa trên timestamp
+    orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
+  }
   const dataForSignature = {
-    orderCode: Number(body.orderId),
+    orderCode,
     amount: body.amount,
     description: safeDescription,
-    // Sử dụng domain frontend thực tế, ưu tiên biến môi trường VITE_BASE_URL nếu có
     cancelUrl: process.env.VITE_BASE_URL
       ? `${process.env.VITE_BASE_URL}/payment-result`
       : 'http://localhost:5173/payment-result',
