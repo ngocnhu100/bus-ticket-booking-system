@@ -6,7 +6,8 @@ const morgan = require('morgan');
 require('dotenv').config();
 const authService = require('./authService');
 const authController = require('./authController');
-const { authenticate } = require('./authMiddleware');
+const adminController = require('./controllers/adminController');
+const { authenticate, authorize } = require('./authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'test' ? 3002 : 3001);
@@ -97,6 +98,74 @@ app.post('/auth/blacklist-check', async (req, res) => {
   const isBlacklisted = await authService.isTokenBlacklisted(token);
   res.json({ isBlacklisted });
 });
+
+// Admin Management Routes (Protected - Admin only)
+// Admin health check (no auth required for monitoring)
+app.get('/admin/health', (req, res) => {
+  res.json({
+    service: 'auth-service-admin',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+  });
+});
+
+app.post('/admin/accounts', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.createAdmin(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/admin/accounts', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.getAllAdmins(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/admin/accounts/:id', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.getAdminById(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.put('/admin/accounts/:id', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.updateAdmin(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/admin/accounts/:id/deactivate', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.deactivateAdmin(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/admin/accounts/:id/reactivate', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.reactivateAdmin(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/admin/stats', authenticate, authorize(['admin']), async (req, res, next) => {
+  try {
+    await adminController.getAdminStats(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error('⚠️', err.stack);

@@ -81,6 +81,48 @@ app.use('/auth', async (req, res) => {
   }
 });
 
+// Admin Management routes - proxy to auth-service
+app.use('/admin', async (req, res) => {
+  try {
+    const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+    const queryString = Object.keys(req.query).length
+      ? '?' + new URLSearchParams(req.query).toString()
+      : '';
+    console.log(
+      `🔐 Proxying ${req.method} ${req.originalUrl} to ${authServiceUrl}/admin${req.path}${queryString}`
+    );
+    const response = await axios({
+      method: req.method,
+      url: `${authServiceUrl}/admin${req.path}${queryString}`,
+      data: req.body,
+      headers: {
+        authorization: req.headers.authorization,
+        'content-type': 'application/json',
+      },
+      timeout: 30000,
+    });
+    console.log(`✅ Admin service responded with status ${response.status}`);
+    // Forward all headers from the response
+    Object.keys(response.headers).forEach((key) => {
+      res.set(key, response.headers[key]);
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`❌ Admin service error:`, error.message);
+    if (error.response) {
+      console.log(`❌ Admin service responded with error status ${error.response.status}`);
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      console.log(`❌ Admin service unavailable or timeout`);
+      res.status(503).json({
+        success: false,
+        error: { code: 'GATEWAY_007', message: 'Admin service unavailable' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+});
+
 // Notification service routes (if needed for direct access)
 app.use('/notification', authenticate, async (req, res) => {
   try {
