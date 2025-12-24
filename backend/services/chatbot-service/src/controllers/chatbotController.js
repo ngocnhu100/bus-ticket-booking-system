@@ -40,7 +40,7 @@ class ChatbotController {
         });
       }
 
-      const { sessionId, message, context } = value;
+      const { sessionId, message, context, actionData } = value;
       const userInfo = extractUserInfo(req);
       const authToken = req.headers.authorization;
 
@@ -49,7 +49,8 @@ class ChatbotController {
         sessionId,
         message,
         userInfo.userId,
-        authToken
+        authToken,
+        actionData
       );
 
       return res.json({
@@ -108,7 +109,7 @@ class ChatbotController {
       });
     } catch (error) {
       console.error('[ChatbotController] Error in book:', error);
-      
+
       // Handle specific booking errors
       if (error.message.includes('already booked')) {
         return res.status(409).json({
@@ -242,12 +243,7 @@ class ChatbotController {
       const { sessionId, messageId, rating, comment } = value;
 
       // Save feedback
-      const result = await chatbotService.saveFeedback(
-        sessionId,
-        messageId,
-        rating,
-        comment
-      );
+      const result = await chatbotService.saveFeedback(sessionId, messageId, rating, comment);
 
       return res.json({
         success: true,

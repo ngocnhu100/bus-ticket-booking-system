@@ -17,25 +17,22 @@ const searchTripSchema = Joi.object({
   minPrice: Joi.number().min(0),
   maxPrice: Joi.number().min(0),
   operatorId: Joi.string().trim(),
-  amenities: Joi.alternatives().try(
-    Joi.string(),
-    Joi.array().items(Joi.string())
-  ),
+  amenities: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())),
   passengers: Joi.number().integer().min(1).max(50),
   sortBy: Joi.string().valid('price', 'time', 'duration').default('time'),
   order: Joi.string().valid('asc', 'desc').default('asc'),
   page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(10)
+  limit: Joi.number().integer().min(1).max(100).default(10),
 });
 
 /**
  * Validation schema for trip ID
  */
 const tripIdSchema = Joi.object({
-  tripId: Joi.string().trim().required()
+  tripId: Joi.string().trim().required(),
 });
 
 module.exports = {
   searchTripSchema,
-  tripIdSchema
+  tripIdSchema,
 };

@@ -15,11 +15,29 @@ class TripServiceClient {
       if (destination) queryParams.append('destination', destination);
       if (date) queryParams.append('date', date);
       if (passengers) queryParams.append('passengers', passengers);
-      if (timeOfDay) queryParams.append('timeOfDay', timeOfDay);
-      if (busType) queryParams.append('busType', busType);
-      if (maxPrice) queryParams.append('maxPrice', maxPrice);
 
-      const url = `${TRIP_SERVICE_URL}/trips/search?${queryParams.toString()}`;
+      // Map parameters to match trip service schema
+      if (busType) queryParams.append('bus_type', busType);
+      if (maxPrice) queryParams.append('price_max', maxPrice);
+
+      // If timeOfDay is specified, calculate departure_start and departure_end
+      if (timeOfDay) {
+        if (timeOfDay === 'morning') {
+          queryParams.append('departure_start', '06:00:00');
+          queryParams.append('departure_end', '12:00:00');
+        } else if (timeOfDay === 'afternoon') {
+          queryParams.append('departure_start', '12:00:01');
+          queryParams.append('departure_end', '18:00:00');
+        } else if (timeOfDay === 'evening') {
+          queryParams.append('departure_start', '18:00:01');
+          queryParams.append('departure_end', '23:59:59');
+        } else if (timeOfDay === 'night') {
+          queryParams.append('departure_start', '00:00:00');
+          queryParams.append('departure_end', '06:00:00');
+        }
+      }
+
+      const url = `${TRIP_SERVICE_URL}/search?${queryParams.toString()}`;
       console.log('[TripServiceClient] Searching trips:', url);
 
       const response = await axios.get(url, {
@@ -38,7 +56,7 @@ class TripServiceClient {
    */
   async getTripById(tripId) {
     try {
-      const url = `${TRIP_SERVICE_URL}/trips/${tripId}`;
+      const url = `${TRIP_SERVICE_URL}/${tripId}`;
       console.log('[TripServiceClient] Getting trip:', url);
 
       const response = await axios.get(url, {
@@ -57,7 +75,7 @@ class TripServiceClient {
    */
   async getAvailableSeats(tripId) {
     try {
-      const url = `${TRIP_SERVICE_URL}/trips/${tripId}/seats`;
+      const url = `${TRIP_SERVICE_URL}/${tripId}/seats`;
       console.log('[TripServiceClient] Getting seats:', url);
 
       const response = await axios.get(url, {

@@ -204,6 +204,8 @@ services:
       context: ./services/chatbot-service
       dockerfile: Dockerfile
     container_name: bus-ticket-chatbot-service
+    env_file:
+      - ./services/chatbot-service/.env
     environment:
       - NODE_ENV=development
       - PORT=3007
@@ -285,4 +287,3 @@ volumes:
 networks:
   bus-ticket-network:
     driver: bridge
-    

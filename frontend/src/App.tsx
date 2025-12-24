@@ -35,6 +35,8 @@ import ETicketPreview from './pages/ETicketPreview'
 import GuestCheckout from '@/components/booking/GuestCheckout'
 import GuestConfirmation from './pages/GuestConfirmation'
 import RevenueAnalytics from '@/pages/admin/RevenueAnalytics'
+import { ChatbotProvider } from './context/ChatbotContext'
+import { ChatbotWidget } from './components/chatbot'
 
 const queryClient = new QueryClient()
 
@@ -59,105 +61,106 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
-        {' '}
-        {/* Wrap ở đây */}
-        <ThemeProviderWithSuppress>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              {/* Public routes */}
-              <Route path="/payment-result" element={<PaymentResult />} />
-              <Route path="/" element={<Landing />} />
-              <Route
-                path="/trip-search-results"
-                element={<TripSearchResults />}
-              />
-              <Route path="/booking-lookup" element={<BookingLookup />} />
-              <Route
-                path="/booking-confirmation/:bookingReference"
-                element={<BookingConfirmation />}
-              />
-              <Route path="/e-ticket-preview" element={<ETicketPreview />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route
-                path="/auth/google/callback"
-                element={<AuthGoogleCallback />}
-              />
-              {/* Seat selection - accessible to both guests and authenticated users */}
-              <Route
-                path="/booking/:tripId/seats"
-                element={<SeatSelection />}
-              />
-              {/* Booking review/payment - accessible to both guests and authenticated users */}
-              <Route
-                path="/booking/:bookingId/review"
-                element={<BookingReview />}
-              />
-              <Route path="/guest-checkout" element={<GuestCheckout />} />
-              <Route
-                path="/guest-confirmation"
-                element={<GuestConfirmation />}
-              />
-
-              {/* Passenger routes - protected */}
-              <Route element={<PassengerRoute />}>
-                <Route path="/dashboard" element={<Dashboard />} />{' '}
-                {/* Passenger Dashboard */}
-                <Route path="/dashboard/history" element={<History />} />
-                <Route path="/dashboard/profile" element={<Profile />} />
-                <Route path="/dashboard/payments" element={<Payments />} />
+        <ChatbotProvider>
+          <ThemeProviderWithSuppress>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <ChatbotWidget />
+              <Routes>
+                {/* Public routes */}
+                <Route path="/payment-result" element={<PaymentResult />} />
+                <Route path="/" element={<Landing />} />
                 <Route
-                  path="/dashboard/notifications"
-                  element={<Notifications />}
+                  path="/trip-search-results"
+                  element={<TripSearchResults />}
                 />
-                <Route path="/trips/search" element={<TripSearch />} />
-              </Route>
+                <Route path="/booking-lookup" element={<BookingLookup />} />
+                <Route
+                  path="/booking-confirmation/:bookingReference"
+                  element={<BookingConfirmation />}
+                />
+                <Route path="/e-ticket-preview" element={<ETicketPreview />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route
+                  path="/auth/google/callback"
+                  element={<AuthGoogleCallback />}
+                />
+                {/* Seat selection - accessible to both guests and authenticated users */}
+                <Route
+                  path="/booking/:tripId/seats"
+                  element={<SeatSelection />}
+                />
+                {/* Booking review/payment - accessible to both guests and authenticated users */}
+                <Route
+                  path="/booking/:bookingId/review"
+                  element={<BookingReview />}
+                />
+                <Route path="/guest-checkout" element={<GuestCheckout />} />
+                <Route
+                  path="/guest-confirmation"
+                  element={<GuestConfirmation />}
+                />
 
-              {/* Admin routes - protected */}
-              <Route element={<AdminRoute />}>
-                <Route path="/admin" element={<AdminDashboard />} />{' '}
-                {/* Admin Dashboard */}
-                <Route
-                  path="/admin/trips"
-                  element={<AdminTripScheduling />}
-                />{' '}
-                {/* Trip Scheduling */}
-                <Route
-                  path="/admin/routes"
-                  element={<AdminRouteManagement />}
-                />{' '}
-                {/* Route Management */}
-                <Route
-                  path="/admin/buses"
-                  element={<AdminBusManagement />}
-                />{' '}
-                {/* Bus Management */}
-                <Route
-                  path="/admin/seat-maps"
-                  element={<AdminSeatMapManagement />}
-                />{' '}
-                {/* Seat Map Management */}
-                <Route
-                  path="/admin/operators"
-                  element={<AdminOperatorManagement />}
-                />{' '}
-                {/* Operator Management */}
-                <Route
-                  path="/admin/analytics"
-                  element={<RevenueAnalytics />}
-                />{' '}
-                {/* Revenue Analytics */}
-              </Route>
+                {/* Passenger routes - protected */}
+                <Route element={<PassengerRoute />}>
+                  <Route path="/dashboard" element={<Dashboard />} />{' '}
+                  {/* Passenger Dashboard */}
+                  <Route path="/dashboard/history" element={<History />} />
+                  <Route path="/dashboard/profile" element={<Profile />} />
+                  <Route path="/dashboard/payments" element={<Payments />} />
+                  <Route
+                    path="/dashboard/notifications"
+                    element={<Notifications />}
+                  />
+                  <Route path="/trips/search" element={<TripSearch />} />
+                </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </TooltipProvider>
-        </ThemeProviderWithSuppress>
+                {/* Admin routes - protected */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin" element={<AdminDashboard />} />{' '}
+                  {/* Admin Dashboard */}
+                  <Route
+                    path="/admin/trips"
+                    element={<AdminTripScheduling />}
+                  />{' '}
+                  {/* Trip Scheduling */}
+                  <Route
+                    path="/admin/routes"
+                    element={<AdminRouteManagement />}
+                  />{' '}
+                  {/* Route Management */}
+                  <Route
+                    path="/admin/buses"
+                    element={<AdminBusManagement />}
+                  />{' '}
+                  {/* Bus Management */}
+                  <Route
+                    path="/admin/seat-maps"
+                    element={<AdminSeatMapManagement />}
+                  />{' '}
+                  {/* Seat Map Management */}
+                  <Route
+                    path="/admin/operators"
+                    element={<AdminOperatorManagement />}
+                  />{' '}
+                  {/* Operator Management */}
+                  <Route
+                    path="/admin/analytics"
+                    element={<RevenueAnalytics />}
+                  />{' '}
+                  {/* Revenue Analytics */}
+                </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </TooltipProvider>
+          </ThemeProviderWithSuppress>
+        </ChatbotProvider>
       </AuthProvider>
     </BrowserRouter>
   </QueryClientProvider>
