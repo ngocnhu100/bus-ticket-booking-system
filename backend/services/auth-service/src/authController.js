@@ -141,6 +141,19 @@ class AuthController {
         });
       }
 
+      // Check if admin account is deactivated (password_hash is NULL)
+      if (user.role === 'admin' && !user.password_hash) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'AUTH_011',
+            message:
+              'This admin account has been deactivated. Please contact system administrator.',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       // Check if account is locked
       if (user.account_locked_until && user.account_locked_until > new Date()) {
         return res.status(423).json({
