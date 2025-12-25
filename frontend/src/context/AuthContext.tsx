@@ -28,6 +28,7 @@ interface AuthContextType {
     user: User
   }) => void
   logout: () => void
+  updateUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -42,6 +43,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Hàm cập nhật lại user từ API
+  const updateUser = async () => {
+    try {
+      const { getUserProfile } = await import('@/api/userProfileApi')
+      const profile = await getUserProfile()
+      setUser(profile)
+      localStorage.setItem('user', JSON.stringify(profile))
+    } catch (error) {
+      console.error('Failed to update user from API:', error)
+    }
+  }
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -108,7 +121,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isAuthenticated: !!user, loading, login, logout }}
+      value={{
+        user,
+        token,
+        isAuthenticated: !!user,
+        loading,
+        login,
+        logout,
+        updateUser,
+      }}
     >
       {children}
     </AuthContext.Provider>

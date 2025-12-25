@@ -10,7 +10,7 @@ import React, { useState } from 'react'
 import { updateUserProfile } from '@/api/userProfileApi'
 // ...existing code...
 const Profile = () => {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState({
     fullName: user?.fullName || '',
@@ -53,6 +53,7 @@ const Profile = () => {
         fullName: form.fullName,
         phone: form.phone,
       })
+      await updateUser() // Lấy lại thông tin user mới nhất từ API
       setMessage({ type: 'success', text: 'Profile updated successfully!' })
       setIsEditing(false)
     } catch (error: unknown) {
