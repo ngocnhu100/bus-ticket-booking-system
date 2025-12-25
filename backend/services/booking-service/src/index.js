@@ -32,6 +32,10 @@ app.get('/reference/:reference', bookingController.getByReference);
 // Share ticket (public endpoint with validation)
 app.post('/:bookingReference/share', bookingController.shareTicket);
 
+
+// Route lấy booking theo bookingId cho cả user và guest (không cần xác thực)
+app.get('/:id/guest', bookingController.getById);
+
 // Protected routes (require authentication)
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);

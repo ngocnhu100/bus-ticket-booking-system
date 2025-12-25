@@ -1,115 +1,61 @@
-// services/payosService.js
 const axios = require('axios');
 const crypto = require('crypto');
+const { verifyPayOSSignature } = require('../../utils/webhookVerifier');
 
-
-// PayOS canonical string: sort keys, build query string, handle arrays/objects/null
-function sortObjDataByKey(object) {
-  if (Array.isArray(object)) {
-    return object.map(sortObjDataByKey);
-  }
-  if (object !== null && typeof object === 'object') {
-    return Object.keys(object)
-      .sort()
-      .reduce((obj, key) => {
-        obj[key] = sortObjDataByKey(object[key]);
-        return obj;
-      }, {});
-  }
-  return object;
+function sortObject(obj) {
+  return Object.keys(obj)
+    .sort()
+    .reduce((r, k) => {
+      r[k] = obj[k];
+      return r;
+    }, {});
 }
 
-function convertObjToQueryStr(object) {
-  return Object.keys(object)
-    .filter((key) => object[key] !== undefined)
-    .map((key) => {
-      let value = object[key];
-      if (Array.isArray(value)) {
-        value = JSON.stringify(value.map(sortObjDataByKey));
-      }
-      if ([null, undefined, 'undefined', 'null'].includes(value)) {
-        value = '';
-      }
-      return `${key}=${value}`;
-    })
+function sign(data, secret) {
+  const query = Object.entries(sortObject(data))
+    .map(([k, v]) => `${k}=${v ?? ''}`)
     .join('&');
+
+  return crypto.createHmac('sha256', secret).update(query).digest('hex');
 }
 
-/**
- * Generate HMAC signature for PayOS request (canonical string)
- * @param {Object} data - data to sign
- * @param {string} secret - PAYOS_CHECKSUM_KEY
- * @returns {string}
- */
-function generateSignature(data, secret) {
-  const sortedData = sortObjDataByKey(data);
-  const queryStr = convertObjToQueryStr(sortedData);
-  return crypto.createHmac('sha256', secret).update(queryStr).digest('hex');
-}
+exports.createPayment = async ({ amount, bookingId, description }) => {
+  const payload = {
+    orderCode: Number(bookingId),
+    amount,
+    description: (description || 'PayOS Payment').slice(0, 25),
+    returnUrl: process.env.PAYOS_RETURN_URL,
+    cancelUrl: process.env.PAYOS_CANCEL_URL,
+  };
 
-/**
- * Create payment request to PayOS
- * @param {Object} body - { orderId, amount, description }
- * @returns {Promise<Object>}
- */
+  payload.signature = sign(payload, process.env.PAYOS_CHECKSUM_KEY);
 
-async function createPayment(body) {
-  const url = 'https://api-merchant.payos.vn/v2/payment-requests';
-  const clientId = process.env.PAYOS_CLIENT_ID;
-  const apiKey = process.env.PAYOS_API_KEY;
-  const checksumKey = process.env.PAYOS_CHECKSUM_KEY;
+  const res = await axios.post(
+    'https://api-merchant.payos.vn/v2/payment-requests',
+    payload,
+    {
+      headers: {
+        'x-client-id': process.env.PAYOS_CLIENT_ID,
+        'x-api-key': process.env.PAYOS_API_KEY,
+      },
+    }
+  );
 
-  // PayOS: description max 25 chars, must match in both signature and payload
-  const safeDescription = (body.description || '').slice(0, 25);
-  // orderCode: PayOS yêu cầu là số duy nhất, không được null
-  let orderCode = Number(body.orderId);
-  if (!orderCode || isNaN(orderCode)) {
-    // Nếu không có orderId, sinh số ngẫu nhiên dựa trên timestamp
-    orderCode = Number(`${Date.now()}${Math.floor(Math.random() * 1000)}`);
+  return res.data;
+};
+
+exports.parseWebhook = (req) => {
+  if (!verifyPayOSSignature(req, process.env.PAYOS_CHECKSUM_KEY)) {
+    throw new Error('Invalid PayOS signature');
   }
-  const dataForSignature = {
-    orderCode,
-    amount: body.amount,
-    description: safeDescription,
-    cancelUrl: process.env.VITE_BASE_URL
-      ? `${process.env.VITE_BASE_URL}/payment-result`
-      : 'http://localhost:5173/payment-result',
-    returnUrl: process.env.VITE_BASE_URL
-      ? `${process.env.VITE_BASE_URL}/payment-result`
-      : 'http://localhost:5173/payment-result',
-  };
 
-  const signature = generateSignature(dataForSignature, checksumKey);
-  const payload = { ...dataForSignature, signature };
-  const config = {
-    headers: {
-      'x-client-id': clientId,
-      'x-api-key': apiKey,
-    },
-  };
+  const body = req.body;
 
-  // Log chi tiết để debug lỗi signature
-  console.log('--- PAYOS DEBUG ---');
-  console.log('PAYOS_CLIENT_ID:', clientId);
-  console.log('PAYOS_API_KEY:', apiKey);
-  console.log('PAYOS_CHECKSUM_KEY:', checksumKey);
-  console.log('PayOS dataForSignature:', JSON.stringify(dataForSignature));
-  console.log('PayOS signature:', signature);
-  console.log('PayOS payload:', JSON.stringify(payload));
-  console.log('PayOS config:', JSON.stringify(config));
-
-  const response = await axios.post(url, payload, config);
-  // Log response PayOS để debug
-  console.log('PayOS response:', JSON.stringify(response.data));
-  // Chuẩn hóa trả về cho frontend
-  const payosData = response.data?.data || response.data;
   return {
-    success: true,
-    paymentUrl: payosData?.paymentUrl || payosData?.checkoutUrl || payosData?.payUrl,
-    qrCode: payosData?.qrCode || payosData?.qrCodeUrl,
-    ...payosData,
+    bookingId: body.orderCode,
+    provider: 'payos',
+    providerTransactionId: body.transactionId,
+    status: body.status === 'PAID' ? 'SUCCESS' : 'FAILED',
+    raw: body,
   };
-}
-
-module.exports = { createPayment };
-
+};
