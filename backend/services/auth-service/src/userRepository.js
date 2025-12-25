@@ -183,8 +183,28 @@ class UserRepository {
       WHERE user_id = $${paramIndex}
       RETURNING *
     `;
-    const result = await pool.query(query, values);
-    return result.rows[0];
+    console.log('[userRepository.update] query:', query);
+    console.log('[userRepository.update] values:', values);
+    // Log lại toàn bộ updateData để kiểm tra dữ liệu đầu vào
+    console.log('[userRepository.update] updateData:', updateData);
+    try {
+      const result = await pool.query(query, values);
+      console.log('[userRepository.update] result:', result.rows && result.rows[0]);
+      return result.rows[0];
+    } catch (err) {
+      // Log chi tiết lỗi SQL và toàn bộ error object
+      console.error('[userRepository.update] ERROR:', {
+        code: err.code,
+        detail: err.detail,
+        message: err.message,
+        stack: err.stack,
+        error: err
+      });
+      // Log lại query, values khi có lỗi
+      console.error('[userRepository.update] query on error:', query);
+      console.error('[userRepository.update] values on error:', values);
+      throw err;
+    }
   }
 }
 

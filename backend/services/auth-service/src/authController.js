@@ -1057,6 +1057,7 @@ class AuthController {
       }
 
       const { email, phone, fullName, avatar, preferences } = req.body;
+      console.log('[updateProfile] userId:', userId, '| body:', req.body);
 
       // Check if email is being changed and if it already exists
       if (email) {
@@ -1090,6 +1091,7 @@ class AuthController {
       if (avatar) updateData.avatar = avatar;
       if (preferences) updateData.preferences = preferences;
 
+      console.log('[updateProfile] updateData:', updateData);
       const updatedUser = await userRepository.update(userId, updateData);
 
       res.json({
@@ -1110,10 +1112,10 @@ class AuthController {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('⚠️', error);
+      console.error('⚠️ updateProfile error:', error && error.stack ? error.stack : error);
       res.status(500).json({
         success: false,
-        error: { code: 'SYS_001', message: 'Internal server error' },
+        error: { code: 'SYS_001', message: 'Internal server error', details: error && error.message ? error.message : error },
         timestamp: new Date().toISOString(),
       });
     }
