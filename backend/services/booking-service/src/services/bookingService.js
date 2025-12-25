@@ -1238,27 +1238,6 @@ class BookingService {
   }
 
   /**
-   * Send booking confirmation notification
-   * @param {object} booking - Booking object
-   */
-  async sendBookingConfirmation(booking) {
-    try {
-      const notificationServiceUrl =
-        process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
-      await axios.post(`${notificationServiceUrl}/send-email`, {
-        to: booking.contact_email,
-        template: 'booking-confirmation',
-        data: {
-          bookingReference: booking.booking_reference,
-          bookingId: booking.booking_id,
-        },
-      });
-    } catch (error) {
-      console.error('Error sending confirmation notification:', error.message);
-    }
-  }
-
-  /**
    * Send cancellation notification
    * @param {object} booking - Booking object
    */

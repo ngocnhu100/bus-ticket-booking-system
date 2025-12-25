@@ -80,6 +80,13 @@ interface TripData {
   bus_type?: string
   operator?: string
   operator_name?: string
+  date?: string
+  departureDate?: string
+  departure_date?: string
+  schedule?: {
+    departureTime?: string
+    arrivalTime?: string
+  }
 }
 
 const TripSearchResults: React.FC<TripSearchResultsProps> = ({
@@ -141,13 +148,33 @@ const TripSearchResults: React.FC<TripSearchResultsProps> = ({
         {trips.map((trip, index) => {
           // Handle both camelCase and snake_case field names
           const tripId = trip.tripId || trip.trip_id || `trip_${index}`
-          const departure = trip.departureTime || trip.departure_time || 'N/A'
-          const arrival = trip.arrivalTime || trip.arrival_time || 'N/A'
+          const departure =
+            trip.schedule?.departureTime ||
+            trip.departureTime ||
+            trip.departure_time ||
+            'N/A'
+          const arrival =
+            trip.schedule?.arrivalTime ||
+            trip.arrivalTime ||
+            trip.arrival_time ||
+            'N/A'
+          const tripDate =
+            trip.date || trip.departureDate || trip.departure_date || 'N/A'
           const tripPrice = trip.price || trip.base_price || 0
           const seats = trip.availableSeats || trip.available_seats || 0
           const busType = trip.busType || trip.bus_type || 'Standard'
           const operator =
             trip.operator || trip.operator_name || 'Unknown Operator'
+
+          // Format date for display
+          const formattedDate =
+            tripDate !== 'N/A'
+              ? new Date(tripDate).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : 'Date N/A'
 
           return (
             <div
@@ -156,6 +183,9 @@ const TripSearchResults: React.FC<TripSearchResultsProps> = ({
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
+                  <div className="text-xs text-muted-foreground font-medium mb-1">
+                    {formattedDate}
+                  </div>
                   <div className="font-semibold text-sm text-foreground">
                     {departure} → {arrival}
                   </div>
@@ -200,11 +230,179 @@ interface BookingConfirmationProps {
   data: unknown
 }
 
-const BookingConfirmation: React.FC<BookingConfirmationProps> = () => {
+interface PassengerData {
+  full_name?: string
+  fullName?: string
+  seat_code?: string
+  seatCode?: string
+  phone?: string
+}
+
+interface PricingData {
+  basePrice?: number
+  base_price?: number
+  subtotal?: number
+  serviceFee?: number
+  service_fee?: number
+  total?: number
+  currency?: string
+}
+
+interface TripDetailsData {
+  origin?: string
+  destination?: string
+  departureTime?: string
+  departure_time?: string
+  arrivalTime?: string
+  arrival_time?: string
+  route?: {
+    origin?: string
+    destination?: string
+  }
+  schedule?: {
+    departure_time?: string
+    arrival_time?: string
+  }
+}
+
+interface BookingData {
+  bookingId?: string
+  bookingReference?: string
+  status?: string
+  passengers?: PassengerData[]
+  pricing?: PricingData
+  tripDetails?: TripDetailsData
+  booking?: {
+    bookingId?: string
+    bookingReference?: string
+    passengers?: PassengerData[]
+    pricing?: PricingData
+    tripDetails?: TripDetailsData
+  }
+}
+
+const BookingConfirmation: React.FC<BookingConfirmationProps> = ({ data }) => {
+  // Handle nested booking structure - extract from booking.booking if exists
+  const rawData = (data as Partial<BookingData>) || {}
+  const booking = rawData.booking || rawData
+
+  // Extract passengers with proper field mapping
+  const passengers = (booking.passengers || []).map((p: PassengerData) => ({
+    fullName: p.full_name || p.fullName || '',
+    seatCode: p.seat_code || p.seatCode || '',
+    phone: p.phone || '',
+  }))
+
+  // Extract and normalize pricing
+  const pricingData = booking.pricing as Partial<PricingData> | undefined
+  const pricing = {
+    basePrice: pricingData?.base_price || pricingData?.basePrice || 0,
+    serviceFee: pricingData?.service_fee || pricingData?.serviceFee || 0,
+    total: pricingData?.total || 0,
+    currency: pricingData?.currency || 'VND',
+  }
+
+  // Extract trip details with proper field mapping
+  const tripData = booking.tripDetails as Partial<TripDetailsData> | undefined
+  const tripDetails = {
+    origin: tripData?.route?.origin || tripData?.origin || '',
+    destination: tripData?.route?.destination || tripData?.destination || '',
+    departureTime:
+      tripData?.schedule?.departure_time ||
+      tripData?.departure_time ||
+      tripData?.departureTime ||
+      '',
+    arrivalTime:
+      tripData?.schedule?.arrival_time ||
+      tripData?.arrival_time ||
+      tripData?.arrivalTime ||
+      '',
+  }
+
   return (
-    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-      <div className="text-sm text-green-800 dark:text-green-200">
-        ✅ Booking confirmed! Check your email for details.
+    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-3">
+      <div className="text-sm font-semibold text-green-800 dark:text-green-200">
+        ✅ Booking Created!
+      </div>
+
+      {/* Booking Reference */}
+      {booking.bookingReference && (
+        <div className="bg-white dark:bg-gray-800 rounded p-2">
+          <div className="text-xs text-gray-600 dark:text-gray-400">
+            Booking Reference
+          </div>
+          <div className="text-sm font-mono font-bold text-green-700 dark:text-green-300">
+            {booking.bookingReference}
+          </div>
+        </div>
+      )}
+
+      {/* Trip Details */}
+      {tripDetails.origin && (
+        <div className="bg-white dark:bg-gray-800 rounded p-2 text-xs space-y-1">
+          <div className="flex justify-between">
+            <span className="text-gray-600 dark:text-gray-400">Trip:</span>
+            <span className="font-semibold text-gray-800 dark:text-gray-200">
+              {tripDetails.origin} → {tripDetails.destination}
+            </span>
+          </div>
+          {tripDetails.departureTime && (
+            <div className="flex justify-between">
+              <span className="text-gray-600 dark:text-gray-400">
+                Departure:
+              </span>
+              <span className="text-gray-800 dark:text-gray-200">
+                {new Date(tripDetails.departureTime).toLocaleString()}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Passengers */}
+      {passengers && passengers.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 rounded p-2 text-xs space-y-1">
+          <div className="font-semibold text-gray-800 dark:text-gray-200 mb-1">
+            Passengers ({passengers.length})
+          </div>
+          {passengers.map((passenger, idx) => (
+            <div
+              key={idx}
+              className="flex justify-between text-gray-700 dark:text-gray-300"
+            >
+              <span>{passenger.fullName}</span>
+              <span className="font-mono">Seat {passenger.seatCode}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pricing */}
+      {pricing && (
+        <div className="bg-white dark:bg-gray-800 rounded p-2 text-xs space-y-1">
+          {pricing.basePrice > 0 && (
+            <div className="flex justify-between text-gray-700 dark:text-gray-300">
+              <span>Base Price:</span>
+              <span>{pricing.basePrice.toLocaleString()} VND</span>
+            </div>
+          )}
+          {pricing.serviceFee > 0 && (
+            <div className="flex justify-between text-gray-700 dark:text-gray-300">
+              <span>Service Fee:</span>
+              <span>+ {pricing.serviceFee.toLocaleString()} VND</span>
+            </div>
+          )}
+          {pricing.total > 0 && (
+            <div className="flex justify-between font-bold text-green-700 dark:text-green-300 border-t border-gray-300 dark:border-gray-600 pt-1">
+              <span>Total:</span>
+              <span>{pricing.total.toLocaleString()} VND</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="text-xs text-gray-600 dark:text-gray-400">
+        Please complete payment to confirm your booking.
       </div>
     </div>
   )
@@ -303,6 +501,19 @@ const SeatSelectionComponent: React.FC<SeatSelectionComponentProps> = ({
     }
   }
 
+  // Organize seats by row for better layout - MUST be before early returns
+  const seatsByRow = React.useMemo(() => {
+    const rows = new Map<number, SeatData[]>()
+    seatMapData.seats?.forEach((seat) => {
+      const row = seat.row || 1
+      if (!rows.has(row)) {
+        rows.set(row, [])
+      }
+      rows.get(row)!.push(seat)
+    })
+    return Array.from(rows.entries()).sort(([a], [b]) => a - b)
+  }, [seatMapData.seats])
+
   // Handle no data
   console.log('[SeatSelectionComponent] Parsed seat map data:', {
     hasSeats: !!seatMapData.seats,
@@ -339,47 +550,74 @@ const SeatSelectionComponent: React.FC<SeatSelectionComponentProps> = ({
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2 max-w-sm">
-      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-        Select seats:
-      </div>
-      {/* Compact seat grid */}
-      <div className="max-h-48 overflow-y-auto bg-gray-50 dark:bg-gray-700 p-2 rounded">
-        <div className="grid gap-1">
-          {seatMapData.seats.map((seat) => {
-            const seatCode = seat.seat_code || seat.seat_id || ''
-            const isSelected = selectedSeats.includes(seatCode)
-            const isBooked =
-              seat.status === 'booked' || seat.status === 'locked'
-
-            return (
-              <button
-                key={seatCode}
-                onClick={() => handleSeatSelect(seat, !isSelected)}
-                disabled={isBooked}
-                className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
-                  isBooked
-                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
-                    : isSelected
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-500 hover:border-blue-500'
-                }`}
-              >
-                {seatCode}
-              </button>
-            )
-          })}
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 space-y-2 w-full">
+      <div className="text-xs font-semibold text-gray-900 dark:text-gray-100 flex items-center justify-between">
+        <span>Select seats:</span>
+        <div className="flex gap-2 text-xs font-normal">
+          <div className="flex items-center gap-1">
+            <div className="w-2.5 h-2.5 bg-green-500 rounded"></div>
+            <span className="text-gray-600 dark:text-gray-400">Free</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2.5 h-2.5 bg-red-500 rounded"></div>
+            <span className="text-gray-600 dark:text-gray-400">Booked</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2.5 h-2.5 bg-blue-500 rounded"></div>
+            <span className="text-gray-600 dark:text-gray-400">Selected</span>
+          </div>
         </div>
       </div>
 
+      {/* Compact seat grid by row */}
+      <div className="max-h-40 overflow-y-auto bg-gray-50 dark:bg-gray-700 p-2 rounded space-y-1">
+        {seatsByRow.map(([rowNum, rowSeats]) => (
+          <div key={rowNum} className="flex gap-1 flex-wrap">
+            {rowSeats.map((seat) => {
+              const seatCode = seat.seat_code || seat.seat_id || ''
+              const isSelected = selectedSeats.includes(seatCode)
+              const isBooked =
+                seat.status === 'booked' ||
+                seat.status === 'locked' ||
+                seat.status === 'occupied'
+
+              return (
+                <button
+                  key={seatCode}
+                  onClick={() =>
+                    !isBooked && handleSeatSelect(seat, !isSelected)
+                  }
+                  disabled={isBooked}
+                  title={
+                    isBooked
+                      ? 'This seat is booked'
+                      : `${seatCode} - ${isSelected ? 'Selected' : 'Available'}`
+                  }
+                  className={`w-7 h-7 text-xs rounded font-semibold transition-all border-2 flex items-center justify-center ${
+                    isBooked
+                      ? 'bg-red-500/30 border-red-500 text-red-700 dark:text-red-400 cursor-not-allowed opacity-60'
+                      : isSelected
+                        ? 'bg-blue-500 border-blue-600 text-white shadow-sm'
+                        : 'bg-green-500 border-green-600 text-white hover:shadow-md hover:scale-105'
+                  }`}
+                >
+                  {seatCode}
+                </button>
+              )
+            })}
+          </div>
+        ))}
+      </div>
+
       {selectedSeats.length > 0 && (
-        <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700 gap-2">
-          <div className="text-xs text-gray-600 dark:text-gray-400">
-            {selectedSeats.length} seat{selectedSeats.length !== 1 ? 's' : ''}
+        <div className="flex items-center justify-between pt-1 border-t border-gray-200 dark:border-gray-700 gap-2">
+          <div className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+            {selectedSeats.length} seat{selectedSeats.length !== 1 ? 's' : ''}{' '}
+            selected
           </div>
           <button
             onClick={handleConfirmSeats}
-            className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors whitespace-nowrap"
+            className="px-3 py-1 bg-blue-600 text-white text-xs rounded font-medium hover:bg-blue-700 transition-colors whitespace-nowrap active:scale-95"
           >
             Confirm
           </button>

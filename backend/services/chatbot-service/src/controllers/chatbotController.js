@@ -42,7 +42,12 @@ class ChatbotController {
 
       const { sessionId, message, context, actionData } = value;
       const userInfo = extractUserInfo(req);
-      const authToken = req.headers.authorization;
+
+      // Extract token from Authorization header (remove "Bearer " prefix)
+      let authToken = req.headers.authorization;
+      if (authToken && authToken.startsWith('Bearer ')) {
+        authToken = authToken.substring(7); // Remove "Bearer " prefix
+      }
 
       // Process the query
       const result = await chatbotService.processQuery(
@@ -90,15 +95,16 @@ class ChatbotController {
         });
       }
 
-      const { sessionId, tripId, seats, passengerInfo } = value;
+      const { sessionId, tripId, seats, passengerInfo, contactInfo } = value;
       const authToken = req.headers.authorization;
 
-      // Create booking
+      // Create booking with separate contact info and passenger info
       const result = await chatbotService.createBooking(
         sessionId,
         tripId,
         seats,
         passengerInfo,
+        contactInfo,
         authToken
       );
 

@@ -48,15 +48,18 @@ const TRIP_SEARCH_EXTRACTION_PROMPT = `Extract trip search parameters. Return ON
 
 TODAY: ${new Date().toISOString().split('T')[0]}
 TOMORROW: ${new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+NEXT_WEEK: ${new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]}
+NEXT_MONTH: ${new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]}
 
 RULES:
 1. Extract origin, destination, date from user message
 2. Use conversation history if current message is missing info
 3. Convert to YYYY-MM-DD format ONLY
-4. "tomorrow" → YYYY-MM-DD
-5. "next week" → YYYY-MM-DD (7 days from now)
-6. Cities: "Ho Chi Minh City", "Da Lat", "Da Nang", "Hanoi", "Nha Trang"
-7. Return ONLY JSON, no other text
+4. "tomorrow" → TOMORROW value
+5. "next week" or "tuần tới" or "tuần sau" → NEXT_WEEK value
+6. "next month" or "tháng tới" or "tháng sau" → NEXT_MONTH value
+7. Cities: "Ho Chi Minh City", "Da Lat", "Da Nang", "Hanoi", "Nha Trang"
+8. Return ONLY JSON, no other text
 
 Example:
 Input: "From TPHCM to Da Lat tomorrow"
@@ -71,37 +74,81 @@ const INTENT_CLASSIFICATION_PROMPT = `You are a bus ticket booking chatbot inten
 
 INTENT DEFINITIONS:
 - search_trips: User wants to find/search for available bus trips (asking about routes, dates, times)
-- book_trip: User wants to book a trip - includes selecting trips, providing passenger info, selecting seats, or completing booking
+- select_seats: User is selecting/choosing specific seat(s) for a trip (after trip is already selected)
+- book_trip: User wants to book a trip - includes selecting trips or completing payment
+- provide_passenger_info: User is providing passenger information (name, ID, phone, email) during booking flow
 - ask_faq: User has questions about policies, services, rules, FAQs
 - modify_booking: User wants to change an existing booking
 - cancel_booking: User wants to cancel/refund a booking
 - general_inquiry: Greetings, general questions, unclear intent
 
-IMPORTANT RULES:
-1. If conversation shows user is in a booking flow (previous messages discuss trip selection, seat selection, or passenger info), classify new messages in context of that flow:
-   - Passenger info (name, ID, phone, email, etc.) → book_trip
-   - Seat selection or seat-related messages → book_trip
-   - Trip confirmation or booking confirmation → book_trip
-   
-2. Look for keywords and patterns:
-   - Passenger data patterns (Full name:, ID:, Phone:, Email:, CMND:, Hộ chiếu:, etc.) → book_trip
-   - Seat-related (ghế, seat, A1, B2, hàng, dãy, etc.) → book_trip
-   - Route/date searches (từ, đến, ngày, tuyến, etc.) → search_trips
-   - Policy questions (hoàn vé, hủy, chính sách, quy định, etc.) → ask_faq
+CRITICAL CONTEXT RULES (Most Important):
+**ALWAYS check the last chatbot message first!**
+1. If last chatbot message asked "Select pickup point" → user response is BOOK_TRIP (selecting pickup)
+2. If last chatbot message asked "Select dropoff point" → user response is BOOK_TRIP (selecting dropoff)
+3. If last chatbot message asked "Select seat(s)" → user response is SELECT_SEATS
+4. If last chatbot message asked "Provide passenger info" → user response is PROVIDE_PASSENGER_INFO
 
-3. Consider conversation flow - if previous message was asking for passenger info, current message providing that info is book_trip, not general_inquiry
+CONTINUATION MESSAGE HANDLING (VERY IMPORTANT):
+When user says "Continue", "Confirm", "Next", "Proceed", "OK", "Yes", "Let's go" etc.:
+- Look at what the LAST CHATBOT MESSAGE was asking for
+- Classify based on that context:
+  * If last message: "Select pickup point (X available):" → intent = BOOK_TRIP
+  * If last message: "Select dropoff point (X available):" → intent = BOOK_TRIP  
+  * If last message: "Select seats" + [seat map] → intent = SELECT_SEATS
+  * If last message: "Provide passenger info" → intent = PROVIDE_PASSENGER_INFO
+  * If last message: "Select trip" → intent = BOOK_TRIP
+
+**Example:**
+Conversation history:
+- Bot: "Select pickup point (3 available): 1. Ho Chi Minh City..."
+- User: "Continue"
+→ Recognize that bot was asking for pickup selection
+→ Intent = BOOK_TRIP (continuing to select pickup)
+
+**Example:**
+Conversation history:
+- Bot: "Select seats" + [seat map]
+- User: "Confirm"
+→ Recognize that bot was asking for seat selection
+→ Intent = SELECT_SEATS (confirming seat selection)
+
+5. If previous message shows numbered options (1., 2., 3.) → user selecting from those options is BOOK_TRIP, NOT search_trips
+
+EXAMPLE CONTEXT SCENARIOS:
+- Chatbot: "Select pickup point (3 available): 1. Ho Chi Minh... 2. Da Nang..."
+  User: "1. Ho Chi Minh City - District 1 Office"
+  → Intent: BOOK_TRIP (selecting from options shown) - NOT search_trips!
+
+- Chatbot: "Select dropoff point: 1. Central Station... 2. Airport..."
+  User: "2. Airport Terminal"
+  → Intent: BOOK_TRIP (selecting from options shown)
+
+- Chatbot: "Select seats" + [seat map shown]
+  User: "A1 B2"
+  → Intent: SELECT_SEATS
+
+PATTERN-BASED RULES (Secondary):
+1. PASSENGER INFO: Format "Name, DocumentID, Phone" or with email → provide_passenger_info
+2. SEAT CODES: A1, B2, C3 or "select seat(s)" → select_seats
+3. TRIP SELECTION: "trip #1", "chuyến #2", "book trip #3" → book_trip
+4. SEARCH: "from X to Y", "HCM to Dalat", "where can I go" → search_trips ONLY if NOT responding to previous numbered options
 
 Examples:
+Context: [Previous message showed "Select pickup point"]
+"1. Ho Chi Minh City - District 1 Office" → {"intent": "book_trip", "confidence": 0.95}
 
-"Tôi muốn đi Đà Lạt" → {"intent": "search_trips", "confidence": 0.95, "category": "travel_search"}
-"Đặt ghế A1" → {"intent": "book_trip", "confidence": 0.95, "category": "booking"}
-After "Cung cấp thông tin hành khách", user says "Full name: Nguyen Van A ID: 12345 Phone: 0912345678 Email: test@gmail.com" → {"intent": "book_trip", "confidence": 0.95, "category": "booking"}
-"Chính sách hoàn vé?" → {"intent": "ask_faq", "confidence": 0.9, "category": "support"}
-"Xin chào" → {"intent": "general_inquiry", "confidence": 0.85, "category": "other"}
+Context: [Previous message showed numbered dropoff options]
+"2. Central Station" → {"intent": "book_trip", "confidence": 0.95}
+
+"Nguyễn Văn A, 32123456789, 0987654321" → {"intent": "provide_passenger_info", "confidence": 0.95}
+"A1 A2 B3" → {"intent": "select_seats", "confidence": 0.95}
+"Book trip #3" → {"intent": "book_trip", "confidence": 0.95}
+"from hcm to dalat" → {"intent": "search_trips", "confidence": 0.95}
 
 Return ONLY valid JSON with no additional text:
 {
-  "intent": "search_trips|book_trip|ask_faq|modify_booking|cancel_booking|general_inquiry",
+  "intent": "search_trips|select_seats|book_trip|provide_passenger_info|ask_faq|modify_booking|cancel_booking|general_inquiry",
   "confidence": 0.0 to 1.0,
   "category": "travel_search|booking|support|other",
   "reason": "brief explanation of why this intent was chosen"

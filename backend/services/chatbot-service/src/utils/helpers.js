@@ -95,6 +95,16 @@ const formatTripForChat = (trip) => {
     }
   };
 
+  const extractDate = (isoString) => {
+    if (!isoString) return 'N/A';
+    try {
+      // Extract YYYY-MM-DD from ISO string like "2026-01-15T08:00:00.000Z"
+      return isoString.split('T')[0];
+    } catch {
+      return 'N/A';
+    }
+  };
+
   return {
     tripId: trip.trip_id,
     departureTime: formatTime(trip.schedule?.departure_time || trip.departure_time),
@@ -103,19 +113,30 @@ const formatTripForChat = (trip) => {
     availableSeats: trip.availability?.available_seats || trip.available_seats,
     busType: trip.bus?.bus_type || trip.bus_type,
     operator: trip.operator?.name || trip.operator_name,
+    date:
+      trip.date ||
+      trip.departure_date ||
+      extractDate(trip.schedule?.departure_time || trip.departure_time),
   };
 };
 
 /**
  * Format multiple trips for chatbot response
  */
-const formatTripsForChat = (trips, limit = 5) => {
+const formatTripsForChat = (trips, limit = 5, searchDate = null) => {
   if (!trips || trips.length === 0) {
     return 'No trips found matching your criteria.';
   }
 
   const limitedTrips = trips.slice(0, limit);
-  return limitedTrips.map(formatTripForChat);
+  return limitedTrips.map((trip) => {
+    const formatted = formatTripForChat(trip);
+    // Add search date if available and not already in trip
+    if (searchDate && !formatted.date) {
+      formatted.date = searchDate;
+    }
+    return formatted;
+  });
 };
 
 /**
@@ -165,31 +186,34 @@ const normalizeCityName = (cityName) => {
 
   const lowerCity = cityName.toLowerCase().trim();
 
-  // Map all variations to Vietnamese database names
+  // Map all variations to standardized English city names (matching database)
   const cityNormalizationMap = {
-    'ho chi minh city': 'Hồ Chí Minh',
-    'ho chi minh': 'Hồ Chí Minh',
-    'sai gon': 'Hồ Chí Minh',
-    saigon: 'Hồ Chí Minh',
-    hcm: 'Hồ Chí Minh',
-    tphcm: 'Hồ Chí Minh',
-    'hồ chí minh': 'Hồ Chí Minh',
-    'da lat': 'Đà Lạt',
-    dalat: 'Đà Lạt',
-    'đà lạt': 'Đà Lạt',
-    'da nang': 'Đà Nẵng',
-    danang: 'Đà Nẵng',
-    'đà nẵng': 'Đà Nẵng',
+    'ho chi minh city': 'Ho Chi Minh City',
+    'ho chi minh': 'Ho Chi Minh City',
+    'sai gon': 'Ho Chi Minh City',
+    saigon: 'Ho Chi Minh City',
+    hcm: 'Ho Chi Minh City',
+    tphcm: 'Ho Chi Minh City',
+    'hồ chí minh': 'Ho Chi Minh City',
+    'da lat': 'Da Lat',
+    dalat: 'Da Lat',
+    'đà lạt': 'Da Lat',
+    'da nang': 'Da Nang',
+    danang: 'Da Nang',
+    'đà nẵng': 'Da Nang',
     hanoi: 'Hanoi',
     'ha noi': 'Hanoi',
     'hà nội': 'Hanoi',
     'nha trang': 'Nha Trang',
-    hue: 'Huế',
-    huế: 'Huế',
+    'nha trang city': 'Nha Trang',
+    hue: 'Hue',
+    huế: 'Hue',
     'can tho': 'Can Tho',
     'cần thơ': 'Can Tho',
     sapa: 'Sapa',
     'sa pa': 'Sapa',
+    'hai phong': 'Hai Phong',
+    'hải phòng': 'Hai Phong',
   };
 
   return cityNormalizationMap[lowerCity] || cityName;
@@ -210,11 +234,67 @@ const buildConversationContext = (messages, maxMessages = 10) => {
   }));
 };
 
+/**
+ * Extract user contact info from JWT token by calling auth service
+ * @param {string} authToken - JWT token
+ * @returns {object} Contact info {userId, email, phone} or null if extraction fails
+ */
+const extractUserContactInfoFromJWT = async (authToken) => {
+  if (!authToken) {
+    return null;
+  }
+
+  try {
+    const jwt = require('jsonwebtoken');
+    const axios = require('axios');
+
+    // Decode JWT to get userId (no verification needed - just extract payload)
+    const decoded = jwt.decode(authToken);
+    if (!decoded || !decoded.userId) {
+      console.warn('[extractUserContactInfoFromJWT] Could not decode JWT or userId not found');
+      return null;
+    }
+
+    const userId = decoded.userId;
+    console.log('[extractUserContactInfoFromJWT] Extracted userId from JWT:', userId);
+
+    // Call auth service to get user profile with email and phone
+    const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
+    const response = await axios.get(`${authServiceUrl}/me`, {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+      timeout: 3000,
+    });
+
+    if (response && response.data && response.data.data) {
+      const userData = response.data.data;
+      console.log('[extractUserContactInfoFromJWT] Got user profile from auth service');
+
+      return {
+        userId: userData.userId,
+        email: userData.email || null,
+        phone: userData.phone || null,
+        fullName: userData.fullName || null,
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.warn(
+      '[extractUserContactInfoFromJWT] Error extracting user contact info:',
+      err.message
+    );
+    return null;
+  }
+};
+
 module.exports = {
   generateSessionId,
   normalizeDate,
   normalizeCityName,
   extractUserInfo,
+  extractUserContactInfoFromJWT,
   formatTripForChat,
   formatTripsForChat,
   sanitizeInput,

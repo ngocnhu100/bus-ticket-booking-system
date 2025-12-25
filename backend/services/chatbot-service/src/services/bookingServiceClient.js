@@ -10,6 +10,7 @@ class BookingServiceClient {
     try {
       const url = `${BOOKING_SERVICE_URL}/`;
       console.log('[BookingServiceClient] Creating booking:', url);
+      console.log('[BookingServiceClient] Booking payload:', JSON.stringify(bookingData, null, 2));
 
       const headers = {
         'Content-Type': 'application/json',
@@ -26,7 +27,10 @@ class BookingServiceClient {
 
       return response.data;
     } catch (error) {
-      console.error('[BookingServiceClient] Error creating booking:', error.response?.data || error.message);
+      console.error(
+        '[BookingServiceClient] Error creating booking:',
+        error.response?.data || error.message
+      );
       throw new Error(error.response?.data?.error?.message || 'Failed to create booking');
     }
   }
@@ -92,10 +96,14 @@ class BookingServiceClient {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
-      const response = await axios.put(url, {}, {
-        headers,
-        timeout: 10000,
-      });
+      const response = await axios.put(
+        url,
+        {},
+        {
+          headers,
+          timeout: 10000,
+        }
+      );
 
       return response.data;
     } catch (error) {

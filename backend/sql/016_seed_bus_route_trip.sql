@@ -131,10 +131,10 @@ BEGIN
   -- Add similar for other operators like Phuong Trang, etc.
 
   -- 4. Routes (insert if not exists)
-  SELECT route_id INTO v_route_hcmc_dalat FROM routes WHERE origin = 'Hồ Chí Minh' AND destination = 'Đà Lạt' AND operator_id = v_mai_linh;
+  SELECT route_id INTO v_route_hcmc_dalat FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat' AND operator_id = v_mai_linh;
   IF v_route_hcmc_dalat IS NULL THEN
     INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_minutes) VALUES
-    (v_mai_linh, 'Hồ Chí Minh', 'Đà Lạt', 300, 360)
+    (v_mai_linh, 'Ho Chi Minh City', 'Da Lat', 300, 360)
     RETURNING route_id INTO v_route_hcmc_dalat;
   END IF;
 
@@ -144,7 +144,7 @@ BEGIN
         SELECT COUNT(*) INTO v_count FROM route_stops WHERE route_id = v_route_hcmc_dalat;
         IF v_count = 0 THEN
           INSERT INTO route_stops (route_id, stop_name, sequence, arrival_offset_minutes, departure_offset_minutes, address, is_pickup, is_dropoff) VALUES
-          (v_route_hcmc_dalat, 'Bến xe Miền Đông', 1, 0, 0, '292 Đinh Bộ Lĩnh, Bình Thạnh, HCM', TRUE, FALSE);
+          (v_route_hcmc_dalat, 'Ho Chi Minh City - Mien Dong Bus Station', 1, 0, 0, '292 Đinh Bộ Lĩnh, Phường 26, Bình Thạnh, Thành phố Hồ Chí Minh', TRUE, FALSE);
         END IF;  -- Add similar for other route stops
 
   -- 6. Buses (insert if not exists, based on license_plate)

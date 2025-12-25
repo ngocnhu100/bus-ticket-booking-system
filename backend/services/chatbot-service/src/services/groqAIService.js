@@ -191,31 +191,34 @@ class GroqAIService {
 
     const lowerCity = cityName.toLowerCase().trim();
 
-    // Map English city names to Vietnamese database names
+    // Map all variations to standardized English city names (matching database)
     const cityNormalizationMap = {
-      'ho chi minh city': 'Hồ Chí Minh',
-      'ho chi minh': 'Hồ Chí Minh',
-      'sai gon': 'Hồ Chí Minh',
-      saigon: 'Hồ Chí Minh',
-      hcm: 'Hồ Chí Minh',
-      tphcm: 'Hồ Chí Minh',
-      'hồ chí minh': 'Hồ Chí Minh',
-      'da lat': 'Đà Lạt',
-      dalat: 'Đà Lạt',
-      'đà lạt': 'Đà Lạt',
-      'da nang': 'Đà Nẵng',
-      danang: 'Đà Nẵng',
-      'đà nẵng': 'Đà Nẵng',
-      hanoi: 'Hanoi',
+      'ho chi minh city': 'Ho Chi Minh City',
+      'ho chi minh': 'Ho Chi Minh City',
+      'sai gon': 'Ho Chi Minh City',
+      'saigon': 'Ho Chi Minh City',
+      'hcm': 'Ho Chi Minh City',
+      'tphcm': 'Ho Chi Minh City',
+      'hồ chí minh': 'Ho Chi Minh City',
+      'da lat': 'Da Lat',
+      'dalat': 'Da Lat',
+      'đà lạt': 'Da Lat',
+      'da nang': 'Da Nang',
+      'danang': 'Da Nang',
+      'đà nẵng': 'Da Nang',
+      'hanoi': 'Hanoi',
       'ha noi': 'Hanoi',
       'hà nội': 'Hanoi',
       'nha trang': 'Nha Trang',
-      hue: 'Huế',
-      huế: 'Huế',
+      'nha trang city': 'Nha Trang',
+      'hue': 'Hue',
+      'huế': 'Hue',
       'can tho': 'Can Tho',
       'cần thơ': 'Can Tho',
-      sapa: 'Sapa',
+      'sapa': 'Sapa',
       'sa pa': 'Sapa',
+      'hai phong': 'Hai Phong',
+      'hải phòng': 'Hai Phong',
     };
 
     return cityNormalizationMap[lowerCity] || cityName;
