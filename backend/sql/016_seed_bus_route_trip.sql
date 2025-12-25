@@ -131,10 +131,10 @@ BEGIN
   -- Add similar for other operators like Phuong Trang, etc.
 
   -- 4. Routes (insert if not exists)
-  SELECT route_id INTO v_route_hcmc_dalat FROM routes WHERE origin = 'Hồ Chí Minh' AND destination = 'Đà Lạt' AND operator_id = v_mai_linh;
+  SELECT route_id INTO v_route_hcmc_dalat FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat' AND operator_id = v_mai_linh;
   IF v_route_hcmc_dalat IS NULL THEN
     INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_minutes) VALUES
-    (v_mai_linh, 'Hồ Chí Minh', 'Đà Lạt', 300, 360)
+    (v_mai_linh, 'Ho Chi Minh City', 'Da Lat', 300, 360)
     RETURNING route_id INTO v_route_hcmc_dalat;
   END IF;
 

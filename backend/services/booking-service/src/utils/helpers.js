@@ -138,6 +138,8 @@ function mapToBooking(row) {
       status: row.payment_status,
       paid_at: row.paid_at,
     },
+    // Add paymentStatus for frontend compatibility
+    paymentStatus: row.payment_status ? row.payment_status.toUpperCase() : 'UNPAID',
     cancellation: row.cancellation_reason
       ? {
           reason: row.cancellation_reason,

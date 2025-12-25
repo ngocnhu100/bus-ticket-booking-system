@@ -1,6 +1,13 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePaymentStatus } from '@/hooks/usePaymentStatus'
+import { API_BASE_URL } from '@/lib/api'
+
+interface BookingInfo {
+  bookingReference: string
+  contactEmail: string
+  contactPhone: string
+}
 
 function getBookingIdFromQuery() {
   const params = new URLSearchParams(window.location.search)
@@ -19,12 +26,22 @@ function getBookingIdFromQuery() {
   return params.get('bookingId') || ''
 }
 
+function getPaymentResultFromQuery() {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    resultCode: params.get('resultCode'),
+    orderId: params.get('orderId'),
+    message: params.get('message'),
+  }
+}
+
 const statusMap: Record<string, string> = {
   PAID: 'Thanh toán thành công',
   PENDING: 'Chờ thanh toán',
   PROCESSING: 'Đang xử lý',
   CANCELLED: 'Đã hủy thanh toán',
   FAILED: 'Thanh toán thất bại',
+  UNPAID: 'Chưa thanh toán',
 }
 
 function StatusIcon({ status, cancel }: { status?: string; cancel?: string }) {
@@ -64,6 +81,24 @@ function StatusIcon({ status, cancel }: { status?: string; cancel?: string }) {
       </svg>
     )
   }
+  if (status === 'PENDING' || status === 'UNPAID') {
+    return (
+      <svg
+        className="mx-auto mb-4 animate-spin"
+        width="80"
+        height="80"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#3b82f6"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" fill="#dbeafe" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+    )
+  }
   return (
     <svg
       className="mx-auto mb-4"
@@ -85,7 +120,102 @@ function StatusIcon({ status, cancel }: { status?: string; cancel?: string }) {
 const PaymentResult: React.FC = () => {
   const navigate = useNavigate()
   const bookingId = getBookingIdFromQuery()
+  const paymentResult = getPaymentResultFromQuery()
   const { status, loading, error } = usePaymentStatus(bookingId)
+  const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null)
+  const [redirectCountdown, setRedirectCountdown] = useState<number>(5)
+
+  // Handler to navigate to booking lookup page
+  const handleViewTicket = () => {
+    if (!bookingInfo) return
+    const params = new URLSearchParams({
+      bookingReference: bookingInfo.bookingReference,
+      email: bookingInfo.contactEmail,
+      phone: bookingInfo.contactPhone,
+      autoSearch: '1',
+    })
+    navigate(`/booking-lookup?${params.toString()}`)
+  }
+
+  // Fetch booking info for redirect to lookup page
+  useEffect(() => {
+    if (bookingId && status === 'PAID') {
+      fetch(`${API_BASE_URL}/bookings/${bookingId}/guest`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            setBookingInfo({
+              bookingReference:
+                data.data.bookingReference || data.data.booking_reference,
+              contactEmail: data.data.contactEmail || data.data.contact_email,
+              contactPhone: data.data.contactPhone || data.data.contact_phone,
+            })
+          }
+        })
+        .catch((err) => {
+          console.error('[PaymentResult] Failed to fetch booking info:', err)
+        })
+    }
+  }, [bookingId, status])
+
+  // Auto redirect countdown when payment successful
+  useEffect(() => {
+    if (status === 'PAID' && bookingInfo) {
+      const timer = setInterval(() => {
+        setRedirectCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            handleViewTicket()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }
+  }, [status, bookingInfo, handleViewTicket])
+
+  // If we have MoMo result in URL, update booking status
+  useEffect(() => {
+    console.log('[PaymentResult] useEffect triggered')
+    console.log('[PaymentResult] bookingId:', bookingId)
+    console.log('[PaymentResult] paymentResult:', paymentResult)
+
+    if (
+      bookingId &&
+      paymentResult.resultCode &&
+      paymentResult.resultCode === '0'
+    ) {
+      console.log('[PaymentResult] Calling internal confirm-payment API...')
+      // MoMo payment successful, call internal confirm endpoint
+      fetch(`${API_BASE_URL}/bookings/internal/${bookingId}/confirm-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentMethod: 'momo',
+          transactionRef: paymentResult.orderId,
+          amount: 0, // amount from booking
+          paymentStatus: 'paid',
+        }),
+      })
+        .then((res) => {
+          console.log(
+            '[PaymentResult] Confirm API response status:',
+            res.status
+          )
+          return res.json()
+        })
+        .then((data) => {
+          console.log('[PaymentResult] Confirm API response:', data)
+        })
+        .catch((err) => {
+          console.error('[PaymentResult] Failed to confirm payment:', err)
+        })
+    } else {
+      console.log('[PaymentResult] Conditions not met for confirm API')
+    }
+  }, [bookingId, paymentResult.resultCode, paymentResult.orderId])
 
   if (!bookingId) {
     return (
@@ -138,6 +268,8 @@ const PaymentResult: React.FC = () => {
   else if (status === 'CANCELLED') message = 'Bạn đã hủy thanh toán.'
   else if (status === 'FAILED') message = 'Thanh toán thất bại.'
   else if (status === 'PENDING') message = 'Thanh toán đang chờ xử lý.'
+  else if (status === 'UNPAID')
+    message = 'Chưa thanh toán. Đang chờ xác nhận từ cổng thanh toán...'
   else message = 'Không xác định trạng thái thanh toán.'
 
   return (
@@ -158,6 +290,24 @@ const PaymentResult: React.FC = () => {
           <span className="text-black">{bookingId}</span>
         </div>
         <div className="mb-4 text-lg font-medium text-blue-600">{message}</div>
+
+        {/* View Ticket Button for successful payments */}
+        {status === 'PAID' && bookingInfo && (
+          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded">
+            <p className="text-sm text-green-800 mb-3">
+              Tự động chuyển đến trang xem vé trong{' '}
+              <span className="font-bold text-lg">{redirectCountdown}</span>{' '}
+              giây...
+            </p>
+            <button
+              className="w-full px-4 py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition"
+              onClick={handleViewTicket}
+            >
+              Xem vé của tôi ngay
+            </button>
+          </div>
+        )}
+
         <button
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           onClick={() => navigate('/')}

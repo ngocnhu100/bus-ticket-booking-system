@@ -26,6 +26,9 @@ app.get('/health', bookingController.healthCheck);
 // Guest booking lookup - accepts phone OR email
 app.get('/guest/lookup', bookingController.guestLookup);
 
+// Guest get booking by ID (for payment status checking)
+app.get('/:id/guest', bookingController.getByIdGuest);
+
 // Public routes (guest checkout) - MUST come before /:id route
 app.get('/reference/:reference', bookingController.getByReference);
 

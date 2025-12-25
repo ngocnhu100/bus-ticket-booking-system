@@ -393,7 +393,7 @@ class BookingService {
     }
     if (paymentData.paymentMethod && paymentData.paymentMethod !== 'none') {
       try {
-        const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3004';
+        const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3005';
         const payRes = await axios.post(`${paymentServiceUrl}/api/payment`, {
           amount: booking.pricing?.total || booking.total_price,
           bookingId: bookingId,
@@ -1806,6 +1806,44 @@ class BookingService {
     } catch (error) {
       console.error('Error sending modification notification:', error.message);
       // Don't throw - email failure shouldn't fail the modification
+    }
+  }
+
+  /**
+   * Confirm booking with payment (for webhook)
+   * @param {string} bookingId - Booking ID
+   * @param {object} paymentData - Payment details
+   * @returns {Promise<object>} Updated booking
+   */
+  async confirmBookingWithPayment(bookingId, paymentData) {
+    try {
+      // Update booking status to confirmed
+      await bookingRepository.updateStatus(bookingId, 'confirmed');
+      
+      // Update payment status
+      await bookingRepository.updatePayment(bookingId, {
+        paymentMethod: paymentData.paymentMethod || 'momo',
+        paymentStatus: 'paid',
+        transactionRef: paymentData.transactionRef || null,
+      });
+
+      // Get updated booking
+      const booking = await bookingRepository.findById(bookingId);
+
+      // Trigger e-ticket generation if not already generated
+      if (!booking.ticket_url) {
+        try {
+          await this.generateAndSendETicket(bookingId);
+        } catch (err) {
+          console.error('[BookingService] E-ticket generation failed:', err.message);
+          // Don't fail the confirmation if ticket generation fails
+        }
+      }
+
+      return booking;
+    } catch (error) {
+      console.error('[BookingService] confirmBookingWithPayment error:', error);
+      throw error;
     }
   }
 }

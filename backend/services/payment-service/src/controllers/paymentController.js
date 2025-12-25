@@ -15,11 +15,13 @@ async function createPayment(req, res) {
     console.log('headers:', req.headers);
     if (body.paymentMethod === 'momo') {
       // Tích hợp MoMo
+      console.log('[PaymentController] Creating MoMo payment...');
       const momoResult = await momoService.createMomoPayment({
         amount: body.amount,
         orderInfo: body.description || 'Thanh toán MoMo',
         bookingId: body.bookingId,
       });
+      console.log('[PaymentController] MoMo result:', JSON.stringify(momoResult, null, 2));
       if (momoResult && momoResult.payUrl) {
         return res.json({
           success: true,
@@ -28,6 +30,7 @@ async function createPayment(req, res) {
           ...momoResult,
         });
       } else {
+        console.error('[PaymentController] MoMo payment failed:', momoResult);
         return res.status(400).json({ success: false, message: momoResult.message || 'MoMo payment failed', ...momoResult });
       }
     }

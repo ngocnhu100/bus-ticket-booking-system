@@ -47,6 +47,16 @@ async function createMomoPayment({ amount, orderInfo, bookingId }) {
     params.signature = buildSignature(params, MOMO_SECRET_KEY);
     params.lang = 'vi';
     const requestBody = JSON.stringify(params);
+    
+    console.log('[MoMo] Creating payment with params:', {
+      partnerCode: params.partnerCode,
+      amount: params.amount,
+      orderId: params.orderId,
+      orderInfo: params.orderInfo,
+      redirectUrl: params.redirectUrl,
+      ipnUrl: params.ipnUrl
+    });
+    
     const options = {
       hostname: MOMO_ENDPOINT,
       port: 443,
@@ -63,13 +73,19 @@ async function createMomoPayment({ amount, orderInfo, bookingId }) {
       res.on('end', () => {
         try {
           const result = JSON.parse(data);
+          console.log('[MoMo] Response received:', JSON.stringify(result, null, 2));
           resolve(result);
         } catch (e) {
+          console.error('[MoMo] Failed to parse response:', e.message);
+          console.error('[MoMo] Raw response:', data);
           reject(e);
         }
       });
     });
-    req.on('error', reject);
+    req.on('error', (error) => {
+      console.error('[MoMo] Request error:', error.message);
+      reject(error);
+    });
     req.write(requestBody);
     req.end();
   });
@@ -119,7 +135,24 @@ async function handleWebhook(req, res) {
     let status = 'FAILED';
     if (body.resultCode === 0) status = 'PAID';
     else if (body.resultCode === 1006) status = 'CANCELLED';
-    // TODO: cập nhật trạng thái booking/payment trong DB nếu cần
+    
+    // Gọi booking service để cập nhật trạng thái
+    if (bookingId && body.resultCode === 0) {
+      try {
+        const axios = require('axios');
+        const bookingServiceUrl = process.env.BOOKING_SERVICE_URL || 'http://booking-service:3004';
+        await axios.post(`${bookingServiceUrl}/internal/${bookingId}/confirm-payment`, {
+          paymentMethod: 'momo',
+          transactionRef: body.orderId,
+          amount: body.amount,
+          paymentStatus: 'paid'
+        });
+        console.log('[MoMo Webhook] Booking status updated successfully');
+      } catch (err) {
+        console.error('[MoMo Webhook] Failed to update booking:', err.message);
+      }
+    }
+    
     res.status(200).json({
       success: true,
       bookingId,

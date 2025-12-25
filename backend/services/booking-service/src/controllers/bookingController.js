@@ -16,28 +16,40 @@ class BookingController {
     async internalConfirmPayment(req, res) {
       try {
         const { id } = req.params;
-        // Confirm booking and trigger ticket generation (idempotent)
-        const confirmedBooking = await bookingService.confirmBooking(id);
-        if (!confirmedBooking) {
+        const { paymentMethod, transactionRef, amount, paymentStatus } = req.body;
+        
+        // Confirm booking and update payment status (idempotent)
+        const booking = await bookingService.getBookingById(id, null);
+        
+        if (!booking) {
           return res.status(404).json({
             success: false,
             error: { code: 'BOOKING_003', message: 'Booking not found' },
             timestamp: new Date().toISOString()
           });
         }
-        // If already confirmed, just return success
-        if (confirmedBooking.status === 'confirmed' || confirmedBooking.payment_status === 'paid') {
+        
+        // If already paid, just return success (idempotent)
+        if (booking.payment_status === 'paid') {
           return res.json({
             success: true,
-            message: 'Booking already confirmed',
+            message: 'Booking already paid',
+            data: booking,
             timestamp: new Date().toISOString()
           });
         }
-        // Get updated booking with ticket info (may not be available immediately)
-        const bookingWithTicket = await bookingService.getBookingById(id);
+        
+        // Update booking status and payment status
+        const confirmedBooking = await bookingService.confirmBookingWithPayment(id, {
+          paymentMethod,
+          transactionRef,
+          amount,
+          paymentStatus: paymentStatus || 'paid'
+        });
+        
         res.json({
           success: true,
-          data: bookingWithTicket,
+          data: confirmedBooking,
           message: 'Booking confirmed successfully. Ticket is being generated and will be emailed to you shortly.',
           timestamp: new Date().toISOString()
         });
@@ -215,6 +227,55 @@ class BookingController {
           error: {
             code: 'BOOK_002',
             message: 'Booking not found or invalid credentials',
+          },
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to retrieve booking',
+        },
+      });
+    }
+  }
+
+  /**
+   * Get booking by ID for guest (after payment - no verification needed)
+   * GET /bookings/:id/guest
+   */
+  async getByIdGuest(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Get booking without user verification
+      const booking = await bookingService.getBookingById(id, null);
+
+      // Only allow if it's a guest booking
+      if (!booking.is_guest_checkout) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'AUTH_003',
+            message: 'This endpoint is only for guest bookings',
+          },
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (err) {
+      console.error('Error getting guest booking:', err);
+
+      if (err.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found',
           },
         });
       }
