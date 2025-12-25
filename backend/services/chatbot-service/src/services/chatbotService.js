@@ -1859,7 +1859,8 @@ Return ONLY the text response, no JSON, no explanations.`;
           tripId,
           seats,
           passengerInfoArray,
-          updatedContext.contactInfo || authToken // Pass contactInfo if available, otherwise authToken
+          updatedContext.contactInfo, // Pass contactInfo (for guest checkout)
+          authToken // Pass authToken (for authenticated users)
         );
 
         console.log('[ChatbotService] Booking created successfully:', bookingResult);

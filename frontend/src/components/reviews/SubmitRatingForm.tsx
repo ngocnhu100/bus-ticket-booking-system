@@ -6,9 +6,9 @@ import { StarRating } from './StarRating'
 import type { RatingSubmission, RatingFormState } from './reviews.types'
 
 interface SubmitRatingFormProps {
-  bookingId: string
+  bookingId?: string
   bookingReference: string
-  tripReference: string
+  tripReference?: string
   onSubmit: (ratingData: RatingSubmission) => Promise<void>
   onCancel?: () => void
   isLoading?: boolean
@@ -44,9 +44,7 @@ export function SubmitRatingForm({
   const [reviewText, setReviewText] = useState(initialValues?.review || '')
   const [error, setError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
-  const [submittedData, setSubmittedData] = useState<RatingSubmission | null>(
-    null
-  )
+  const [preview, setPreview] = useState(false)
 
   // Save state changes
   useEffect(() => {
@@ -74,16 +72,7 @@ export function SubmitRatingForm({
       return
     }
 
-    const ratingData: RatingSubmission = {
-      bookingId,
-      tripId: tripReference,
-      ratings,
-      review: reviewText.trim() || undefined,
-      submittedAt: new Date(),
-    }
-
-    setSubmittedData(ratingData)
-    setSubmitted(true)
+    setPreview(true)
   }
 
   if (submitted) {
@@ -106,18 +95,6 @@ export function SubmitRatingForm({
             </p>
           </div>
 
-          {/* Details */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-              <CheckCircle className="w-4 h-4" />
-              <span>Your rating has been recorded</span>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-              <CheckCircle className="w-4 h-4" />
-              <span>Review will be published after moderation</span>
-            </div>
-          </div>
-
           {/* Additional Info */}
           <div className="text-center space-y-2">
             <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -135,21 +112,93 @@ export function SubmitRatingForm({
           {/* Action Button */}
           <Button
             variant="outline"
-            onClick={async () => {
-              if (!submittedData) return
-              try {
-                await onSubmit(submittedData)
-                onCancel?.()
-              } catch {
-                setSubmitted(false)
-                setSubmittedData(null)
-                setError('Failed to submit rating. Please try again.')
-              }
-            }}
+            onClick={onCancel}
             className="border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900/20"
           >
-            Continue
+            Close
           </Button>
+        </div>
+      </Card>
+    )
+  }
+
+  if (preview) {
+    const ratingData: RatingSubmission = {
+      bookingId,
+      tripId: tripReference,
+      ratings,
+      review: reviewText.trim() || undefined,
+      submittedAt: new Date(),
+    }
+
+    return (
+      <Card className="bg-linear-to-br from-slate-50 to-gray-50 dark:from-slate-950/20 dark:to-gray-950/20 border-slate-200 dark:border-slate-800 p-8 shadow-lg">
+        <div className="text-center space-y-6">
+          <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+            Preview Your Rating
+          </h3>
+          <p className="text-slate-700 dark:text-slate-300">
+            Please review your feedback before submitting.
+          </p>
+
+          {/* Rating Categories Preview */}
+          <div className="space-y-4 text-left">
+            <h4 className="font-semibold text-foreground">Your Ratings</h4>
+            <div className="bg-card/50 rounded-lg p-4 space-y-4">
+              {RATING_CATEGORIES.map((category) => (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between pb-3 last:pb-0 border-b border-border/50 last:border-0"
+                >
+                  <span className="text-sm font-medium text-foreground">
+                    {category.label}
+                  </span>
+                  <StarRating
+                    value={ratings[category.id]}
+                    onChange={() => {}}
+                    size="md"
+                    interactive={false}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Review Preview */}
+          {reviewText.trim() && (
+            <div className="space-y-2 text-left">
+              <h4 className="font-semibold text-foreground">Your Review</h4>
+              <div className="bg-card/50 rounded-lg p-4">
+                <p className="text-sm text-foreground whitespace-pre-wrap">
+                  {reviewText.trim()}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <Button
+              onClick={() => setPreview(false)}
+              variant="outline"
+              className="flex-1"
+            >
+              Edit
+            </Button>
+            <Button
+              onClick={async () => {
+                try {
+                  await onSubmit(ratingData)
+                  setSubmitted(true)
+                } catch {
+                  setError('Failed to submit rating. Please try again.')
+                }
+              }}
+              className="flex-1"
+            >
+              Submit Rating
+            </Button>
+          </div>
         </div>
       </Card>
     )

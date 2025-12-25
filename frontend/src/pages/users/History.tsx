@@ -228,9 +228,6 @@ const History = () => {
         )
       )
 
-      // Close the rating modal
-      setSelectedBookingForRating(null)
-
       // Refresh bookings to show updated state (in background)
       fetchBookings()
       // Clear saved form state after successful submission
