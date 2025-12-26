@@ -13,7 +13,7 @@ interface UsePaymentStatusResult {
 export function usePaymentStatus(
   bookingId?: string,
   pollInterval = 2000,
-  maxWait = 10000
+  maxWait = 30000
 ): UsePaymentStatusResult {
   const [status, setStatus] = useState<PaymentStatus | null>(null)
   const [loading, setLoading] = useState(false)

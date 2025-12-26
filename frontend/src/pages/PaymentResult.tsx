@@ -124,6 +124,7 @@ const PaymentResult: React.FC = () => {
   const { status, loading, error } = usePaymentStatus(bookingId)
   const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null)
   const [redirectCountdown, setRedirectCountdown] = useState<number>(5)
+  const [manualStatus, setManualStatus] = useState<string | null>(null)
 
   // Handler to navigate to booking lookup page
   const handleViewTicket = () => {
@@ -139,7 +140,8 @@ const PaymentResult: React.FC = () => {
 
   // Fetch booking info for redirect to lookup page
   useEffect(() => {
-    if (bookingId && status === 'PAID') {
+    const currentStatus = manualStatus || status
+    if (bookingId && currentStatus === 'PAID') {
       fetch(`${API_BASE_URL}/bookings/${bookingId}/guest`)
         .then((res) => res.json())
         .then((data) => {
@@ -156,11 +158,12 @@ const PaymentResult: React.FC = () => {
           console.error('[PaymentResult] Failed to fetch booking info:', err)
         })
     }
-  }, [bookingId, status])
+  }, [bookingId, status, manualStatus])
 
   // Auto redirect countdown when payment successful
   useEffect(() => {
-    if (status === 'PAID' && bookingInfo) {
+    const currentStatus = manualStatus || status
+    if (currentStatus === 'PAID' && bookingInfo) {
       const timer = setInterval(() => {
         setRedirectCountdown((prev) => {
           if (prev <= 1) {
@@ -174,7 +177,7 @@ const PaymentResult: React.FC = () => {
 
       return () => clearInterval(timer)
     }
-  }, [status, bookingInfo, handleViewTicket])
+  }, [status, manualStatus, bookingInfo, handleViewTicket])
 
   // If we have MoMo result in URL, update booking status
   useEffect(() => {
@@ -208,6 +211,11 @@ const PaymentResult: React.FC = () => {
         })
         .then((data) => {
           console.log('[PaymentResult] Confirm API response:', data)
+          // If confirm successful, update status immediately
+          if (data.success) {
+            console.log('[PaymentResult] Setting manual status to PAID')
+            setManualStatus('PAID')
+          }
         })
         .catch((err) => {
           console.error('[PaymentResult] Failed to confirm payment:', err)
@@ -264,25 +272,28 @@ const PaymentResult: React.FC = () => {
   }
 
   let message = ''
-  if (status === 'PAID') message = 'Thanh toán thành công!'
-  else if (status === 'CANCELLED') message = 'Bạn đã hủy thanh toán.'
-  else if (status === 'FAILED') message = 'Thanh toán thất bại.'
-  else if (status === 'PENDING') message = 'Thanh toán đang chờ xử lý.'
-  else if (status === 'UNPAID')
+  const currentStatus = manualStatus || status
+  if (currentStatus === 'PAID') message = 'Thanh toán thành công!'
+  else if (currentStatus === 'CANCELLED') message = 'Bạn đã hủy thanh toán.'
+  else if (currentStatus === 'FAILED') message = 'Thanh toán thất bại.'
+  else if (currentStatus === 'PENDING') message = 'Thanh toán đang chờ xử lý.'
+  else if (currentStatus === 'UNPAID')
     message = 'Chưa thanh toán. Đang chờ xác nhận từ cổng thanh toán...'
   else message = 'Không xác định trạng thái thanh toán.'
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
       <div className="bg-white p-8 rounded shadow-md w-full max-w-md text-center">
-        <StatusIcon status={status || undefined} />
+        <StatusIcon status={currentStatus || undefined} />
         <h1 className="text-2xl font-bold mb-4 text-black">
           Kết quả thanh toán
         </h1>
         <div className="mb-2">
           <span className="font-semibold text-black">Trạng thái: </span>
           <span className="font-bold text-lg text-black">
-            {statusMap[status || ''] || status || 'Không xác định'}
+            {statusMap[currentStatus || ''] ||
+              currentStatus ||
+              'Không xác định'}
           </span>
         </div>
         <div className="mb-2">
@@ -292,7 +303,7 @@ const PaymentResult: React.FC = () => {
         <div className="mb-4 text-lg font-medium text-blue-600">{message}</div>
 
         {/* View Ticket Button for successful payments */}
-        {status === 'PAID' && bookingInfo && (
+        {currentStatus === 'PAID' && bookingInfo && (
           <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded">
             <p className="text-sm text-green-800 mb-3">
               Tự động chuyển đến trang xem vé trong{' '}
