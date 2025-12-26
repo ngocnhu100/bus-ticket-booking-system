@@ -17,6 +17,7 @@ import { ErrorModal } from '@/components/ui/error-modal'
 import { SearchInput } from '@/components/ui/search-input'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
 import { useAdminOperators } from '@/hooks/admin/useAdminOperators'
 
 type ValidationErrorDetail = { field: string; message: string }
@@ -429,20 +430,18 @@ const AdminRouteManagement: React.FC = () => {
         {isLoading && !routes.length ? (
           <AdminLoadingSpinner message="Loading routes..." />
         ) : routes.length === 0 ? (
-          <div className="text-center py-12">
-            <MapPin className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-medium text-foreground">
-              No routes found
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {searchTerm ||
+          <AdminEmptyState
+            icon={MapPin}
+            title="No routes found"
+            description={
+              searchTerm ||
               distanceFilter !== 'ALL' ||
               durationFilter !== 'ALL' ||
               operatorFilter !== 'ALL'
                 ? 'Try adjusting your search or filter criteria'
-                : 'Create your first route to get started'}
-            </p>
-          </div>
+                : 'Create your first route to get started'
+            }
+          />
         ) : (
           <>
             {/* Routes Table */}

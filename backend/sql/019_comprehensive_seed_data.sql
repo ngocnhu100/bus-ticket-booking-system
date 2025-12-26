@@ -164,35 +164,35 @@ ON CONFLICT DO NOTHING;
 INSERT INTO buses (operator_id, bus_model_id, license_plate, plate_number, amenities, status) VALUES
 ((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Hyundai Universe 45 seated' LIMIT 1),
- '51A-12345', '51A-12345', '["wifi", "ac", "tv", "refreshments"]', 'active'),
+ '51A-123.45', '51A-123.45', '["wifi", "ac", "tv", "water"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'The Sinh Tourist' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Tracomeco Highlander 38 sleepers' LIMIT 1),
- '30A-67890', '30A-67890', '["wifi", "ac", "blankets", "pillows"]', 'active'),
+ '30A-678.90', '30A-678.90', '["wifi", "ac", "blanket", "pillow"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated' LIMIT 1),
- '29A-54321', '29A-54321', '["wifi", "ac"]', 'active'),
+ '29A-543.21', '29A-543.21', '["wifi", "ac"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Volvo 50 seated' LIMIT 1),
- '51B-11111', '51B-11111', '["wifi", "ac", "entertainment"]', 'active'),
+ '51B-111.11', '51B-111.11', '["wifi", "ac", "entertainment"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Samco Isuzu Limousine 29 seats' LIMIT 1),
- '30B-22222', '30B-22222', '["wifi", "ac", "refreshments"]', 'active'),
+ '30B-222.22', '30B-222.22', '["wifi", "ac", "reading_light"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Sao Viet' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Mercedes Sprinter 16 seats' LIMIT 1),
- '29B-33333', '29B-33333', '["wifi", "ac"]', 'active'),
+ '29B-333.33', '29B-333.33', '["wifi", "ac"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated' LIMIT 1),
- '51C-44444', '51C-44444', '["wifi", "ac", "tv"]', 'active'),
+ '51C-444.44', '51C-444.44', '["wifi", "ac", "tv"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'The Sinh Tourist' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Hyundai Universe 45 seated' LIMIT 1),
- '30C-55555', '30C-55555', '["wifi", "ac", "blankets"]', 'active')
+ '30C-555.55', '30C-555.55', '["wifi", "ac", "blanket"]', 'active')
 ON CONFLICT DO NOTHING;
 
 -- 5. Routes
@@ -326,102 +326,102 @@ ON CONFLICT DO NOTHING;
 INSERT INTO trips (route_id, bus_id, departure_time, arrival_time, base_price, policies, status) VALUES
 -- Ho Chi Minh City to Hanoi (popular route - multiple trips)
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51A-12345' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51A-123.45' LIMIT 1),
  '2026-01-15 08:00:00', '2026-01-15 14:00:00', 500000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51C-44444' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51C-444.44' LIMIT 1),
  '2026-01-15 10:00:00', '2026-01-15 16:00:00', 480000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51A-12345' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51A-123.45' LIMIT 1),
  '2026-01-15 14:00:00', '2026-01-15 20:00:00', 520000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hanoi' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51C-44444' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51C-444.44' LIMIT 1),
  '2026-01-15 18:00:00', '2026-01-16 00:00:00', 450000, '{"refund": "24h", "changes": "not_allowed"}', 'active'),
 
 -- Hanoi to Ho Chi Minh City (reverse route - multiple trips)
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30C-55555' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30C-555.55' LIMIT 1),
  '2026-01-16 06:00:00', '2026-01-16 12:00:00', 500000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51B-11111' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51B-111.11' LIMIT 1),
  '2026-01-16 08:00:00', '2026-01-16 14:00:00', 480000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Ho Chi Minh City' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30C-55555' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30C-555.55' LIMIT 1),
  '2026-01-16 12:00:00', '2026-01-16 18:00:00', 520000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 -- Ho Chi Minh City to Da Nang (popular route - multiple trips)
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30A-67890' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30A-678.90' LIMIT 1),
  '2026-01-15 10:00:00', '2026-01-15 18:00:00', 350000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30B-22222' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30B-222.22' LIMIT 1),
  '2026-01-15 14:00:00', '2026-01-15 22:00:00', 320000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Nang' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30A-67890' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30A-678.90' LIMIT 1),
  '2026-01-15 18:00:00', '2026-01-16 02:00:00', 380000, '{"refund": "12h", "changes": "not_allowed"}', 'active'),
 
 -- Da Nang to Ho Chi Minh City (reverse route)
 ((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Ho Chi Minh City' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '29B-33333' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29B-333.33' LIMIT 1),
  '2026-01-16 08:00:00', '2026-01-16 16:00:00', 350000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Ho Chi Minh City' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '29A-54321' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29A-543.21' LIMIT 1),
  '2026-01-16 12:00:00', '2026-01-16 20:00:00', 320000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 -- Hanoi to Da Nang
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '29A-54321' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29A-543.21' LIMIT 1),
  '2026-01-16 06:00:00', '2026-01-16 12:00:00', 250000, '{"refund": "24h", "changes": "not_allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Da Nang' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30B-22222' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30B-222.22' LIMIT 1),
  '2026-01-16 10:00:00', '2026-01-16 16:00:00', 280000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 -- Da Nang to Hanoi (reverse route)
 ((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Hanoi' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51B-11111' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51B-111.11' LIMIT 1),
  '2026-01-17 08:00:00', '2026-01-17 14:00:00', 250000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 -- Other routes (single trips for now)
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Hue' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51B-11111' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51B-111.11' LIMIT 1),
  '2026-01-15 12:00:00', '2026-01-15 21:00:00', 400000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Sapa' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '29B-33333' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29B-333.33' LIMIT 1),
  '2026-01-16 07:00:00', '2026-01-16 13:00:00', 150000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Nha Trang' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30A-67890' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30A-678.90' LIMIT 1),
  '2026-01-15 16:00:00', '2026-01-15 20:00:00', 200000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Hanoi' AND destination = 'Hai Phong' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '29A-54321' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29A-543.21' LIMIT 1),
  '2026-01-16 09:00:00', '2026-01-16 10:30:00', 80000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Can Tho' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '29B-33333' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '29B-333.33' LIMIT 1),
  '2026-01-15 20:00:00', '2026-01-15 21:30:00', 100000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Da Nang' AND destination = 'Quang Ngai' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '30B-22222' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '30B-222.22' LIMIT 1),
  '2026-01-16 14:00:00', '2026-01-16 15:00:00', 50000, '{"refund": "12h", "changes": "allowed"}', 'active'),
 
 -- Ho Chi Minh City to Da Lat
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51A-12345' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51A-123.45' LIMIT 1),
  '2026-01-15 08:00:00', '2026-01-15 14:00:00', 250000, '{"refund": "24h", "changes": "allowed"}', 'active'),
 
 ((SELECT route_id FROM routes WHERE origin = 'Ho Chi Minh City' AND destination = 'Da Lat' LIMIT 1),
- (SELECT bus_id FROM buses WHERE license_plate = '51C-44444' LIMIT 1),
+ (SELECT bus_id FROM buses WHERE license_plate = '51C-444.44' LIMIT 1),
  '2026-01-15 12:00:00', '2026-01-15 18:00:00', 230000, '{"refund": "24h", "changes": "allowed"}', 'active')
 ON CONFLICT DO NOTHING;
 

@@ -148,10 +148,10 @@ BEGIN
         END IF;  -- Add similar for other route stops
 
   -- 6. Buses (insert if not exists, based on license_plate)
-  SELECT bus_id INTO v_bus_hyundai FROM buses WHERE license_plate = '29B-12345';
+  SELECT bus_id INTO v_bus_hyundai FROM buses WHERE license_plate = '29B-123.45';
   IF v_bus_hyundai IS NULL THEN
     INSERT INTO buses (operator_id, bus_model_id, license_plate, plate_number, amenities, type, status, image_url) VALUES
-    (v_mai_linh, v_bus_model_hyundai, '29B-12345', '12345', '["wifi", "toilet"]', 'standard', 'active', '["https://image.example.com/hyundai.jpg"]'::jsonb)
+    (v_mai_linh, v_bus_model_hyundai, '29B-123.45', '29B-123.45', '["wifi", "toilet"]', 'standard', 'active', '["https://image.example.com/hyundai.jpg"]'::jsonb)
     RETURNING bus_id INTO v_bus_hyundai;
   END IF;
 

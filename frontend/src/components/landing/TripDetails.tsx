@@ -7,10 +7,10 @@ import {
   Clock,
   Tv,
   Bed,
-  Utensils,
+  Armchair,
   CupSoda,
   Headphones,
-  Cloud,
+  Spotlight,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -167,21 +167,31 @@ export function TripDetails({ trip }: TripDetailsProps) {
           icon: <Tv className="w-4 h-4" />,
           name: 'Television',
         },
-        blankets: {
+        blanket: {
           icon: <Bed className="w-4 h-4" />,
-          name: 'Blanket & Pillow',
+          name: 'Blanket',
         },
-        pillows: {
-          icon: <Cloud className="w-4 h-4" />,
-          name: 'Pillows',
+        pillow: {
+          icon: (
+            <img
+              className="w-4 h-4"
+              src="https://img.icons8.com/material-outlined/96/pillow.png"
+              alt="pillow"
+            />
+          ),
+          name: 'Pillow',
         },
-        snacks: {
-          icon: <Utensils className="w-4 h-4" />,
-          name: 'Snacks',
-        },
-        refreshments: {
+        water: {
           icon: <CupSoda className="w-4 h-4" />,
-          name: 'Refreshments',
+          name: 'Water',
+        },
+        massage: {
+          icon: <Armchair className="w-4 h-4" />,
+          name: 'Massage Seat',
+        },
+        reading_light: {
+          icon: <Spotlight className="w-4 h-4" />,
+          name: 'Reading Light',
         },
       }
     return amenityMap[amenityId] || null

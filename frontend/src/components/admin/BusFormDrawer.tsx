@@ -151,6 +151,8 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
 
     setIsUploading(true)
     setUploadProgress(0)
+    // Clear any previous upload errors when starting new upload
+    setErrorsWithTimeout({ ...errors, image_upload: '' })
 
     try {
       const uploadPromises = files.map((file) => uploadToCloudinary(file))
@@ -163,9 +165,15 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
 
       setUploadProgress(100)
       setTimeout(() => setUploadProgress(0), 1000)
+      // Clear any upload errors on success
+      setErrorsWithTimeout({ ...errors, image_upload: '' })
     } catch (error) {
       console.error('Image upload error:', error)
-      alert('Failed to upload images. Please try again.')
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to upload images. Please try again.'
+      setErrorsWithTimeout({ ...errors, image_upload: errorMessage })
     } finally {
       setIsUploading(false)
     }
@@ -531,6 +539,11 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 </div>
               )}
             </label>
+
+            {/* Upload Error */}
+            {errors.image_upload && (
+              <p className="text-red-500 text-xs mt-1">{errors.image_upload}</p>
+            )}
 
             {/* Image Preview Grid */}
             {form.image_urls && form.image_urls.length > 0 && (

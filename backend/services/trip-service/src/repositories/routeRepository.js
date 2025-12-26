@@ -253,7 +253,7 @@ class RouteRepository {
     const countResult = await pool.query(countQuery, values);
     const total = parseInt(countResult.rows[0].total);
 
-    query += ` ORDER BY r.created_at DESC LIMIT $${index++} OFFSET $${index}`;
+    query += ` ORDER BY r.created_at DESC, r.route_id DESC LIMIT $${index++} OFFSET $${index}`;
     values.push(limit, offset);
 
     const result = await pool.query(query, values);

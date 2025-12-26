@@ -26,6 +26,7 @@ import { ErrorModal } from '@/components/ui/error-modal'
 import { SearchInput } from '@/components/ui/search-input'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
 
 const AMENITIES_LABELS: Record<string, string> = {
   wifi: 'WiFi',
@@ -327,6 +328,19 @@ const AdminBusManagement: React.FC = () => {
         {/* Buses List */}
         {isLoading && buses.length === 0 ? (
           <AdminLoadingSpinner message="Loading buses..." />
+        ) : buses.length === 0 ? (
+          <AdminEmptyState
+            icon={BusIcon}
+            title="No buses found"
+            description={
+              searchTerm ||
+              filters.type ||
+              filters.status ||
+              filters.operator_id
+                ? 'Try adjusting your search or filter criteria'
+                : 'Create your first bus to get started'
+            }
+          />
         ) : (
           <div className="bg-card rounded-lg border border-border overflow-hidden">
             <AdminTable
@@ -339,8 +353,8 @@ const AdminBusManagement: React.FC = () => {
                 { key: 'actions', label: 'Actions', align: 'right' },
               ]}
               isLoading={isLoading}
-              isEmpty={buses.length === 0}
-              emptyMessage="No buses available."
+              isEmpty={false}
+              emptyMessage=""
             >
               {buses.map((bus) => (
                 <React.Fragment key={bus.bus_id}>

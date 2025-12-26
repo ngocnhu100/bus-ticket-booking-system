@@ -67,83 +67,100 @@ class BusRepository {
 
   // Lấy tất cả xe (GET /buses)
   async findAll({ limit = 20, offset = 0, status, search, type, operator_id } = {}) {
-    let countQuery = `SELECT COUNT(*) as total FROM buses b JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id`;
-    let query = `SELECT
-      b.bus_id,
-      b.operator_id,           -- THÊM DÒNG NÀY (rất quan trọng)
-      b.license_plate,
-      b.plate_number,
-      b.type,
-      b.seat_capacity,
-      b.amenities,
-      b.status,
-      b.image_url,
-      b.created_at,
-      bm.name as model_name,
-      bm.total_seats
-    FROM buses b
-    JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id`;
+    try {
+      let countQuery = `SELECT COUNT(*) as total FROM buses b JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id`;
+      let query = `SELECT
+        b.bus_id,
+        b.operator_id,           -- THÊM DÒNG NÀY (rất quan trọng)
+        b.license_plate,
+        b.plate_number,
+        b.type,
+        b.seat_capacity,
+        b.amenities,
+        b.status,
+        b.image_url,
+        b.created_at,
+        bm.name as model_name,
+        bm.total_seats
+      FROM buses b
+      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id`;
 
-    const values = [];
-    let index = 1;
+      const values = [];
+      let index = 1;
 
-    // Build WHERE clause
-    const whereConditions = [];
+      // Build WHERE clause
+      const whereConditions = [];
 
-    if (status) {
-      whereConditions.push(`b.status = $${index}`);
-      values.push(status);
-      index++;
+      if (status) {
+        whereConditions.push(`b.status = $${index}`);
+        values.push(status);
+        index++;
+      }
+
+      if (type) {
+        whereConditions.push(`b.type = $${index}`);
+        values.push(type);
+        index++;
+      }
+
+      if (operator_id) {
+        whereConditions.push(`b.operator_id = $${index}`);
+        values.push(operator_id);
+        index++;
+      }
+
+      if (search) {
+        // Search in bus name, model name, plate number, or license plate
+        whereConditions.push(`(
+          UPPER(b.plate_number) LIKE UPPER($${index}) OR
+          UPPER(b.license_plate) LIKE UPPER($${index}) OR
+          UPPER(bm.name) LIKE UPPER($${index})
+        )`);
+        values.push(`%${search}%`);
+        index++;
+      }
+
+      if (whereConditions.length > 0) {
+        const whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
+        countQuery += whereClause;
+        query += whereClause;
+      }
+
+      // Get total count
+      const countResult = await pool.query(countQuery, values);
+      const total = parseInt(countResult.rows[0].total);
+
+      // Add LIMIT and OFFSET with correct parameter indices
+      const limitIndex = index;
+      const offsetIndex = index + 1;
+      query += ` ORDER BY b.created_at DESC, b.bus_id DESC LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
+      values.push(limit, offset);
+
+      console.log('[BUS QUERY]', { query, values, index, limitIndex, offsetIndex });
+
+      const result = await pool.query(query, values);
+
+      console.log(
+        '[BUS RESULT] Returned rows:',
+        result.rows.length,
+        result.rows.map((r) => ({
+          bus_id: r.bus_id,
+          name: r.model_name,
+          license_plate: r.license_plate,
+          created_at: r.created_at,
+        }))
+      );
+
+      return {
+        data: result.rows,
+        total: total,
+        limit: limit,
+        offset: offset,
+      };
+    } catch (err) {
+      console.error('Error in findAll buses:', err);
+      throw err;
     }
-
-    if (type) {
-      whereConditions.push(`b.type = $${index}`);
-      values.push(type);
-      index++;
-    }
-
-    if (operator_id) {
-      whereConditions.push(`b.operator_id = $${index}`);
-      values.push(operator_id);
-      index++;
-    }
-
-    if (search) {
-      // Search in bus name, model name, plate number, or license plate
-      whereConditions.push(`(
-        UPPER(b.plate_number) LIKE UPPER($${index}) OR
-        UPPER(b.license_plate) LIKE UPPER($${index}) OR
-        UPPER(bm.name) LIKE UPPER($${index})
-      )`);
-      values.push(`%${search}%`);
-      index++;
-    }
-
-    if (whereConditions.length > 0) {
-      const whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
-      countQuery += whereClause;
-      query += whereClause;
-    }
-
-    // Get total count
-    const countResult = await pool.query(countQuery, values);
-    const total = parseInt(countResult.rows[0].total);
-
-    query += ` ORDER BY b.created_at DESC LIMIT $${index++} OFFSET $${index}`;
-    values.push(limit, offset);
-
-    const result = await pool.query(query, values);
-
-    return {
-      data: result.rows,
-      total: total,
-      limit: limit,
-      offset: offset,
-    };
-  }
-  catch(err) {
-    console.error('Error in findAll buses:', err);
-    throw err;
   }
 
   // Tìm theo ID (GET /buses/:id)
@@ -206,7 +223,9 @@ class BusRepository {
       RETURNING *;
     `;
 
+    console.log('[BUS UPDATE]', { bus_id: id, query, values });
     const result = await pool.query(query, values);
+    console.log('[BUS UPDATE RESULT]', result.rows[0]);
     return result.rows[0] || null;
   }
 
