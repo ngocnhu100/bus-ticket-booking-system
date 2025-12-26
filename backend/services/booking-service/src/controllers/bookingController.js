@@ -582,37 +582,35 @@ class BookingController {
    */
   async getAllBookings(req, res) {
     try {
-      // Validate query parameters
-      // Validate query parameters
-      const { error, value } = getBookingsQuerySchema.validate(req.query);
-      if (error) {
-        console.error('[BookingController] Validation error:', error.details);
-        return res.status(422).json({
-          success: false,
-          error: {
-            code: 'VAL_001',
-            message: error.details.map((d) => d.message).join(', '),
-          },
-        });
-      }
+      const filters = {
+        page: parseInt(req.query.page) || 1,
+        limit: parseInt(req.query.limit) || 20,
+        status: req.query.status, // pending, confirmed, cancelled, completed
+        fromDate: req.query.fromDate,
+        toDate: req.query.toDate,
+        sortBy: req.query.sortBy || 'created_at',
+        sortOrder: req.query.sortOrder || 'DESC',
+      };
 
-      // TODO: Implement admin get all bookings with validated filters
-      console.log('[BookingController] Admin getAllBookings - filters:', value);
+      console.log('[BookingController] Admin getAllBookings with filters:', filters);
+
+      const result = await bookingService.getAllBookingsAdmin(filters);
 
       return res.json({
         success: true,
-        data: [],
-        message: 'Admin endpoint - to be implemented',
+        data: result.bookings,
+        pagination: result.pagination,
+        timestamp: new Date().toISOString(),
       });
     } catch (err) {
-      console.error('Error getting all bookings:', err);
-
+      console.error('Error getting all bookings (admin):', err);
       return res.status(500).json({
         success: false,
         error: {
           code: 'SYS_001',
           message: 'Failed to retrieve bookings',
         },
+        timestamp: new Date().toISOString(),
       });
     }
   }
@@ -825,6 +823,179 @@ class BookingController {
         error: {
           code: 'SYS_001',
           message: 'Failed to modify booking',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  // ==================== ADMIN METHODS ====================
+
+  /**
+   * Get booking details by ID (Admin only)
+   * GET /admin/bookings/:id
+   */
+  async getBookingDetailsAdmin(req, res) {
+    try {
+      const { id } = req.params;
+
+      const booking = await bookingService.getBookingByIdAdmin(id);
+
+      if (!booking) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: booking,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error getting booking details (admin):', err);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to retrieve booking details',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Update booking status (Admin only)
+   * PUT /admin/bookings/:id/status
+   * Body: { status: "confirmed" | "cancelled" | "completed" }
+   */
+  async updateBookingStatus(req, res) {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // Validate status
+      const validStatuses = ['confirmed', 'cancelled', 'completed'];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Invalid status. Must be one of: confirmed, cancelled, completed',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const updatedBooking = await bookingService.updateBookingStatusAdmin(id, status);
+
+      if (!updatedBooking) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: updatedBooking,
+        message: `Booking status updated to ${status}`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error updating booking status (admin):', err);
+
+      if (err.message.includes('Cannot update status')) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'BOOK_006',
+            message: err.message,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to update booking status',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Process refund for a booking (Admin only)
+   * POST /admin/bookings/:id/refund
+   * Body: { refundAmount: number, reason: string }
+   */
+  async processRefundAdmin(req, res) {
+    try {
+      const { id } = req.params;
+      const { refundAmount, reason } = req.body;
+
+      if (!refundAmount || refundAmount <= 0) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Invalid refund amount',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const result = await bookingService.processRefundAdmin(id, refundAmount, reason);
+
+      return res.json({
+        success: true,
+        data: result,
+        message: 'Refund processed successfully',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error processing refund (admin):', err);
+
+      if (err.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (err.message.includes('already refunded')) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'BOOK_007',
+            message: err.message,
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to process refund',
         },
         timestamp: new Date().toISOString(),
       });

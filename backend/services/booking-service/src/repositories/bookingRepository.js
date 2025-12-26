@@ -573,6 +573,120 @@ class BookingRepository {
     const result = await db.query(query, [ticketUrl, bookingId]);
     return result.rows[0] ? mapToBooking(result.rows[0]) : null;
   }
+
+  // ==================== ADMIN METHODS ====================
+
+  /**
+   * Find all bookings with filters and pagination (Admin only)
+   * @param {object} filters - Query filters
+   * @returns {Promise<object>} Paginated bookings
+   */
+  async findAllWithFilters(filters) {
+    const { page = 1, limit = 20, status, fromDate, toDate, sortBy = 'created_at', sortOrder = 'DESC' } = filters;
+
+    const offset = (page - 1) * limit;
+    const conditions = [];
+    const values = [];
+    let paramIndex = 1;
+
+    // Build WHERE conditions
+    if (status) {
+      conditions.push(`b.status = $${paramIndex}`);
+      values.push(status);
+      paramIndex++;
+    }
+
+    if (fromDate) {
+      conditions.push(`b.created_at >= $${paramIndex}`);
+      values.push(fromDate);
+      paramIndex++;
+    }
+
+    if (toDate) {
+      conditions.push(`b.created_at <= $${paramIndex}`);
+      values.push(toDate);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    // Validate sortBy to prevent SQL injection
+    const validSortColumns = ['created_at', 'updated_at', 'total_price', 'status', 'payment_status'];
+    const safeSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
+    const safeSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM bookings b
+      ${whereClause}
+    `;
+
+    const countResult = await db.query(countQuery, values);
+    const total = parseInt(countResult.rows[0].total);
+
+    // Get bookings with pagination
+    const query = `
+      SELECT 
+        b.*,
+        u.email as user_email,
+        u.full_name as user_name,
+        (SELECT COUNT(*) FROM booking_passengers WHERE booking_id = b.booking_id) as passenger_count
+      FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.user_id
+      ${whereClause}
+      ORDER BY b.${safeSortBy} ${safeSortOrder}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    values.push(limit, offset);
+
+    const result = await db.query(query, values);
+
+    return {
+      bookings: result.rows.map((row) => ({
+        ...mapToBooking(row),
+        user: row.user_email ? {
+          email: row.user_email,
+          name: row.user_name,
+        } : null,
+        passengerCount: parseInt(row.passenger_count),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Update booking with refund information (Admin only)
+   * @param {string} bookingId - Booking UUID
+   * @param {object} refundData - Refund data
+   * @returns {Promise<object>} Updated booking
+   */
+  async updateRefund(bookingId, refundData) {
+    const query = `
+      UPDATE bookings
+      SET 
+        refund_amount = $1,
+        cancellation_reason = $2,
+        status = 'cancelled',
+        updated_at = CURRENT_TIMESTAMP
+      WHERE booking_id = $3
+      RETURNING *
+    `;
+
+    const result = await db.query(query, [
+      refundData.refundAmount,
+      refundData.reason,
+      bookingId,
+    ]);
+
+    return result.rows[0] ? mapToBooking(result.rows[0]) : null;
+  }
 }
 
 module.exports = new BookingRepository();

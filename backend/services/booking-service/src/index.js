@@ -22,6 +22,12 @@ app.use(express.urlencoded({ extended: true }));
 // Health check
 app.get('/health', bookingController.healthCheck);
 
+// Admin routes (require admin role) - MUST come BEFORE /:id routes
+app.get('/admin', authenticate, authorize(['admin']), bookingController.getAllBookings);
+app.get('/admin/:id', authenticate, authorize(['admin']), bookingController.getBookingDetailsAdmin);
+app.put('/admin/:id/status', authenticate, authorize(['admin']), bookingController.updateBookingStatus);
+app.post('/admin/:id/refund', authenticate, authorize(['admin']), bookingController.processRefundAdmin);
+
 // Public routes (no authentication required)
 // Guest booking lookup - accepts phone OR email
 app.get('/guest/lookup', bookingController.guestLookup);
@@ -32,6 +38,9 @@ app.get('/reference/:reference', bookingController.getByReference);
 // Share ticket (public endpoint with validation)
 app.post('/:bookingReference/share', bookingController.shareTicket);
 
+// Internal idempotent confirm-payment endpoint for payment-service webhook
+app.post('/internal/:id/confirm-payment', bookingController.internalConfirmPayment);
+
 // Protected routes (require authentication)
 app.get('/', authenticate, bookingController.getUserBookings);
 app.post('/', optionalAuthenticate, bookingController.create);
@@ -41,12 +50,6 @@ app.get('/:id/modification-preview', optionalAuthenticate, bookingController.get
 app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
 app.put('/:id/cancel', optionalAuthenticate, bookingController.cancel);
 app.put('/:id/modify', optionalAuthenticate, bookingController.modifyBooking);
-
-// Internal idempotent confirm-payment endpoint for payment-service webhook
-app.post('/internal/:id/confirm-payment', bookingController.internalConfirmPayment);
-
-// Admin routes
-app.get('/admin/bookings', authenticate, authorize(['admin']), bookingController.getAllBookings);
 
 // Serve ticket files (static)
 app.use('/tickets', express.static('tickets'));
