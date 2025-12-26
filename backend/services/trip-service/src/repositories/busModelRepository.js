@@ -26,9 +26,8 @@ class BusModelRepository {
 
   async findAll() {
     const query = `
-      SELECT bm.*, sl.layout_json
+      SELECT DISTINCT bm.*
       FROM bus_models bm
-      LEFT JOIN seat_layouts sl ON sl.bus_model_id = bm.bus_model_id
       ORDER BY bm.name;
     `;
     const result = await pool.query(query);

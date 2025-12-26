@@ -11,6 +11,7 @@ const busController = require('./controllers/busController');
 const adminOperatorController = require('./controllers/adminOperatorController');
 const seatLockController = require('./controllers/seatLockController');
 const ratingController = require('./controllers/ratingController');
+const uploadRoutes = require('./routes/uploadRoutes');
 
 const { authenticate, authorize, optionalAuthenticate } = require('./middleware/authMiddleware');
 const lockCleanupService = require('./services/lockCleanupService');
@@ -42,6 +43,9 @@ app.use(express.json());
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
+
+// --- Upload routes (must be before other routes) ---
+app.use('/upload', uploadRoutes);
 
 // --- Public routes ---
 app.get('/search', tripController.search);
@@ -91,6 +95,8 @@ app.get('/bus-models/:id', authenticate, authorize(['admin']), busModelControlle
 app.post('/buses', authenticate, authorize(['admin']), busController.create);
 app.get('/buses/:id', authenticate, authorize(['admin']), busController.getById);
 app.put('/buses/:id', authenticate, authorize(['admin']), busController.update);
+app.put('/buses/:id/deactivate', authenticate, authorize(['admin']), busController.deactivate);
+app.put('/buses/:id/activate', authenticate, authorize(['admin']), busController.activate);
 app.delete('/buses/:id', authenticate, authorize(['admin']), busController.delete);
 
 // API kiểm tra xe có trống không (rất quan trọng khi tạo chuyến)

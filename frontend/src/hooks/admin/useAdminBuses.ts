@@ -8,15 +8,33 @@ interface BusModel {
   name: string
 }
 
+interface PaginationData {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
 export function useAdminBuses() {
   const [buses, setBuses] = useState<BusAdminData[]>([])
   const [busModels, setBusModels] = useState<BusModel[]>([])
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchBuses = useCallback(
-    async (page = 1, limit = 20, searchTerm = '') => {
+    async (
+      page = 1,
+      limit = 20,
+      searchTerm = '',
+      filters: { type?: string; status?: string; operator_id?: string } = {}
+    ) => {
       setIsLoading(true)
       setError(null)
       try {
@@ -27,10 +45,27 @@ export function useAdminBuses() {
           params.append('search', searchTerm)
         }
 
+        // Add filters to params
+        if (filters.type) params.append('type', filters.type)
+        if (filters.status) params.append('status', filters.status)
+        if (filters.operator_id)
+          params.append('operator_id', filters.operator_id)
+
         const data = await request(`/trips/buses?${params.toString()}`, {
           method: 'GET',
         })
-        setBuses(data.data)
+
+        setBuses(data.data || [])
+
+        // Extract pagination data from response
+        if (data.pagination) {
+          setPagination({
+            page: data.pagination.page || page,
+            limit: data.pagination.limit || limit,
+            total: data.pagination.total || 0,
+            totalPages: data.pagination.totalPages || 0,
+          })
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Failed to fetch buses'
@@ -92,33 +127,72 @@ export function useAdminBuses() {
           title: 'Error',
           description: message,
         })
+        throw error // Re-throw to allow caller to handle
       } finally {
         setIsLoading(false)
       }
     },
     [toast]
   )
-  const deleteBus = useCallback(
+  const deactivateBus = useCallback(
     async (busId: string) => {
       setIsLoading(true)
       setError(null)
       try {
-        await request(`/trips/buses/${busId}`, {
-          method: 'DELETE',
+        await request(`/trips/buses/${busId}/deactivate`, {
+          method: 'PUT',
         })
-        setBuses((prev) => prev.filter((bus) => bus.bus_id !== busId))
+        setBuses((prev) =>
+          prev.map((bus) =>
+            bus.bus_id === busId ? { ...bus, status: 'maintenance' } : bus
+          )
+        )
         toast({
           title: 'Success',
-          description: 'Bus deleted successfully',
+          description: 'Bus deactivated successfully',
         })
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Failed to delete bus'
+          error instanceof Error ? error.message : 'Failed to deactivate bus'
         setError(message)
         toast({
           title: 'Error',
           description: message,
         })
+        throw error // Re-throw to allow caller to handle
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [toast]
+  )
+
+  const activateBus = useCallback(
+    async (busId: string) => {
+      setIsLoading(true)
+      setError(null)
+      try {
+        await request(`/trips/buses/${busId}/activate`, {
+          method: 'PUT',
+        })
+        setBuses((prev) =>
+          prev.map((bus) =>
+            bus.bus_id === busId ? { ...bus, status: 'active' } : bus
+          )
+        )
+        toast({
+          title: 'Success',
+          description: 'Bus activated successfully',
+        })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to activate bus'
+        setError(message)
+        toast({
+          title: 'Error',
+          description: message,
+        })
+        throw error // Re-throw to allow caller to handle
       } finally {
         setIsLoading(false)
       }
@@ -156,6 +230,7 @@ export function useAdminBuses() {
           title: 'Error',
           description: message,
         })
+        throw error // Re-throw to allow caller to handle
       } finally {
         setIsLoading(false)
       }
@@ -166,14 +241,15 @@ export function useAdminBuses() {
   return {
     buses,
     busModels,
+    pagination,
     isLoading,
     error,
     fetchBuses,
     fetchBusModels,
     createBus,
     updateBus,
-    deleteBus,
-    //deactivateBus,
+    deactivateBus,
+    activateBus,
     //uploadBusImage,
   }
 }

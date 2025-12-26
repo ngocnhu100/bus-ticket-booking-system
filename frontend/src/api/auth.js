@@ -142,6 +142,126 @@ export async function request(
   return data
 }
 
+/**
+ * Send FormData request (for file uploads, etc)
+ * @param {string} path
+ * @param {object} [options={}]
+ * @param {FormData} [options.body]
+ * @param {string} [options.token]
+ * @param {string} [options.method='POST']
+ * @param {object} [options.headers]
+ */
+export async function requestFormData(
+  path,
+  { body, token, method = 'POST', headers, ...options } = {}
+) {
+  const resolvedToken = token || getAccessToken()
+  console.log(`[FE Request] ${method} ${path}`, {
+    body: '[FormData]',
+    token: resolvedToken ? '[TOKEN]' : null,
+    headers,
+  })
+
+  const finalHeaders = { ...headers }
+  if (resolvedToken) {
+    finalHeaders['Authorization'] = `Bearer ${resolvedToken}`
+  }
+
+  // Don't set Content-Type for FormData - let browser set it automatically with boundary
+  if (body instanceof FormData) {
+    delete finalHeaders['Content-Type']
+    delete finalHeaders['content-type']
+    console.log(
+      '[FE FormData] Removed Content-Type, final headers:',
+      finalHeaders
+    )
+  }
+
+  let response
+  try {
+    console.log('[FE Fetch] Sending', method, API_BASE_URL + path, {
+      headers: finalHeaders,
+      hasBody: !!body,
+    })
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: finalHeaders,
+      ...(body && method !== 'GET' ? { body } : {}),
+      ...options,
+    })
+  } catch (networkError) {
+    const error = new Error(networkError?.message || 'Failed to fetch')
+    error.code = 'NETWORK_ERROR'
+    throw error
+  }
+
+  let data = null
+  try {
+    data = await response.json()
+  } catch (error) {
+    data = null
+  }
+
+  const isError = !response.ok || (data && data.success === false)
+  if (isError) {
+    // Handle OLD JWT TOKEN error - force logout
+    if (
+      response.status === 401 &&
+      data?.error?.code === 'AUTH_004' &&
+      data?.error?.action === 'FORCE_LOGOUT'
+    ) {
+      console.error('[Auth] Old JWT token detected - forcing logout')
+      const wasLoggedIn = localStorage.getItem('user')
+      clearTokens()
+      localStorage.removeItem('user')
+
+      if (wasLoggedIn) {
+        alert('Your session is outdated. Please login again to continue.')
+        window.location.href = '/login'
+      }
+
+      const error = new Error(
+        data.error.message || 'Session expired - please login again'
+      )
+      error.code = 'AUTH_004'
+      throw error
+    }
+
+    // If unauthorized and we have a refresh token, try to refresh
+    if (
+      response.status === 401 &&
+      getRefreshToken() &&
+      !path.includes('/auth/refresh')
+    ) {
+      try {
+        await refreshAccessToken()
+        // Retry the request with the new token
+        return requestFormData(path, {
+          body,
+          token: getAccessToken(),
+          method,
+          headers,
+          ...options,
+        })
+      } catch (refreshError) {
+        clearTokens()
+        localStorage.removeItem('user')
+        window.location.href = '/login'
+        throw refreshError
+      }
+    }
+
+    const message =
+      data?.error?.message ||
+      'Unable to complete the request. Please try again.'
+    const error = new Error(message)
+    error.code = data?.error?.code || response.status
+    throw error
+  }
+
+  return data
+}
+
 export async function login({ identifier, password }) {
   const payload = { identifier, password }
   const response = await request('/auth/login', { body: payload })

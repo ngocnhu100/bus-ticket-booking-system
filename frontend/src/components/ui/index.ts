@@ -50,7 +50,7 @@ export {
   SidebarTrigger,
 } from './sidebar'
 export { Skeleton } from './skeleton'
-export { Toaster } from './sonner'
+export { SearchInput } from './search-input'
 export {
   Table,
   TableBody,

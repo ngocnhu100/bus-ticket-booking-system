@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS buses (
     amenities JSONB DEFAULT '[]'::jsonb,         -- ["wifi", "toilet", "charging", ...]
     type VARCHAR(20) DEFAULT 'standard' CHECK (type IN ('standard', 'limousine', 'sleeper')),
     status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'maintenance', 'retired')),
-    image_url VARCHAR(255) DEFAULT NULL,         -- New: for imageUrl
+    image_url JSONB DEFAULT '[]'::jsonb,         -- Array of image URLs from Cloudinary: ["url1", "url2", ...]
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

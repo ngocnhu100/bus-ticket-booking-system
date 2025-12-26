@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import type { BusAdminData } from '@/types/trip.types'
 import { CustomDropdown } from '../ui/custom-dropdown'
-import { Loader } from 'lucide-react'
+import { Loader, X } from 'lucide-react'
+import { requestFormData } from '@/api/auth'
 
 interface BusModel {
   bus_model_id: string
@@ -10,13 +11,12 @@ interface BusModel {
 
 const emptyForm: Omit<BusAdminData, 'bus_id' | 'created_at'> = {
   operator_id: '',
-  name: '',
   model: '',
   plate_number: '',
   type: 'standard',
   capacity: 20,
   amenities: [],
-  status: 'active',
+  image_urls: [],
 }
 
 interface BusFormDrawerProps {
@@ -26,6 +26,7 @@ interface BusFormDrawerProps {
   onSave: (values: Omit<BusAdminData, 'bus_id' | 'created_at'>) => void
   operators: Array<{ id: string; label: string }>
   busModels?: BusModel[]
+  onRefresh?: () => void
 }
 
 const AMENITIES_OPTIONS = [
@@ -49,30 +50,65 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
   onSave,
   operators,
   busModels = [],
+  onRefresh,
 }) => {
   const [form, setForm] =
     useState<Omit<BusAdminData, 'bus_id' | 'createdAt'>>(emptyForm)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const setErrorsWithTimeout = (newErrors: Record<string, string>) => {
+    setErrors(newErrors)
+    if (Object.keys(newErrors).length > 0) {
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current)
+      errorTimeoutRef.current = setTimeout(() => setErrors({}), 5000)
+    } else {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current)
+        errorTimeoutRef.current = null
+      }
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (initialBus) {
       setForm({
         operator_id: initialBus.operator_id,
-        name: initialBus.name,
         model: initialBus.model,
         plate_number: initialBus.plate_number,
         type: initialBus.type,
         capacity: initialBus.capacity,
         amenities: initialBus.amenities,
-        status: initialBus.status,
+        image_urls:
+          initialBus.image_urls ||
+          (initialBus.image_url ? [initialBus.image_url] : []),
       })
     } else {
       setForm(emptyForm)
+    }
+    setErrors({})
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current)
+      errorTimeoutRef.current = null
     }
   }, [initialBus, open])
 
   const handleChange = (field: keyof typeof form, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      const newErrors = { ...errors }
+      delete newErrors[field]
+      setErrorsWithTimeout(newErrors)
+    }
   }
 
   const toggleAmenity = (amenity: string) => {
@@ -84,11 +120,97 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
     }))
   }
 
+  const uploadToCloudinary = async (file: File): Promise<string> => {
+    console.log('[FE Upload] Uploading file:', file.name, file.size, file.type)
+    const formData = new FormData()
+    formData.append('file', file)
+    console.log('[FE Upload] FormData created with file')
+
+    try {
+      console.log('[FE Upload] Sending to /trips/upload/image')
+      const data = await requestFormData('/trips/upload/image', {
+        method: 'POST',
+        body: formData,
+      })
+      console.log('[FE Upload] Response:', data)
+
+      if (!data.success || !data.data?.url) {
+        throw new Error('Failed to get image URL from server')
+      }
+
+      return data.data.url
+    } catch (error) {
+      console.error('Upload error:', error)
+      throw error
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
+    try {
+      const uploadPromises = files.map((file) => uploadToCloudinary(file))
+      const uploadedUrls = await Promise.all(uploadPromises)
+
+      setForm((prev) => ({
+        ...prev,
+        image_urls: [...(prev.image_urls || []), ...uploadedUrls],
+      }))
+
+      setUploadProgress(100)
+      setTimeout(() => setUploadProgress(0), 1000)
+    } catch (error) {
+      console.error('Image upload error:', error)
+      alert('Failed to upload images. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+
+    // Reset file input
+    e.target.value = ''
+  }
+
+  const removeImage = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      image_urls: prev.image_urls?.filter((_, i) => i !== index) || [],
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate form
+    const newErrors: Record<string, string> = {}
+    if (!form.model.trim()) newErrors.model = 'Bus model is required'
+    if (!form.plate_number.trim())
+      newErrors.plate_number = 'Plate number is required'
+    else if (!/^[0-9]{2}[A-Z]-[0-9]{3}\.[0-9]{2}$/.test(form.plate_number)) {
+      newErrors.plate_number =
+        'Plate number format is invalid (e.g., 51B-123.45)'
+    }
+    if (!initialBus && !form.operator_id)
+      newErrors.operator_id = 'Operator is required'
+    if (form.capacity < 1 || form.capacity > 100)
+      newErrors.capacity = 'Capacity must be between 1 and 100'
+
+    setErrorsWithTimeout(newErrors)
+    if (Object.keys(newErrors).length > 0) return
+
     setIsSubmitting(true)
     try {
-      await onSave(form)
+      // Generate name from model and plate number
+      const generatedName = `${form.model} (${form.plate_number})`
+      const formData = initialBus
+        ? { ...form, name: generatedName }
+        : { ...form, name: generatedName, status: 'active' as const }
+      await onSave(formData)
+      // Refresh the table after successful form submission
+      onRefresh?.()
     } finally {
       setIsSubmitting(false)
     }
@@ -147,7 +269,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
             }}
             aria-label="Close"
           >
-            ✕
+            <X />
           </button>
         </div>
 
@@ -157,7 +279,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
         >
           {/* Basic Info */}
           <div className="space-y-3">
-            <div>
+            {/* <div>
               <label
                 className="block text-xs font-medium"
                 style={{ color: 'var(--foreground)' }}
@@ -169,7 +291,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 required
                 className="mt-1 w-full rounded-lg px-3 py-2 text-sm"
                 style={{
-                  border: '1px solid var(--border)',
+                  border: `1px solid ${errors.name ? 'red' : 'var(--border)'}`,
                   backgroundColor: 'var(--card)',
                   color: 'var(--foreground)',
                 }}
@@ -177,7 +299,10 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 onChange={(e) => handleChange('name', e.target.value)}
                 placeholder="e.g., Luxury Express"
               />
-            </div>
+              {errors.name && (
+                <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+              )}
+            </div> */}
 
             <div>
               <label
@@ -195,6 +320,9 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 onChange={(value) => handleChange('model', value)}
                 placeholder="Select a bus model"
               />
+              {errors.model && (
+                <p className="text-red-500 text-xs mt-1">{errors.model}</p>
+              )}
             </div>
 
             <div>
@@ -209,7 +337,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 required
                 className="mt-1 w-full rounded-lg px-3 py-2 text-sm"
                 style={{
-                  border: '1px solid var(--border)',
+                  border: `1px solid ${errors.plate_number ? 'red' : 'var(--border)'}`,
                   backgroundColor: 'var(--card)',
                   color: 'var(--foreground)',
                 }}
@@ -217,6 +345,11 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 onChange={(e) => handleChange('plate_number', e.target.value)}
                 placeholder="e.g., 51B-12345"
               />
+              {errors.plate_number && (
+                <p className="text-red-500 text-xs mt-1">
+                  {errors.plate_number}
+                </p>
+              )}
             </div>
 
             {!initialBus && (
@@ -233,6 +366,11 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                   onChange={(value) => handleChange('operator_id', value)}
                   placeholder="Select operator"
                 />
+                {errors.operator_id && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.operator_id}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -285,7 +423,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                   max="100"
                   className="mt-1 w-full rounded-lg px-3 py-2 text-sm"
                   style={{
-                    border: '1px solid var(--border)',
+                    border: `1px solid ${errors.capacity ? 'red' : 'var(--border)'}`,
                     backgroundColor: 'var(--card)',
                     color: 'var(--foreground)',
                   }}
@@ -294,27 +432,10 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                     handleChange('capacity', Number(e.target.value))
                   }
                 />
+                {errors.capacity && (
+                  <p className="text-red-500 text-xs mt-1">{errors.capacity}</p>
+                )}
               </div>
-            </div>
-
-            <div>
-              <label
-                className="block text-xs font-medium mb-2"
-                style={{ color: 'var(--foreground)' }}
-              >
-                Status
-              </label>
-              <CustomDropdown
-                options={[
-                  { id: 'active', label: 'Active' },
-                  { id: 'inactive', label: 'Inactive' },
-                ]}
-                value={form.status}
-                onChange={(value) =>
-                  handleChange('status', value as 'active' | 'inactive')
-                }
-                placeholder="Select status"
-              />
             </div>
           </div>
 
@@ -347,6 +468,100 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* Images */}
+          <div className="space-y-2">
+            <h3
+              className="text-xs font-semibold uppercase tracking-wide"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
+              Bus Images
+            </h3>
+
+            {/* Upload Area */}
+            <label
+              className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 cursor-pointer transition"
+              style={{
+                borderColor: 'var(--border)',
+                backgroundColor: 'var(--muted)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--primary)'
+                e.currentTarget.style.opacity = '0.1'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--muted)'
+                e.currentTarget.style.opacity = '1'
+              }}
+            >
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={isUploading}
+                className="hidden"
+              />
+              <div
+                className="text-center"
+                style={{ color: 'var(--foreground)' }}
+              >
+                <p className="text-xs font-medium">
+                  {isUploading
+                    ? `Uploading... ${uploadProgress}%`
+                    : 'Click to upload images'}
+                </p>
+                <p
+                  className="text-xs"
+                  style={{ color: 'var(--muted-foreground)' }}
+                >
+                  PNG, JPG or GIF (max 5MB each)
+                </p>
+              </div>
+              {isUploading && (
+                <div className="w-full bg-muted rounded-full h-1">
+                  <div
+                    className="h-1 rounded-full transition-all"
+                    style={{
+                      width: `${uploadProgress}%`,
+                      backgroundColor: 'var(--primary)',
+                    }}
+                  />
+                </div>
+              )}
+            </label>
+
+            {/* Image Preview Grid */}
+            {form.image_urls && form.image_urls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {form.image_urls.map((url, index) => (
+                  <div
+                    key={index}
+                    className="relative rounded-lg overflow-hidden aspect-square group"
+                    style={{ backgroundColor: 'var(--muted)' }}
+                  >
+                    <img
+                      src={url}
+                      alt={`Bus image ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                      style={{
+                        backgroundColor: 'var(--destructive)',
+                        color: 'var(--destructive-foreground)',
+                      }}
+                      title="Remove image"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </form>
 

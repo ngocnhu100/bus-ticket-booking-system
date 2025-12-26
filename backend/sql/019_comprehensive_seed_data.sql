@@ -172,11 +172,11 @@ INSERT INTO buses (operator_id, bus_model_id, license_plate, plate_number, ameni
 
 ((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated' LIMIT 1),
- '29A-54321', '29A-54321', '["wifi", "ac", "snacks"]', 'active'),
+ '29A-54321', '29A-54321', '["wifi", "ac"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Volvo 50 seated' LIMIT 1),
- '51B-11111', '51B-11111', '["wifi", "ac", "entertainment", "snacks"]', 'active'),
+ '51B-11111', '51B-11111', '["wifi", "ac", "entertainment"]', 'active'),
 
 ((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
  (SELECT bus_model_id FROM bus_models WHERE name = 'Samco Isuzu Limousine 29 seats' LIMIT 1),

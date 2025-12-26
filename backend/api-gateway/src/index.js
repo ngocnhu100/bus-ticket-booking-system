@@ -26,6 +26,10 @@ app.use(
   })
 );
 app.use(morgan('combined'));
+
+// For upload routes, skip JSON parsing and pass raw buffer
+app.use('/trips/upload', express.raw({ type: 'multipart/form-data', limit: '50mb' }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -251,14 +255,40 @@ app.use('/trips', async (req, res) => {
       `Proxying ${req.method} ${req.originalUrl} → ${tripServiceUrl}${req.path}${queryString}`
     );
 
+    // Build headers - preserve original content-type for file uploads
+    const headers = {
+      authorization: req.headers.authorization, // ← Quan trọng: chuyển token sang trip-service
+    };
+
+    // Log upload requests for debugging
+    if (req.path.includes('/upload')) {
+      console.log('[API-Gateway Upload] Content-Type:', req.headers['content-type']);
+      console.log(
+        '[API-Gateway Upload] Body type:',
+        typeof req.body,
+        Buffer.isBuffer(req.body) ? `(${req.body.length} bytes)` : ''
+      );
+    }
+
+    // Only set content-type if it's not a multipart upload
+    if (
+      req.headers['content-type'] &&
+      req.headers['content-type'].includes('multipart/form-data')
+    ) {
+      headers['content-type'] = req.headers['content-type'];
+      console.log('[API-Gateway Upload] Passing multipart header:', headers['content-type']);
+    } else if (!req.body || Object.keys(req.body).length === 0) {
+      // No body, don't set content-type
+    } else {
+      // Default JSON for other requests
+      headers['content-type'] = 'application/json';
+    }
+
     const response = await axios({
       method: req.method,
       url: `${tripServiceUrl}${req.path}${queryString}`,
       data: req.body,
-      headers: {
-        authorization: req.headers.authorization, // ← Quan trọng: chuyển token sang trip-service
-        'content-type': 'application/json',
-      },
+      headers: headers,
       timeout: 15000,
     });
 

@@ -32,8 +32,9 @@ export interface BusAdminData {
   type: 'standard' | 'limousine' | 'sleeper'
   capacity: number
   amenities: string[]
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'maintenance'
   image_url?: string
+  image_urls?: string[]
   created_at?: string
 }
 
