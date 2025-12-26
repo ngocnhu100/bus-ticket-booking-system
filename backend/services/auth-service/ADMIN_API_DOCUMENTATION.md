@@ -355,6 +355,7 @@ Retrieve statistics about admin accounts.
 | `ADMIN_008` | Failed to deactivate admin account               |
 | `ADMIN_009` | Admin account is already active                  |
 | `ADMIN_010` | Failed to reactivate admin account               |
+| `ADMIN_012` | Phone number already exists                      |
 | `AUTH_001`  | Authorization header missing or invalid          |
 | `AUTH_002`  | Token expired or invalid                         |
 | `AUTH_003`  | Insufficient permissions                         |

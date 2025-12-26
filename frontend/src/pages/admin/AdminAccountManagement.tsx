@@ -544,13 +544,15 @@ const AdminAccountManagement: React.FC = () => {
           </AdminTable>
 
           {/* Pagination */}
-          <AdminTablePagination
-            currentPage={pagination.page}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            onPageChange={handlePageChange}
-            isLoading={isLoading}
-          />
+          <div className="flex justify-center">
+            <AdminTablePagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              onPageChange={handlePageChange}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
       </div>
       {/* Admin Account Form Drawer */}

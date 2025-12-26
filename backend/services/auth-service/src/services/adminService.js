@@ -50,37 +50,52 @@ class AdminService {
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
-    // Create the admin account
-    const newAdmin = await adminRepository.createAdmin({
-      email,
-      phone: phone || null,
-      passwordHash,
-      fullName,
-    });
+    try {
+      // Create the admin account
+      const newAdmin = await adminRepository.createAdmin({
+        email,
+        phone: phone || null,
+        passwordHash,
+        fullName,
+      });
 
-    // Send welcome email with credentials
-    await sendEmailNotification({
-      to: email,
-      subject: 'Admin Account Created - Welcome to Bus Ticket System',
-      type: 'account-creation',
-      html: `<h2>Welcome, ${fullName}!</h2>
-        <p>Your admin account has been created successfully.</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Temporary Password:</strong> ${password}</p>
-        <p>Please log in and change your password immediately for security purposes.</p>`,
-    });
+      // Send welcome email with credentials
+      await sendEmailNotification({
+        to: email,
+        subject: 'Admin Account Created - Welcome to Bus Ticket System',
+        type: 'account-creation',
+        html: `<h2>Welcome, ${fullName}!</h2>
+          <p>Your admin account has been created successfully.</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Temporary Password:</strong> ${password}</p>
+          <p>Please log in and change your password immediately for security purposes.</p>`,
+      });
 
-    return {
-      userId: newAdmin.user_id,
-      email: newAdmin.email,
-      phone: newAdmin.phone,
-      fullName: newAdmin.full_name,
-      role: newAdmin.role,
-      emailVerified: newAdmin.email_verified,
-      phoneVerified: newAdmin.phone_verified,
-      createdAt: newAdmin.created_at,
-      updatedAt: newAdmin.updated_at,
-    };
+      return {
+        userId: newAdmin.user_id,
+        email: newAdmin.email,
+        phone: newAdmin.phone,
+        fullName: newAdmin.full_name,
+        role: newAdmin.role,
+        emailVerified: newAdmin.email_verified,
+        phoneVerified: newAdmin.phone_verified,
+        createdAt: newAdmin.created_at,
+        updatedAt: newAdmin.updated_at,
+      };
+    } catch (error) {
+      // Handle database constraint violations
+      if (error.code === '23505') {
+        // Unique constraint violation
+        if (error.constraint === 'users_phone_key') {
+          const dbError = new Error('Phone number already exists');
+          dbError.code = 'ADMIN_012';
+          dbError.status = 409;
+          throw dbError;
+        }
+      }
+      // Re-throw the error if it's not a handled constraint violation
+      throw error;
+    }
   }
 
   /**

@@ -57,7 +57,7 @@ class AdminController {
       console.error('❌ Create admin error:', error);
 
       // Handle specific error codes
-      if (error.code === 'ADMIN_001') {
+      if (error.code === 'ADMIN_001' || error.code === 'ADMIN_012') {
         return res.status(error.status || 409).json({
           success: false,
           error: {
