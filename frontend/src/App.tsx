@@ -38,6 +38,7 @@ import RevenueAnalytics from '@/pages/admin/RevenueAnalytics'
 import AdminAccountManagement from '@/pages/admin/AdminAccountManagement'
 import { ChatbotProvider } from './context/ChatbotContext'
 import { ChatbotWidget } from './components/chatbot'
+import ReviewGuidelines from './pages/ReviewGuidelines'
 
 const queryClient = new QueryClient()
 
@@ -90,6 +91,10 @@ const App = () => (
                 <Route
                   path="/auth/google/callback"
                   element={<AuthGoogleCallback />}
+                />
+                <Route
+                  path="/review-guidelines"
+                  element={<ReviewGuidelines />}
                 />
                 {/* Seat selection - accessible to both guests and authenticated users */}
                 <Route

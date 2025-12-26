@@ -257,7 +257,17 @@ export function SubmitRatingForm({
           rows={4}
         />
         <p className="text-xs text-muted-foreground">
-          Please follow our review guidelines and avoid inappropriate content.
+          Please follow our{' '}
+          <a
+            href="/review-guidelines"
+            className="text-primary hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            review guidelines
+          </a>{' '}
+          and avoid inappropriate content. Reviews are shared publicly to help
+          other travelers.
         </p>
       </div>
 

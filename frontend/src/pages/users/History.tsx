@@ -691,7 +691,9 @@ const History = () => {
               <div className="p-6">
                 {/* Modal Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold">Submit Your Review</h2>
+                  <h2 className="text-2xl font-bold">
+                    Rate & Review Your Trip
+                  </h2>
                   <Button variant="ghost" size="sm" onClick={handleCloseRating}>
                     ✕
                   </Button>
