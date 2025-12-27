@@ -85,6 +85,7 @@ class BusController {
       const search = req.query.search;
       const type = req.query.type;
       const operator_id = req.query.operator_id;
+      const has_seat_layout = req.query.has_seat_layout;
 
       // Convert page to offset
       const offset = (page - 1) * limit;
@@ -96,6 +97,7 @@ class BusController {
         search,
         type,
         operator_id,
+        has_seat_layout,
       });
 
       // Calculate total pages
@@ -313,6 +315,72 @@ class BusController {
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Error checking bus availability' },
+      });
+    }
+  }
+
+  // POST /buses/:id/seat-layout - Set seat layout for a specific bus
+  async setSeatLayout(req, res) {
+    try {
+      const { layout_json } = req.body;
+      if (!layout_json) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'MISSING_LAYOUT', message: 'layout_json is required' },
+        });
+      }
+
+      // Verify bus exists
+      const bus = await busRepository.findById(req.params.id);
+      if (!bus) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'BUS_002', message: 'Bus not found' },
+        });
+      }
+
+      const layout = await busModelRepository.setSeatLayout(req.params.id, layout_json);
+
+      // Regenerate seats from layout
+      await busModelRepository.regenerateSeatsFromLayout(req.params.id);
+
+      res.json({
+        success: true,
+        data: layout,
+        message: 'Seat layout set successfully for bus',
+      });
+    } catch (err) {
+      console.error('Set seat layout error:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Error setting seat layout' },
+      });
+    }
+  }
+
+  // GET /buses/:id/seat-layout - Get seat layout for a specific bus
+  async getSeatLayout(req, res) {
+    try {
+      // Verify bus exists
+      const bus = await busRepository.findById(req.params.id);
+      if (!bus) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'BUS_002', message: 'Bus not found' },
+        });
+      }
+
+      const layout = await busModelRepository.getSeatLayout(req.params.id);
+      res.json({
+        success: true,
+        data: layout,
+        message: layout ? 'Seat layout retrieved' : 'No seat layout found for this bus',
+      });
+    } catch (err) {
+      console.error('Get seat layout error:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Error getting seat layout' },
       });
     }
   }

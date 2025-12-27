@@ -9,6 +9,7 @@ import {
   X,
   Filter,
   PowerOff,
+  Grid3X3,
 } from 'lucide-react'
 import { BusFormDrawer } from '@/components/admin/BusFormDrawer'
 import { useAdminBuses } from '@/hooks/admin/useAdminBuses'
@@ -27,6 +28,9 @@ import { SearchInput } from '@/components/ui/search-input'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
+import { SeatMapEditor } from '@/components/admin/seat-map'
+import type { Bus as SeatMapBus } from '@/types/seatMap'
+import { adminBusService, type SeatLayout } from '@/services/adminBusService'
 
 const AMENITIES_LABELS: Record<string, string> = {
   wifi: 'WiFi',
@@ -62,10 +66,12 @@ const AdminBusManagement: React.FC = () => {
     type: string
     status: string
     operator_id: string
+    has_seat_layout: string
   }>({
     type: '',
     status: '',
     operator_id: '',
+    has_seat_layout: '',
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
@@ -88,6 +94,12 @@ const AdminBusManagement: React.FC = () => {
     imageUrl: '',
     alt: '',
   })
+  const [showSeatMapEditor, setShowSeatMapEditor] = useState(false)
+  const [selectedBusForSeatMap, setSelectedBusForSeatMap] =
+    useState<BusAdminData | null>(null)
+  const [seatMapInitialLayout, setSeatMapInitialLayout] =
+    useState<SeatLayout | null>(null)
+  const [isLoadingSeatLayout, setIsLoadingSeatLayout] = useState(false)
 
   const ITEMS_PER_PAGE = 4
 
@@ -127,7 +139,12 @@ const AdminBusManagement: React.FC = () => {
   }
 
   const clearFilters = () => {
-    const emptyFilters = { type: '', status: '', operator_id: '' }
+    const emptyFilters = {
+      type: '',
+      status: '',
+      operator_id: '',
+      has_seat_layout: '',
+    }
     setFilters(emptyFilters)
     setCurrentPage(1)
     fetchBuses(1, ITEMS_PER_PAGE, searchTerm, emptyFilters)
@@ -209,6 +226,80 @@ const AdminBusManagement: React.FC = () => {
     })
   }
 
+  const handleConfigureSeatMap = async (bus: BusAdminData) => {
+    if (!bus.bus_id) return
+
+    // Fetch existing seat layout
+    const layoutData = await fetchSeatLayout(bus.bus_id)
+
+    setSeatMapInitialLayout(layoutData)
+
+    // Set selected bus and open editor
+    setSelectedBusForSeatMap(bus)
+    setShowSeatMapEditor(true)
+  }
+
+  const handleCloseSeatMapEditor = () => {
+    setShowSeatMapEditor(false)
+    setSelectedBusForSeatMap(null)
+    setSeatMapInitialLayout(null)
+  }
+
+  const handleSaveSeatLayout = async (layoutData: SeatLayout) => {
+    if (!selectedBusForSeatMap?.bus_id) return
+
+    try {
+      await adminBusService.saveSeatLayout(
+        selectedBusForSeatMap.bus_id,
+        layoutData
+      )
+      handleCloseSeatMapEditor()
+      refreshBuses()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to save seat layout'
+      setErrorModal({
+        open: true,
+        title: 'Save Failed',
+        message,
+      })
+    }
+  }
+
+  const fetchSeatLayout = async (busId: string) => {
+    setIsLoadingSeatLayout(true)
+    try {
+      const response = await adminBusService.getSeatLayout(busId)
+
+      // Handle different response structures
+      let layoutData: SeatLayout
+
+      // If response has a data property, use that
+      if (
+        'data' in response &&
+        typeof response.data === 'object' &&
+        response.data !== null &&
+        'rows' in response.data
+      ) {
+        layoutData = response.data as SeatLayout
+      } else {
+        layoutData = response as SeatLayout
+      }
+
+      // If rows is not an array, it means no layout exists
+      if (!Array.isArray(layoutData.rows)) {
+        return null
+      }
+
+      return layoutData
+    } catch (error) {
+      console.error('Error fetching seat layout:', error)
+      return null
+    } finally {
+      setIsLoadingSeatLayout(false)
+    }
+  }
+
   const handleSaveBus = async (
     busData: Omit<BusAdminData, 'bus_id' | 'created_at'>
   ) => {
@@ -267,7 +358,10 @@ const AdminBusManagement: React.FC = () => {
               <Filter className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-medium text-foreground">Filters</h3>
             </div>
-            {(filters.type || filters.status || filters.operator_id) && (
+            {(filters.type ||
+              filters.status ||
+              filters.operator_id ||
+              filters.has_seat_layout) && (
               <button
                 onClick={clearFilters}
                 className="text-xs text-muted-foreground hover:text-foreground underline"
@@ -276,7 +370,7 @@ const AdminBusManagement: React.FC = () => {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">
                 Bus Type
@@ -322,6 +416,23 @@ const AdminBusManagement: React.FC = () => {
                 placeholder="All Operators"
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Seat Map
+              </label>
+              <CustomDropdown
+                options={[
+                  { id: '', label: 'All' },
+                  { id: 'true', label: 'Configured' },
+                  { id: 'false', label: 'Not Configured' },
+                ]}
+                value={filters.has_seat_layout}
+                onChange={(value) =>
+                  handleFilterChange('has_seat_layout', value)
+                }
+                placeholder="All"
+              />
+            </div>
           </div>
         </div>
 
@@ -336,21 +447,23 @@ const AdminBusManagement: React.FC = () => {
               searchTerm ||
               filters.type ||
               filters.status ||
-              filters.operator_id
+              filters.operator_id ||
+              filters.has_seat_layout
                 ? 'Try adjusting your search or filter criteria'
                 : 'Create your first bus to get started'
             }
           />
         ) : (
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <div className="bg-card rounded-lg border border-border overflow-hidden max-w-full">
             <AdminTable
               columns={[
                 { key: 'busDetails', label: 'Bus Details' },
                 { key: 'type', label: 'Type' },
                 { key: 'capacity', label: 'Capacity' },
+                { key: 'seatLayout', label: 'Seat Map' },
                 { key: 'amenities', label: 'Amenities' },
                 { key: 'status', label: 'Status' },
-                { key: 'actions', label: 'Actions', align: 'right' },
+                { key: 'actions', label: 'Actions', align: 'center' },
               ]}
               isLoading={isLoading}
               isEmpty={false}
@@ -398,10 +511,21 @@ const AdminBusManagement: React.FC = () => {
                       </div>
                     </AdminTableCell>
                     <AdminTableCell>
-                      <StatusBadge status="default" label={bus.type} />
+                      <StatusBadge
+                        status="default"
+                        label={bus.type[0].toUpperCase() + bus.type.slice(1)}
+                      />
                     </AdminTableCell>
                     <AdminTableCell className="text-sm text-muted-foreground">
                       {bus.capacity} seats
+                    </AdminTableCell>
+                    <AdminTableCell>
+                      <StatusBadge
+                        status={bus.has_seat_layout ? 'success' : 'warning'}
+                        label={
+                          bus.has_seat_layout ? 'Configured' : 'Not Configured'
+                        }
+                      />
                     </AdminTableCell>
                     <AdminTableCell>
                       <div className="flex flex-wrap gap-1">
@@ -435,8 +559,19 @@ const AdminBusManagement: React.FC = () => {
                         }
                       />
                     </AdminTableCell>
-                    <AdminTableCell align="right">
-                      <div className="flex items-center justify-end gap-2">
+                    <AdminTableCell className="text-center">
+                      <div className="inline-flex items-center justify-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleConfigureSeatMap(bus)
+                          }}
+                          style={{ color: 'var(--primary)' }}
+                          className="hover:opacity-80 disabled:opacity-50"
+                          title="Configure seat map"
+                        >
+                          <Grid3X3 className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
@@ -480,7 +615,7 @@ const AdminBusManagement: React.FC = () => {
                   {/* Expanded Images Row */}
                   {expandedBusId === bus.bus_id && (
                     <tr>
-                      <td colSpan={6} className="bg-muted/50 px-4 py-4">
+                      <td colSpan={7} className="bg-muted/50 px-4 py-4">
                         <div className="space-y-3">
                           <h4 className="text-sm font-medium text-foreground">
                             Bus Images (
@@ -569,6 +704,31 @@ const AdminBusManagement: React.FC = () => {
           busModels={busModels}
           onRefresh={refreshBuses}
         />
+
+        {/* Seat Map Editor */}
+        {showSeatMapEditor && selectedBusForSeatMap && (
+          <SeatMapEditor
+            bus={
+              {
+                bus_id: selectedBusForSeatMap.bus_id || '',
+                license_plate: selectedBusForSeatMap.plate_number,
+                bus_model_name: selectedBusForSeatMap.model,
+                operator_name:
+                  operators.find(
+                    (op) => op.operator_id === selectedBusForSeatMap.operator_id
+                  )?.name || '',
+                status: selectedBusForSeatMap.status,
+                has_seat_layout: selectedBusForSeatMap.has_seat_layout || false,
+                type: selectedBusForSeatMap.type || '',
+              } as SeatMapBus
+            }
+            initialLayout={seatMapInitialLayout}
+            onSave={handleSaveSeatLayout}
+            onClose={handleCloseSeatMapEditor}
+            loading={isLoadingSeatLayout}
+          />
+        )}
+
         {/* Error Modal */}
         <ErrorModal
           open={errorModal.open}

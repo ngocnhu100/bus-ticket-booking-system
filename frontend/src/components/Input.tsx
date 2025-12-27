@@ -5,12 +5,14 @@ type InputProps = {
   label: string
   error?: string
   hint?: string
+  hideLabel?: boolean
 } & InputHTMLAttributes<HTMLInputElement>
 
 export default function Input({
   label,
   error,
   hint,
+  hideLabel = false,
   className,
   id,
   ...props
@@ -19,7 +21,9 @@ export default function Input({
 
   return (
     <label className="block text-left">
-      <span className="text-sm font-medium text-slate-600">{label}</span>
+      {!hideLabel && (
+        <span className="text-sm font-medium text-slate-600">{label}</span>
+      )}
       <input
         id={inputId}
         className={cn(

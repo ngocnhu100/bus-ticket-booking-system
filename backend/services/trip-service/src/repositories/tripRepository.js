@@ -39,7 +39,6 @@ class TripRepository {
     `;
   }
 
-  // Helper để lấy pickup/dropoff points (từ route_stops, tính time dựa trên departure_time + offset)
   async _getPointsForTrip(trip_id, route_id, departure_time) {
     // Route-level points: query `route_points` (canonical route-level pickup/dropoff offsets)
     const routePointsQuery = `
@@ -108,10 +107,13 @@ class TripRepository {
     }
 
     // If no route_points defined, fallback to existing route_stops behaviour (compute from offsets)
+    console.log(
+      `[TripRepository] No route_points for route_id=${route_id}, falling back to route_stops`
+    );
     const fallbackQuery = `
       SELECT 
         stop_id as point_id, stop_name as name, address, 
-        ($1::timestamptz + INTERVAL '1 minute' * departure_offset_minutes) AS time
+        ($1::timestamptz + INTERVAL '1 minute' * arrival_offset_minutes) AS time
       FROM route_stops 
       WHERE route_id = $2
       ORDER BY sequence

@@ -30,7 +30,7 @@ SELECT
   true as is_active
 FROM buses b
 JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
+JOIN seat_layouts sl ON b.bus_id = sl.bus_id
 CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
 CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') WITH ORDINALITY as seat_element(value, column_index)
 WHERE seat_element.value IS NOT NULL

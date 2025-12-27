@@ -15,140 +15,140 @@ INSERT INTO bus_models (name, total_seats) VALUES
 ('Volvo 50 seated', 50)
 ON CONFLICT (name) DO NOTHING;
 
--- 2. Seat Layouts
-INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
+-- 2. Seat Layouts (DEPRECATED - now per bus, not per model)
+-- INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
 -- Hyundai Universe 45 seated
-((SELECT bus_model_id FROM bus_models WHERE name = 'Hyundai Universe 45 seated'),
- '{
-   "type": "seated",
-   "floors": 1,
-   "rows": [
-     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
-     {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
-     {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 6, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 7, "seats": ["5A","5B",null,"5C","5D"]},
-     {"row": 8, "seats": ["6A","6B",null,"6C","6D"]},
-     {"row": 9, "seats": ["7A","7B",null,"7C","7D"]},
-     {"row": 10, "seats": ["8A","8B","8C","8D","8E"]}
-   ]
- }'),
-
--- Thaco Mobihome 34 double sleepers
-((SELECT bus_model_id FROM bus_models WHERE name = 'Thaco Mobihome 34 double sleepers'),
- '{
-   "type": "sleeper",
-   "floors": 2,
-   "rows": [
-     {"floor": 1, "row": 1, "seats": ["H1A","H1B"]},
-     {"floor": 1, "row": 2, "seats": ["H2A","H2B"]},
-     {"floor": 1, "row": 3, "seats": ["H3A","H3B"]},
-     {"floor": 1, "row": 4, "seats": ["H4A","H4B"]},
-     {"floor": 1, "row": 5, "seats": ["H5A","H5B"]},
-     {"floor": 1, "row": 6, "seats": ["H6A","H6B"]},
-     {"floor": 1, "row": 7, "seats": ["H7A","H7B"]},
-     {"floor": 1, "row": 8, "seats": ["H8A","H8B"]},
-     {"floor": 1, "row": 9, "seats": ["H9A","H9B"]},
-     {"floor": 2, "row": 1, "seats": ["H10A","H10B"]},
-     {"floor": 2, "row": 2, "seats": ["H11A","H11B"]},
-     {"floor": 2, "row": 3, "seats": ["H12A","H12B"]},
-     {"floor": 2, "row": 4, "seats": ["H13A","H13B"]},
-     {"floor": 2, "row": 5, "seats": ["H14A","H14B"]}
-   ]
- }'),
-
--- Samco Isuzu Limousine 29 seats
-((SELECT bus_model_id FROM bus_models WHERE name = 'Samco Isuzu Limousine 29 seats'),
- '{
-   "type": "limousine",
-   "floors": 1,
-   "rows": [
-     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
-     {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
-     {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 6, "seats": ["4A","4B","4C","4D","4E"]}
-   ]
- }'),
-
--- Tracomeco Highlander 38 sleepers
-((SELECT bus_model_id FROM bus_models WHERE name = 'Tracomeco Highlander 38 sleepers'),
- '{
-   "type": "sleeper",
-   "floors": 1,
-   "rows": [
-     {"row": 1, "seats": ["1A","1B"]},
-     {"row": 2, "seats": ["2A","2B"]},
-     {"row": 3, "seats": ["3A","3B"]},
-     {"row": 4, "seats": ["4A","4B"]},
-     {"row": 5, "seats": ["5A","5B"]},
-     {"row": 6, "seats": ["6A","6B"]},
-     {"row": 7, "seats": ["7A","7B"]},
-     {"row": 8, "seats": ["8A","8B"]},
-     {"row": 9, "seats": ["9A","9B"]},
-     {"row": 10, "seats": ["10A","10B"]},
-     {"row": 11, "seats": ["11A","11B"]},
-     {"row": 12, "seats": ["12A","12B"]},
-     {"row": 13, "seats": ["13A","13B"]},
-     {"row": 14, "seats": ["14A","14B"]},
-     {"row": 15, "seats": ["15A","15B"]},
-     {"row": 16, "seats": ["16A","16B"]},
-     {"row": 17, "seats": ["17A","17B"]},
-     {"row": 18, "seats": ["18A","18B"]},
-     {"row": 19, "seats": ["19A","19B"]}
-   ]
- }'),
-
--- Fuso Rosa 22 seated
-((SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated'),
- '{
-   "type": "seated",
-   "floors": 1,
-   "rows": [
-     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
-     {"row": 2, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 3, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 4, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 5, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 6, "seats": ["5A","5B","5C","5D","5E"]}
-   ]
- }'),
-
--- Mercedes Sprinter 16 seats
-((SELECT bus_model_id FROM bus_models WHERE name = 'Mercedes Sprinter 16 seats'),
- '{
-   "type": "seated",
-   "floors": 1,
-   "rows": [
-     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
-     {"row": 2, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 3, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 4, "seats": ["3A","3B","3C","3D","3E"]}
-   ]
- }'),
-
--- Volvo 50 seated
-((SELECT bus_model_id FROM bus_models WHERE name = 'Volvo 50 seated'),
- '{
-   "type": "seated",
-   "floors": 1,
-   "rows": [
-     {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
-     {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
-     {"row": 3, "seats": ["VIP3A","VIP3B",null,"VIP3C","VIP3D"]},
-     {"row": 4, "seats": ["1A","1B",null,"1C","1D"]},
-     {"row": 5, "seats": ["2A","2B",null,"2C","2D"]},
-     {"row": 6, "seats": ["3A","3B",null,"3C","3D"]},
-     {"row": 7, "seats": ["4A","4B",null,"4C","4D"]},
-     {"row": 8, "seats": ["5A","5B",null,"5C","5D"]},
-     {"row": 9, "seats": ["6A","6B",null,"6C","6D"]},
-     {"row": 10, "seats": ["7A","7B","7C","7D","7E"]}
-   ]
- }')
-ON CONFLICT DO NOTHING;
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Hyundai Universe 45 seated'),
+--  '{
+--    "type": "seated",
+--    "floors": 1,
+--    "rows": [
+--      {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+--      {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+--      {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
+--      {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
+--      {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
+--      {"row": 6, "seats": ["4A","4B",null,"4C","4D"]},
+--      {"row": 7, "seats": ["5A","5B",null,"5C","5D"]},
+--      {"row": 8, "seats": ["6A","6B",null,"6C","6D"]},
+--      {"row": 9, "seats": ["7A","7B",null,"7C","7D"]},
+--      {"row": 10, "seats": ["8A","8B","8C","8D","8E"]}
+--    ]
+--  }'),
+--
+-- -- Thaco Mobihome 34 double sleepers
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Thaco Mobihome 34 double sleepers'),
+--  '{
+--    "type": "sleeper",
+--    "floors": 2,
+--    "rows": [
+--      {"floor": 1, "row": 1, "seats": ["H1A","H1B"]},
+--      {"floor": 1, "row": 2, "seats": ["H2A","H2B"]},
+--      {"floor": 1, "row": 3, "seats": ["H3A","H3B"]},
+--      {"floor": 1, "row": 4, "seats": ["H4A","H4B"]},
+--      {"floor": 1, "row": 5, "seats": ["H5A","H5B"]},
+--      {"floor": 1, "row": 6, "seats": ["H6A","H6B"]},
+--      {"floor": 1, "row": 7, "seats": ["H7A","H7B"]},
+--      {"floor": 1, "row": 8, "seats": ["H8A","H8B"]},
+--      {"floor": 1, "row": 9, "seats": ["H9A","H9B"]},
+--      {"floor": 2, "row": 1, "seats": ["H10A","H10B"]},
+--      {"floor": 2, "row": 2, "seats": ["H11A","H11B"]},
+--      {"floor": 2, "row": 3, "seats": ["H12A","H12B"]},
+--      {"floor": 2, "row": 4, "seats": ["H13A","H13B"]},
+--      {"floor": 2, "row": 5, "seats": ["H14A","H14B"]}
+--    ]
+--  }'),
+--
+-- -- Samco Isuzu Limousine 29 seats
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Samco Isuzu Limousine 29 seats'),
+--  '{
+--    "type": "limousine",
+--    "floors": 1,
+--    "rows": [
+--      {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+--      {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+--      {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
+--      {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
+--      {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
+--      {"row": 6, "seats": ["4A","4B","4C","4D","4E"]}
+--    ]
+--  }'),
+--
+-- -- Tracomeco Highlander 38 sleepers
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Tracomeco Highlander 38 sleepers'),
+--  '{
+--    "type": "sleeper",
+--    "floors": 1,
+--    "rows": [
+--      {"row": 1, "seats": ["1A","1B"]},
+--      {"row": 2, "seats": ["2A","2B"]},
+--      {"row": 3, "seats": ["3A","3B"]},
+--      {"row": 4, "seats": ["4A","4B"]},
+--      {"row": 5, "seats": ["5A","5B"]},
+--      {"row": 6, "seats": ["6A","6B"]},
+--      {"row": 7, "seats": ["7A","7B"]},
+--      {"row": 8, "seats": ["8A","8B"]},
+--      {"row": 9, "seats": ["9A","9B"]},
+--      {"row": 10, "seats": ["10A","10B"]},
+--      {"row": 11, "seats": ["11A","11B"]},
+--      {"row": 12, "seats": ["12A","12B"]},
+--      {"row": 13, "seats": ["13A","13B"]},
+--      {"row": 14, "seats": ["14A","14B"]},
+--      {"row": 15, "seats": ["15A","15B"]},
+--      {"row": 16, "seats": ["16A","16B"]},
+--      {"row": 17, "seats": ["17A","17B"]},
+--      {"row": 18, "seats": ["18A","18B"]},
+--      {"row": 19, "seats": ["19A","19B"]}
+--    ]
+--  }'),
+--
+-- -- Fuso Rosa 22 seated
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Fuso Rosa 22 seated'),
+--  '{
+--    "type": "seated",
+--    "floors": 1,
+--    "rows": [
+--      {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+--      {"row": 2, "seats": ["1A","1B",null,"1C","1D"]},
+--      {"row": 3, "seats": ["2A","2B",null,"2C","2D"]},
+--      {"row": 4, "seats": ["3A","3B",null,"3C","3D"]},
+--      {"row": 5, "seats": ["4A","4B",null,"4C","4D"]},
+--      {"row": 6, "seats": ["5A","5B","5C","5D","5E"]}
+--    ]
+--  }'),
+--
+-- -- Mercedes Sprinter 16 seats
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Mercedes Sprinter 16 seats'),
+--  '{
+--    "type": "seated",
+--    "floors": 1,
+--    "rows": [
+--      {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+--      {"row": 2, "seats": ["1A","1B",null,"1C","1D"]},
+--      {"row": 3, "seats": ["2A","2B",null,"2C","2D"]},
+--      {"row": 4, "seats": ["3A","3B","3C","3D","3E"]}
+--    ]
+--  }'),
+--
+-- -- Volvo 50 seated
+-- ((SELECT bus_model_id FROM bus_models WHERE name = 'Volvo 50 seated'),
+--  '{
+--    "type": "seated",
+--    "floors": 1,
+--    "rows": [
+--      {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+--      {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+--      {"row": 3, "seats": ["VIP3A","VIP3B",null,"VIP3C","VIP3D"]},
+--      {"row": 4, "seats": ["1A","1B",null,"1C","1D"]},
+--      {"row": 5, "seats": ["2A","2B",null,"2C","2D"]},
+--      {"row": 6, "seats": ["3A","3B",null,"3C","3D"]},
+--      {"row": 7, "seats": ["4A","4B",null,"4C","4D"]},
+--      {"row": 8, "seats": ["5A","5B",null,"5C","5D"]},
+--      {"row": 9, "seats": ["6A","6B",null,"6C","6D"]},
+--      {"row": 10, "seats": ["7A","7B","7C","7D","7E"]}
+--    ]
+--  }')
+-- ON CONFLICT DO NOTHING;
 
 -- 3. Operators
 INSERT INTO operators (name, contact_email, contact_phone, status, rating, logo_url) VALUES
@@ -428,36 +428,40 @@ ON CONFLICT DO NOTHING;
 -- Generate seats for all buses
 DELETE FROM seats;
 
-INSERT INTO seats (bus_id, seat_code, seat_type, position, price, row_num, col_num, is_active)
-SELECT
-  b.bus_id,
-  seat_element.value #>> '{}' as seat_code,
-  CASE
-    WHEN seat_element.value #>> '{}' LIKE 'VIP%' THEN 'vip'
-    WHEN seat_element.value #>> '{}' LIKE 'H%A' OR seat_element.value #>> '{}' LIKE 'H%B' THEN 'vip'
-    ELSE 'standard'
-  END as seat_type,
-  CASE
-    WHEN seat_element.value #>> '{}' ~ '^[0-9]+A$' THEN 'window'  -- Row + A = window
-    WHEN seat_element.value #>> '{}' ~ '^[0-9]+B$' THEN 'aisle'   -- Row + B = aisle
-    WHEN seat_element.value #>> '{}' ~ '^[0-9]+C$' THEN 'aisle'   -- Row + C = aisle
-    WHEN seat_element.value #>> '{}' ~ '^[0-9]+D$' THEN 'aisle'   -- Row + D = aisle
-    WHEN seat_element.value #>> '{}' ~ '^[0-9]+E$' THEN 'aisle'   -- Row + E = aisle
-    ELSE 'aisle'
-  END as position,
-  CASE
-    WHEN seat_element.value #>> '{}' LIKE 'VIP%' THEN 50000  -- VIP surcharge
-    WHEN seat_element.value #>> '{}' LIKE 'H%A' OR seat_element.value #>> '{}' LIKE 'H%B' THEN 100000  -- Sleeper surcharge
-    ELSE 0
-  END as price,
-  (row_data->>'row')::integer as row_num,
-  seat_element.column_index as col_num,
-  true as is_active
-FROM buses b
-JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
-CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
-CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') WITH ORDINALITY as seat_element(value, column_index)
-WHERE seat_element.value IS NOT NULL
-  AND seat_element.value::text != 'null'
-ON CONFLICT (bus_id, seat_code) DO NOTHING;
+-- Generate seats for all buses
+-- NOTE: Seat generation moved to migration 033_migrate_seat_layouts_to_bus_id.sql
+-- DELETE FROM seats;
+
+-- INSERT INTO seats (bus_id, seat_code, seat_type, position, price, row_num, col_num, is_active)
+-- SELECT
+--   b.bus_id,
+--   seat_element.value #>> '{}' as seat_code,
+--   CASE
+--     WHEN seat_element.value #>> '{}' LIKE 'VIP%' THEN 'vip'
+--     WHEN seat_element.value #>> '{}' LIKE 'H%A' OR seat_element.value #>> '{}' LIKE 'H%B' THEN 'vip'
+--     ELSE 'standard'
+--   END as seat_type,
+--   CASE
+--     WHEN seat_element.value #>> '{}' ~ '^[0-9]+A$' THEN 'window'  -- Row + A = window
+--     WHEN seat_element.value #>> '{}' ~ '^[0-9]+B$' THEN 'aisle'   -- Row + B = aisle
+--     WHEN seat_element.value #>> '{}' ~ '^[0-9]+C$' THEN 'aisle'   -- Row + C = aisle
+--     WHEN seat_element.value #>> '{}' ~ '^[0-9]+D$' THEN 'aisle'   -- Row + D = aisle
+--     WHEN seat_element.value #>> '{}' ~ '^[0-9]+E$' THEN 'aisle'   -- Row + E = aisle
+--     ELSE 'aisle'
+--   END as position,
+--   CASE
+--     WHEN seat_element.value #>> '{}' LIKE 'VIP%' THEN 50000  -- VIP surcharge
+--     WHEN seat_element.value #>> '{}' LIKE 'H%A' OR seat_element.value #>> '{}' LIKE 'H%B' THEN 100000  -- Sleeper surcharge
+--     ELSE 0
+--   END as price,
+--   (row_data->>'row')::integer as row_num,
+--   seat_element.column_index as col_num,
+--   true as is_active
+-- FROM buses b
+-- JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+-- JOIN seat_layouts sl ON b.bus_id = sl.bus_id
+-- CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
+-- CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') WITH ORDINALITY as seat_element(value, column_index)
+-- WHERE seat_element.value IS NOT NULL
+--   AND seat_element.value::text != 'null'
+-- ON CONFLICT (bus_id, seat_code) DO NOTHING;

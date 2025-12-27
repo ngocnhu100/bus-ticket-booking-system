@@ -33,7 +33,12 @@ export function useAdminBuses() {
       page = 1,
       limit = 20,
       searchTerm = '',
-      filters: { type?: string; status?: string; operator_id?: string } = {}
+      filters: {
+        type?: string
+        status?: string
+        operator_id?: string
+        has_seat_layout?: string
+      } = {}
     ) => {
       setIsLoading(true)
       setError(null)
@@ -50,6 +55,8 @@ export function useAdminBuses() {
         if (filters.status) params.append('status', filters.status)
         if (filters.operator_id)
           params.append('operator_id', filters.operator_id)
+        if (filters.has_seat_layout)
+          params.append('has_seat_layout', filters.has_seat_layout)
 
         const data = await request(`/trips/buses?${params.toString()}`, {
           method: 'GET',

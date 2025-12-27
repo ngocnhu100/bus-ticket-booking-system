@@ -31,7 +31,7 @@ interface SeatMapApiResponse {
       seat_code: string
       row: number
       column: number
-      seat_type: 'standard' | 'vip' | 'window' | 'aisle'
+      seat_type: 'standard' | 'vip'
       position: 'window' | 'aisle'
       price: number
       status: 'available' | 'occupied' | 'locked' | 'disabled'
@@ -45,7 +45,7 @@ interface SeatMapApiResponse {
     seat_code: string
     row: number
     column: number
-    seat_type: 'standard' | 'vip' | 'window' | 'aisle'
+    seat_type: 'standard' | 'vip'
     position: 'window' | 'aisle'
     price: number
     status: 'available' | 'occupied' | 'locked' | 'disabled'

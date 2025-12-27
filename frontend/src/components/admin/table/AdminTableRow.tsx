@@ -34,12 +34,12 @@ export const AdminTableCell: React.FC<AdminTableCellProps> = ({
   align = 'left',
   className = '',
 }) => {
-  const baseClass = 'px-6 py-4 whitespace-nowrap'
+  const baseClass = 'px-4 py-4 text-sm'
   const alignClass =
     align === 'center'
-      ? 'text-center'
+      ? 'text-center flex justify-center items-center'
       : align === 'right'
-        ? 'text-right'
+        ? 'text-right flex justify-end items-center'
         : 'text-left'
 
   return (

@@ -69,54 +69,54 @@ BEGIN
 
   -- Add similar for other models: Samco, Tracomeco, Fuso, Mercedes, Volvo
 
-  -- 2. seat_layouts (only insert if not exists for bus_model_id, layout updated to match 019)
-  SELECT seat_layout_id INTO v_seat_layout_hyundai FROM seat_layouts WHERE bus_model_id = v_bus_model_hyundai;
-  IF v_seat_layout_hyundai IS NULL THEN
-    INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
-    (v_bus_model_hyundai,
-     '{
-       "type": "seated",
-       "floors": 1,
-       "rows": [
-         {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
-         {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
-         {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
-         {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
-         {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
-         {"row": 6, "seats": ["4A","4B",null,"4C","4D"]},
-         {"row": 7, "seats": ["5A","5B",null,"5C","5D"]},
-         {"row": 8, "seats": ["6A","6B",null,"6C","6D"]},
-         {"row": 9, "seats": ["7A","7B",null,"7C","7D"]},
-         {"row": 10, "seats": ["8A","8B","8C","8D","8E"]}
-       ]
-     }') RETURNING seat_layout_id INTO v_seat_layout_hyundai;
-  END IF;
+  -- 2. seat_layouts (DEPRECATED - now per bus, not per model)
+  -- SELECT seat_layout_id INTO v_seat_layout_hyundai FROM seat_layouts WHERE bus_model_id = v_bus_model_hyundai;
+  -- IF v_seat_layout_hyundai IS NULL THEN
+  --   INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
+  --   (v_bus_model_hyundai,
+  --    '{
+  --      "type": "seated",
+  --      "floors": 1,
+  --      "rows": [
+  --        {"row": 1, "seats": ["VIP1A","VIP1B",null,"VIP1C","VIP1D"]},
+  --        {"row": 2, "seats": ["VIP2A","VIP2B",null,"VIP2C","VIP2D"]},
+  --        {"row": 3, "seats": ["1A","1B",null,"1C","1D"]},
+  --        {"row": 4, "seats": ["2A","2B",null,"2C","2D"]},
+  --        {"row": 5, "seats": ["3A","3B",null,"3C","3D"]},
+  --        {"row": 6, "seats": ["4A","4B",null,"4C","4D"]},
+  --        {"row": 7, "seats": ["5A","5B",null,"5C","5D"]},
+  --        {"row": 8, "seats": ["6A","6B",null,"6C","6D"]},
+  --        {"row": 9, "seats": ["7A","7B",null,"7C","7D"]},
+  --        {"row": 10, "seats": ["8A","8B","8C","8D","8E"]}
+  --      ]
+  --    }') RETURNING seat_layout_id INTO v_seat_layout_hyundai;
+  -- END IF;
 
-  SELECT seat_layout_id INTO v_seat_layout_thaco FROM seat_layouts WHERE bus_model_id = v_bus_model_thaco;
-  IF v_seat_layout_thaco IS NULL THEN
-    INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
-    (v_bus_model_thaco,
-     '{
-       "type": "sleeper",
-       "floors": 2,
-       "rows": [
-         {"floor": 1, "row": 1, "seats": ["H1A","H1B"]},
-         {"floor": 1, "row": 2, "seats": ["H2A","H2B"]},
-         {"floor": 1, "row": 3, "seats": ["H3A","H3B"]},
-         {"floor": 1, "row": 4, "seats": ["H4A","H4B"]},
-         {"floor": 1, "row": 5, "seats": ["H5A","H5B"]},
-         {"floor": 1, "row": 6, "seats": ["H6A","H6B"]},
-         {"floor": 1, "row": 7, "seats": ["H7A","H7B"]},
-         {"floor": 1, "row": 8, "seats": ["H8A","H8B"]},
-         {"floor": 1, "row": 9, "seats": ["H9A","H9B"]},
-         {"floor": 2, "row": 1, "seats": ["H10A","H10B"]},
-         {"floor": 2, "row": 2, "seats": ["H11A","H11B"]},
-         {"floor": 2, "row": 3, "seats": ["H12A","H12B"]},
-         {"floor": 2, "row": 4, "seats": ["H13A","H13B"]},
-         {"floor": 2, "row": 5, "seats": ["H14A","H14B"]}
-       ]
-     }') RETURNING seat_layout_id INTO v_seat_layout_thaco;
-  END IF;
+  -- SELECT seat_layout_id INTO v_seat_layout_thaco FROM seat_layouts WHERE bus_model_id = v_bus_model_thaco;
+  -- IF v_seat_layout_thaco IS NULL THEN
+  --   INSERT INTO seat_layouts (bus_model_id, layout_json) VALUES
+  --   (v_bus_model_thaco,
+  --    '{
+  --      "type": "sleeper",
+  --      "floors": 2,
+  --      "rows": [
+  --        {"floor": 1, "row": 1, "seats": ["H1A","H1B"]},
+  --        {"floor": 1, "row": 2, "seats": ["H2A","H2B"]},
+  --        {"floor": 1, "row": 3, "seats": ["H3A","H3B"]},
+  --        {"floor": 1, "row": 4, "seats": ["H4A","H4B"]},
+  --        {"floor": 1, "row": 5, "seats": ["H5A","H5B"]},
+  --        {"floor": 1, "row": 6, "seats": ["H6A","H6B"]},
+  --        {"floor": 1, "row": 7, "seats": ["H7A","H7B"]},
+  --        {"floor": 1, "row": 8, "seats": ["H8A","H8B"]},
+  --        {"floor": 1, "row": 9, "seats": ["H9A","H9B"]},
+  --        {"floor": 2, "row": 1, "seats": ["H10A","H10B"]},
+  --        {"floor": 2, "row": 2, "seats": ["H11A","H11B"]},
+  --        {"floor": 2, "row": 3, "seats": ["H12A","H12B"]},
+  --        {"floor": 2, "row": 4, "seats": ["H13A","H13B"]},
+  --        {"floor": 2, "row": 5, "seats": ["H14A","H14B"]}
+  --      ]
+  --    }') RETURNING seat_layout_id INTO v_seat_layout_thaco;
+  -- END IF;
 
   -- Add similar for other layouts, updating to match 019 where possible
 
@@ -185,7 +185,7 @@ BEGIN
     true as is_active
   FROM buses b
   JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-  JOIN seat_layouts sl ON bm.bus_model_id = sl.bus_model_id
+  JOIN seat_layouts sl ON b.bus_id = sl.bus_id
   CROSS JOIN LATERAL jsonb_array_elements(sl.layout_json->'rows') as row_data
   CROSS JOIN LATERAL jsonb_array_elements(row_data->'seats') WITH ORDINALITY as seat_element(value, column_index)
   WHERE seat_element.value IS NOT NULL

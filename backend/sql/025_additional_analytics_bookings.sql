@@ -227,9 +227,77 @@ INSERT INTO booking_passengers (
  '3C', 520000, 'Pham Thi D', '+84991112233', '789123456'),
 
 ((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216001' LIMIT 1),
- '4A', 350000, 'Hoang Van E', '+84995554433', '321654987');
+ '4A', 350000, 'Hoang Van E', '+84995554433', '321654987'),
 
--- Display summary of inserted data
+-- Add passengers for remaining bookings
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251218003' LIMIT 1),
+ '5B', 350000, 'Vo Thi F', '+84994443322', '654987321'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251218004' LIMIT 1),
+ '6C', 520000, 'Dinh Van G', '+84993332211', '147258369'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251217003' LIMIT 1),
+ '7A', 380000, 'Bui Thi H', '+84992221100', '963852741'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251217004' LIMIT 1),
+ '8B', 410000, 'Do Van I', '+84991110099', '852741963'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251217005' LIMIT 1),
+ '9C', 550000, 'Ho Thi J', '+84990009988', '741963852'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216002' LIMIT 1),
+ '10A', 520000, 'Nguyen Van K', '+84989998877', '369258147'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216003' LIMIT 1),
+ 'VIP2A', 350000, 'Tran Thi L', '+84988887766', '258147369'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216004' LIMIT 1),
+ '11B', 600000, 'Le Van M', '+84987776655', '147369258'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216005' LIMIT 1),
+ '12C', 420000, 'Pham Thi N', '+84986665544', '963147852'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251216006' LIMIT 1),
+ '13A', 380000, 'Hoang Van O', '+84985554433', '852369741'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251215001' LIMIT 1),
+ '14B', 450000, 'Vo Thi P', '+84984443322', '741852963'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251215002' LIMIT 1),
+ '15C', 320000, 'Dinh Van Q', '+84983332211', '369741852'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251215003' LIMIT 1),
+ 'VIP3A', 510000, 'Bui Thi R', '+84982221100', '258963741'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251214001' LIMIT 1),
+ '16A', 480000, 'Do Van S', '+84981110099', '147852369'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251214002' LIMIT 1),
+ '17B', 350000, 'Ho Thi T', '+84980009988', '963741258'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251214003' LIMIT 1),
+ '18C', 420000, 'Nguyen Van U', '+84979998877', '852147963'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251213001' LIMIT 1),
+ '19A', 550000, 'Tran Thi V', '+84978887766', '741369852'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251213002' LIMIT 1),
+ '20B', 480000, 'Le Van W', '+84977776655', '369852741'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251212001' LIMIT 1),
+ '21C', 380000, 'Pham Thi X', '+84976665544', '258741963'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251212002' LIMIT 1),
+ '22A', 420000, 'Hoang Van Y', '+84975554433', '147963852'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251211001' LIMIT 1),
+ 'VIP4A', 450000, 'Vo Thi Z', '+84974443322', '963852147'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251211002' LIMIT 1),
+ '23B', 320000, 'Dinh Van AA', '+84973332211', '852741369'),
+
+((SELECT booking_id FROM bookings WHERE booking_reference = 'BK20251211003' LIMIT 1),
+ '24C', 510000, 'Bui Thi BB', '+84972221100', '741963258');
 SELECT
     DATE(created_at) as booking_date,
     COUNT(*) as total_bookings,

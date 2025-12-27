@@ -107,6 +107,10 @@ app.get(
   busController.checkAvailability
 );
 
+// Bus seat layout management (mỗi bus có seat layout riêng)
+app.post('/buses/:id/seat-layout', authenticate, authorize(['admin']), busController.setSeatLayout);
+app.get('/buses/:id/seat-layout', authenticate, authorize(['admin']), busController.getSeatLayout);
+
 // ============================= ADMIN: OPERATOR MANAGEMENT (mới thêm - thẳng trong index.js) =============================
 
 // 1. Danh sách nhà xe + filter + phân trang + thống kê số tuyến, số xe

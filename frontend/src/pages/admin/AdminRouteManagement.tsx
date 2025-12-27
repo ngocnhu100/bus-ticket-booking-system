@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
-import { Plus, Edit, Trash2, MapPin, ArrowRight, Filter } from 'lucide-react'
+import {
+  Plus,
+  Edit,
+  Trash2,
+  MapPin,
+  ArrowRight,
+  Filter,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react'
 import type { RouteAdminData } from '@/types/trip.types'
 import { useAdminRoutes } from '@/hooks/admin/useAdminRoutes'
 import { useToast } from '@/hooks/use-toast'
@@ -445,13 +454,13 @@ const AdminRouteManagement: React.FC = () => {
         ) : (
           <>
             {/* Routes Table */}
-            <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <div className="bg-card rounded-lg border border-border overflow-hidden max-w-full">
               <AdminTable
                 columns={[
                   { key: 'route', label: 'Route' },
                   { key: 'distance', label: 'Distance' },
                   { key: 'duration', label: 'Duration' },
-                  { key: 'actions', label: 'Actions' },
+                  { key: 'actions', label: 'Actions', align: 'center' },
                 ]}
               >
                 {routes.map((route) => (
@@ -462,6 +471,13 @@ const AdminRouteManagement: React.FC = () => {
                     >
                       <AdminTableCell>
                         <div className="flex items-center gap-2">
+                          <div className="mr-1">
+                            {expandedRoute === route.route_id ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
                           <MapPin className="h-4 w-4 text-muted-foreground" />
                           <div>
                             <div className="text-sm flex items-center gap-1 font-medium text-foreground">
@@ -488,8 +504,8 @@ const AdminRouteManagement: React.FC = () => {
                           {route.estimated_minutes % 60}m
                         </span>
                       </AdminTableCell>
-                      <AdminTableCell align="right" className="w-24">
-                        <div className="flex items-center justify-end gap-2">
+                      <AdminTableCell className="w-24 text-center">
+                        <div className="inline-flex items-center justify-center gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()

@@ -35,6 +35,7 @@ export interface BusAdminData {
   status: 'active' | 'inactive' | 'maintenance'
   image_url?: string
   image_urls?: string[]
+  has_seat_layout?: boolean
   created_at?: string
 }
 

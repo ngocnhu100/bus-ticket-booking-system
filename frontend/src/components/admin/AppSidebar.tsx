@@ -8,7 +8,6 @@ import {
   FileText,
   Settings,
   MapPin,
-  Grid3X3,
 } from 'lucide-react'
 import { NavLink } from '@/components/NavLink'
 import { useLocation } from 'react-router-dom'
@@ -29,7 +28,6 @@ const menuItems = [
   { title: 'Overview', url: '/admin', icon: LayoutDashboard },
   { title: 'Routes', url: '/admin/routes', icon: Route },
   { title: 'Buses', url: '/admin/buses', icon: Bus },
-  { title: 'Seat Maps', url: '/admin/seat-maps', icon: Grid3X3 },
   { title: 'Trips', url: '/admin/trips', icon: MapPin },
   { title: 'Operators', url: '/admin/operators', icon: Briefcase },
   { title: 'Users', url: '/admin/users', icon: Users },

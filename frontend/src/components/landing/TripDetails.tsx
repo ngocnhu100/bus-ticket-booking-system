@@ -342,6 +342,17 @@ export function TripDetails({ trip }: TripDetailsProps) {
                     </p>
                   </div>
                 )}
+                {trip.bus.bus_type && (
+                  <div className="p-4 bg-muted/30 rounded-lg border border-muted">
+                    <h5 className="font-medium text-sm text-muted-foreground mb-1">
+                      Type
+                    </h5>
+                    <p className="text-foreground font-medium">
+                      {trip.bus.bus_type.charAt(0).toUpperCase() +
+                        trip.bus.bus_type.slice(1)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

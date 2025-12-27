@@ -66,9 +66,17 @@ class BusRepository {
   }
 
   // Lấy tất cả xe (GET /buses)
-  async findAll({ limit = 20, offset = 0, status, search, type, operator_id } = {}) {
+  async findAll({
+    limit = 20,
+    offset = 0,
+    status,
+    search,
+    type,
+    operator_id,
+    has_seat_layout,
+  } = {}) {
     try {
-      let countQuery = `SELECT COUNT(*) as total FROM buses b JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id`;
+      let countQuery = `SELECT COUNT(*) as total FROM buses b JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id JOIN operators o ON b.operator_id = o.operator_id LEFT JOIN seat_layouts sl ON b.bus_id = sl.bus_id`;
       let query = `SELECT
         b.bus_id,
         b.operator_id,           -- THÊM DÒNG NÀY (rất quan trọng)
@@ -81,9 +89,13 @@ class BusRepository {
         b.image_url,
         b.created_at,
         bm.name as model_name,
-        bm.total_seats
+        bm.total_seats,
+        o.name as operator_name,
+        CASE WHEN sl.layout_json IS NOT NULL THEN true ELSE false END as has_seat_layout
       FROM buses b
-      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id`;
+      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+      JOIN operators o ON b.operator_id = o.operator_id
+      LEFT JOIN seat_layouts sl ON b.bus_id = sl.bus_id`;
 
       const values = [];
       let index = 1;
@@ -107,6 +119,11 @@ class BusRepository {
         whereConditions.push(`b.operator_id = $${index}`);
         values.push(operator_id);
         index++;
+      }
+
+      if (has_seat_layout !== undefined && has_seat_layout !== '') {
+        const hasSeatLayout = has_seat_layout === 'true' || has_seat_layout === true;
+        whereConditions.push(`(sl.layout_json IS ${hasSeatLayout ? 'NOT' : ''} NULL)`);
       }
 
       if (search) {
@@ -174,7 +191,7 @@ class BusRepository {
       sl.layout_json
     FROM buses b
     JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-    LEFT JOIN seat_layouts sl ON sl.bus_model_id = bm.bus_model_id
+    LEFT JOIN seat_layouts sl ON sl.bus_id = b.bus_id
     WHERE b.bus_id = $1
   `;
     const result = await pool.query(query, [id]);

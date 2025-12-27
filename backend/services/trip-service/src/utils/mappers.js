@@ -82,6 +82,9 @@ const mapToBusAdminData = (busData) => {
   return {
     operator_id: busData.operator_id ? busData.operator_id.toString() : null,
     bus_id: busData.bus_id ? busData.bus_id.toString() : undefined,
+    license_plate: busData.license_plate || busData.plate_number || '',
+    bus_model_name: busData.model_name || '',
+    operator_name: busData.operator_name || '',
     name: busData.model_name
       ? `${busData.model_name} (${busData.license_plate})`
       : busData.license_plate,
@@ -103,6 +106,7 @@ const mapToBusAdminData = (busData) => {
     status: busData.status === 'active' ? 'active' : 'inactive',
     image_url: image_url,
     image_urls: image_urls,
+    has_seat_layout: Boolean(busData.has_seat_layout),
     created_at: busData.created_at ? busData.created_at.toISOString() : undefined,
   };
 };

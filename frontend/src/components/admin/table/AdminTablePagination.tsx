@@ -19,7 +19,7 @@ export const AdminTablePagination: React.FC<AdminTablePaginationProps> = ({
   if (totalPages <= 1 || isLoading) return null
 
   return (
-    <div className="px-6 py-4 border-t border-border flex items-center justify-between">
+    <div className="px-6 py-4 border-t border-border flex items-center justify-center">
       <p className="text-sm text-muted-foreground mr-2">
         Page {currentPage} of {totalPages} • {total} total results
       </p>

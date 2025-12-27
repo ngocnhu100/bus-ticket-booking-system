@@ -23,7 +23,6 @@ import AdminDashboard from '@/pages/admin/Dashboard'
 import AdminTripScheduling from '@/pages/admin/AdminTripScheduling'
 import AdminRouteManagement from '@/pages/admin/AdminRouteManagement'
 import AdminBusManagement from '@/pages/admin/AdminBusManagement'
-import AdminSeatMapManagement from '@/pages/admin/AdminSeatMapManagement'
 import AdminOperatorManagement from '@/pages/admin/AdminOperatorManagement'
 import Landing from './pages/Landing'
 import TripSearchResults from './pages/TripSearchResults'
@@ -145,11 +144,6 @@ const App = () => (
                     element={<AdminBusManagement />}
                   />{' '}
                   {/* Bus Management */}
-                  <Route
-                    path="/admin/seat-maps"
-                    element={<AdminSeatMapManagement />}
-                  />{' '}
-                  {/* Seat Map Management */}
                   <Route
                     path="/admin/operators"
                     element={<AdminOperatorManagement />}

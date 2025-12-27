@@ -1,101 +1,160 @@
-import React, { useState } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
-import { Plus, Edit, Trash2, Grid3X3 } from 'lucide-react'
-import type { SeatMapData, Seat } from '@/types/trip.types'
-
-// Mock data - replace with API calls
-const initialSeatMaps: SeatMapData[] = [
-  {
-    trip_id: '1',
-    layout: '2-2',
-    rows: 12,
-    columns: 4,
-    seats: [
-      {
-        seat_id: '1-1',
-        seat_code: 'A1',
-        row: 1,
-        column: 1,
-        seat_type: 'standard',
-        position: 'window',
-        price: 0,
-        status: 'available',
-      },
-      {
-        seat_id: '1-2',
-        seat_code: 'A2',
-        row: 1,
-        column: 2,
-        seat_type: 'standard',
-        position: 'aisle',
-        price: 0,
-        status: 'available',
-      },
-      {
-        seat_id: '1-3',
-        seat_code: 'A3',
-        row: 1,
-        column: 3,
-        seat_type: 'standard',
-        position: 'aisle',
-        price: 0,
-        status: 'available',
-      },
-      {
-        seat_id: '1-4',
-        seat_code: 'A4',
-        row: 1,
-        column: 4,
-        seat_type: 'standard',
-        position: 'window',
-        price: 0,
-        status: 'available',
-      },
-    ],
-  },
-]
+import { Plus, Edit, Grid3X3 } from 'lucide-react'
+import {
+  AdminTablePagination,
+  AdminTable,
+  AdminTableRow,
+  AdminTableCell,
+  StatusBadge,
+} from '@/components/admin/table'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { ErrorModal } from '@/components/ui/error-modal'
+import { SearchInput } from '@/components/ui/search-input'
+import { CustomDropdown } from '@/components/ui/custom-dropdown'
+import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
+import { SeatMapEditor } from '@/components/admin/seat-map'
+import { adminBusService } from '@/services/adminBusService'
+import type { Bus } from '@/services/adminBusService'
+import type { LayoutData, SeatLayout } from '@/types/seatMap'
 
 const AdminSeatMapManagement: React.FC = () => {
-  const [seatMaps, setSeatMaps] = useState(initialSeatMaps)
+  const [buses, setBuses] = useState<Bus[]>([])
+  const [filteredBuses, setFilteredBuses] = useState<Bus[]>([])
+  const [selectedBus, setSelectedBus] = useState<Bus | null>(null)
+  const [seatLayout, setSeatLayout] = useState<LayoutData | SeatLayout | null>(
+    null
+  )
   const [showEditor, setShowEditor] = useState(false)
-  const [editingSeatMap, setEditingSeatMap] = useState<SeatMapData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showErrorModal, setShowErrorModal] = useState(false)
 
-  const handleCreateSeatMap = () => {
-    setEditingSeatMap(null)
-    setShowEditor(true)
-  }
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [operatorFilter, setOperatorFilter] = useState<string>('all')
 
-  const handleEditSeatMap = (seatMap: SeatMapData) => {
-    setEditingSeatMap(seatMap)
-    setShowEditor(true)
-  }
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage] = useState(5)
 
-  const handleDeleteSeatMap = (trip_id: string) => {
-    if (
-      confirm(
-        'Are you sure you want to delete this seat map? This action cannot be undone.'
+  // Confirmation dialog states
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [confirmAction] = useState<() => void>(() => {})
+
+  useEffect(() => {
+    loadBuses()
+  }, [])
+
+  // Filter buses based on search and filters
+  useEffect(() => {
+    let filtered = buses
+
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (bus) =>
+          bus.license_plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          bus.bus_model_name
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          bus.operator_name.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    ) {
-      setSeatMaps(seatMaps.filter((sm) => sm.trip_id !== trip_id))
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter((bus) => bus.status === statusFilter)
+    }
+
+    // Operator filter
+    if (operatorFilter !== 'all') {
+      filtered = filtered.filter((bus) => bus.operator_name === operatorFilter)
+    }
+
+    setFilteredBuses(filtered)
+    setCurrentPage(1) // Reset to first page when filters change
+  }, [buses, searchQuery, statusFilter, operatorFilter])
+
+  const loadBuses = async () => {
+    try {
+      setLoading(true)
+      const busesData = await adminBusService.getBuses()
+      setBuses(busesData)
+    } catch (err) {
+      setError('Failed to load buses')
+      setShowErrorModal(true)
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleSaveSeatMap = (seatMapData: Omit<SeatMapData, 'trip_id'>) => {
-    if (editingSeatMap) {
-      setSeatMaps(
-        seatMaps.map((sm) =>
-          sm.trip_id === editingSeatMap.trip_id
-            ? { ...seatMapData, trip_id: editingSeatMap.trip_id }
-            : sm
-        )
-      )
-    } else {
-      setSeatMaps([
-        ...seatMaps,
-        { ...seatMapData, trip_id: crypto.randomUUID() },
-      ])
+  const loadSeatLayout = async (bus: Bus) => {
+    try {
+      setLoading(true)
+      setSelectedBus(bus)
+      const layout = await adminBusService.getSeatLayout(bus.bus_id)
+      setSeatLayout(layout)
+      setShowEditor(true)
+    } catch {
+      // If no layout exists, create empty one
+      setSeatLayout(null)
+      setShowEditor(true)
+    } finally {
+      setLoading(false)
     }
-    setShowEditor(false)
+  }
+
+  const saveSeatLayout = async (layoutData: SeatLayout) => {
+    if (!selectedBus) return
+
+    try {
+      setLoading(true)
+      await adminBusService.saveSeatLayout(selectedBus.bus_id, layoutData)
+      setSeatLayout(layoutData)
+      setShowEditor(false)
+      // Refresh buses to update has_seat_layout status
+      await loadBuses()
+    } catch (err) {
+      setError('Failed to save seat layout')
+      setShowErrorModal(true)
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Get unique operators for filter dropdown
+  const getUniqueOperators = () => {
+    const operators = buses.map((bus) => bus.operator_name)
+    return ['all', ...Array.from(new Set(operators))]
+  }
+
+  // Get status options for filter dropdown
+  const getStatusOptions = () => [
+    { id: 'all', value: 'all', label: 'All Status' },
+    { id: 'active', value: 'active', label: 'Active' },
+    { id: 'inactive', value: 'inactive', label: 'Inactive' },
+  ]
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredBuses.length / itemsPerPage)
+  const paginatedBuses = filteredBuses.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  // Confirmation dialog handlers
+  const executeConfirmAction = () => {
+    confirmAction()
+    setShowConfirmDialog(false)
   }
 
   return (
@@ -108,243 +167,177 @@ const AdminSeatMapManagement: React.FC = () => {
               Seat Map Management
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Create and manage bus seat layouts for trips
+              Create and manage custom seat layouts for each bus
             </p>
           </div>
-          <button
-            onClick={handleCreateSeatMap}
-            className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Seat Map
-          </button>
         </div>
 
-        {/* Seat Maps List */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Trip ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Layout
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Dimensions
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Total Seats
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-card divide-y divide-border">
-                {seatMaps.map((seatMap) => (
-                  <tr key={seatMap.trip_id} className="hover:bg-muted/50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Grid3X3 className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">
-                          {seatMap.trip_id}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {seatMap.layout}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {seatMap.rows} rows × {seatMap.columns} columns
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {seatMap.seats.length} seats
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleEditSeatMap(seatMap)}
-                        className="inline-flex items-center text-primary hover:text-primary/80"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSeatMap(seatMap.trip_id)}
-                        className="inline-flex items-center text-destructive hover:text-destructive/80"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Seat Map Editor Modal */}
-        {showEditor && (
-          <SeatMapEditor
-            seatMap={editingSeatMap}
-            onSave={handleSaveSeatMap}
-            onClose={() => setShowEditor(false)}
-          />
-        )}
-      </div>
-    </DashboardLayout>
-  )
-}
-
-// Seat Map Editor Component
-interface SeatMapEditorProps {
-  seatMap?: SeatMapData | null
-  onSave: (seatMap: Omit<SeatMapData, 'trip_id'>) => void
-  onClose: () => void
-}
-
-const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
-  seatMap,
-  onSave,
-  onClose,
-}) => {
-  const [formData, setFormData] = useState({
-    layout: seatMap?.layout || '2-2',
-    rows: seatMap?.rows || 10,
-    columns: seatMap?.columns || 4,
-    seats: seatMap?.seats || [],
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!formData.layout || !formData.rows || !formData.columns) {
-      alert('Please fill in all required fields')
-      return
-    }
-
-    // Generate seats if not editing
-    let seats = formData.seats
-    if (!seatMap || seats.length === 0) {
-      seats = generateSeats(formData.rows, formData.columns)
-    }
-
-    onSave({
-      layout: formData.layout,
-      rows: formData.rows,
-      columns: formData.columns,
-      seats,
-    })
-  }
-
-  const generateSeats = (rows: number, columns: number): Seat[] => {
-    const seats: Seat[] = []
-    const seat_types = ['standard', 'vip'] as const
-
-    for (let row = 1; row <= rows; row++) {
-      for (let col = 1; col <= columns; col++) {
-        const seat_code = `${String.fromCharCode(64 + row)}${col}`
-        const position = col === 1 || col === columns ? 'window' : 'aisle'
-        const seat_type = seat_types[(Math.random() * 2) | 0] // Random between standard and vip
-
-        seats.push({
-          seat_id: `${row}-${col}`,
-          seat_code,
-          row,
-          column: col,
-          seat_type,
-          position,
-          price: seat_type === 'vip' ? 50000 : 30000,
-          status: 'available',
-        })
-      }
-    }
-
-    return seats
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-card rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-4 text-foreground">
-          {seatMap ? 'Edit Seat Map' : 'Create Seat Map'}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Layout Pattern *
-            </label>
-            <input
-              type="text"
-              value={formData.layout}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, layout: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="e.g., 2-2, 2-3"
-              required
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <SearchInput
+              placeholder="Search by license plate, model, or operator..."
+              value={searchQuery}
+              onChange={setSearchQuery}
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Rows *
-              </label>
-              <input
-                type="number"
-                value={formData.rows}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    rows: Number(e.target.value),
-                  }))
-                }
-                className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                min="1"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Columns *
-              </label>
-              <input
-                type="number"
-                value={formData.columns}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    columns: Number(e.target.value),
-                  }))
-                }
-                className="w-full px-3 py-2 border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                min="1"
-                required
-              />
-            </div>
+          <div className="flex gap-2">
+            <CustomDropdown
+              options={getStatusOptions()}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              placeholder="Filter by status"
+            />
+            <CustomDropdown
+              options={getUniqueOperators().map((operator, index) => ({
+                id: `operator-${index}`,
+                value: operator,
+                label: operator === 'all' ? 'All Operators' : operator,
+              }))}
+              value={operatorFilter}
+              onChange={setOperatorFilter}
+              placeholder="Filter by operator"
+            />
           </div>
+        </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              {seatMap ? 'Update' : 'Create'}
-            </button>
+        {/* Loading State */}
+        {loading && buses.length === 0 && (
+          <div className="flex justify-center py-8">
+            <AdminLoadingSpinner />
           </div>
-        </form>
+        )}
+
+        {/* Buses List */}
+        {filteredBuses.length === 0 && !loading ? (
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <AdminEmptyState
+              title="No buses found"
+              description={
+                searchQuery ||
+                statusFilter !== 'all' ||
+                operatorFilter !== 'all'
+                  ? 'No buses match your current filters. Try adjusting your search criteria.'
+                  : 'Get started by adding your first bus to the system.'
+              }
+              icon={Grid3X3}
+            />
+          </div>
+        ) : (
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <AdminTable
+              columns={[
+                { key: 'license_plate', label: 'License Plate' },
+                { key: 'model', label: 'Model' },
+                { key: 'operator', label: 'Operator' },
+                { key: 'status', label: 'Status' },
+                { key: 'seat_layout', label: 'Seat Layout' },
+                { key: 'actions', label: 'Actions', align: 'right' },
+              ]}
+              isLoading={false}
+              isEmpty={false}
+            >
+              {paginatedBuses.map((bus) => (
+                <AdminTableRow key={bus.bus_id}>
+                  <AdminTableCell>
+                    <div className="flex items-center gap-2">
+                      <Grid3X3 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">
+                        {bus.license_plate}
+                      </span>
+                    </div>
+                  </AdminTableCell>
+                  <AdminTableCell className="text-sm text-muted-foreground">
+                    {bus.bus_model_name}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-sm text-muted-foreground">
+                    {bus.operator_name}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <StatusBadge
+                      status={bus.status === 'active' ? 'success' : 'default'}
+                      label={
+                        bus.status.charAt(0).toUpperCase() + bus.status.slice(1)
+                      }
+                    />
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <StatusBadge
+                      status={bus.has_seat_layout ? 'success' : 'warning'}
+                      label={bus.has_seat_layout ? 'Configured' : 'Not Set'}
+                    />
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    <button
+                      onClick={() => loadSeatLayout(bus)}
+                      className="inline-flex items-center text-primary hover:text-primary/80 disabled:opacity-50"
+                      disabled={loading}
+                      title={
+                        bus.has_seat_layout
+                          ? 'Edit seat layout'
+                          : 'Create seat layout'
+                      }
+                    >
+                      {bus.has_seat_layout ? (
+                        <Edit className="h-4 w-4" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                    </button>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTable>
+
+            {/* Pagination */}
+            {filteredBuses.length > itemsPerPage && (
+              <div className="border-t border-border px-4 py-3">
+                <AdminTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  total={filteredBuses.length}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Seat Map Editor Modal */}
+        {showEditor && selectedBus && (
+          <SeatMapEditor
+            bus={selectedBus}
+            initialLayout={seatLayout}
+            onSave={saveSeatLayout}
+            onClose={() => {
+              setShowEditor(false)
+              setSelectedBus(null)
+              setSeatLayout(null)
+            }}
+            loading={loading}
+          />
+        )}
+
+        {/* Confirmation Dialog */}
+        <ConfirmDialog
+          open={showConfirmDialog}
+          onClose={() => setShowConfirmDialog(false)}
+          onConfirm={executeConfirmAction}
+          title="Confirm Action"
+          message="Are you sure you want to perform this action?"
+          confirmText="Confirm"
+          cancelText="Cancel"
+        />
+
+        {/* Error Modal */}
+        <ErrorModal
+          open={showErrorModal}
+          onClose={() => setShowErrorModal(false)}
+          title="Error"
+          message={error || 'An unexpected error occurred'}
+        />
       </div>
-    </div>
+    </DashboardLayout>
   )
 }
 
