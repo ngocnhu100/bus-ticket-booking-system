@@ -90,9 +90,10 @@ class BusModelRepository {
     const rowsPerFloor = Math.floor(layout.rows.length / floors);
 
     // Generate seats based on layout_json with proper floor and row mapping
+    // Use DISTINCT ON to avoid duplicate seat codes in the same INSERT
     const query = `
       INSERT INTO seats (bus_id, seat_code, seat_type, position, price, row_num, col_num, is_active)
-      SELECT
+      SELECT DISTINCT ON (seat_code)
         b.bus_id,
         CASE
           WHEN jsonb_typeof(seat_element.value) = 'string' THEN seat_element.value #>> '{}'

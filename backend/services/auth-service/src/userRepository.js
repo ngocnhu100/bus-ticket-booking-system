@@ -46,11 +46,11 @@ class UserRepository {
     // Filter by active/inactive status
     if (status === 'active') {
       whereConditions.push(
-        'password_hash IS NOT NULL AND (account_locked_until IS NULL OR account_locked_until < NOW())'
+        '(password_hash IS NOT NULL AND (account_locked_until IS NULL OR account_locked_until < NOW()))'
       );
     } else if (status === 'inactive') {
       whereConditions.push(
-        'password_hash IS NULL OR (account_locked_until IS NOT NULL AND account_locked_until >= NOW())'
+        '(password_hash IS NULL OR (account_locked_until IS NOT NULL AND account_locked_until >= NOW()))'
       );
     }
 

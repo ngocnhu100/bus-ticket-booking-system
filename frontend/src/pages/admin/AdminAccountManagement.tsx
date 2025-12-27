@@ -9,6 +9,7 @@ import {
   Eye,
   EyeOff,
   Key,
+  Users,
 } from 'lucide-react'
 import { AdminAccountFormDrawer } from '@/components/admin/AdminAccountFormDrawer'
 import {
@@ -18,6 +19,8 @@ import {
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ErrorModal } from '@/components/ui/error-modal'
+import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
 import {
   AdminTable,
   AdminTableRow,
@@ -449,111 +452,124 @@ const AdminAccountManagement: React.FC = () => {
         </div>
 
         {/* Table Card */}
-        <div className="bg-card rounded-lg border border-border overflow-hidden">
-          <AdminTable
-            columns={[
-              { key: 'fullName', label: 'Full Name' },
-              { key: 'email', label: 'Email' },
-              { key: 'phone', label: 'Phone' },
-              { key: 'role', label: 'Role' },
-              { key: 'status', label: 'Status' },
-              { key: 'emailVerified', label: 'Email Verified' },
-              { key: 'createdAt', label: 'Created' },
-              { key: 'actions', label: 'Actions', align: 'right' },
-            ]}
-            isLoading={isLoading}
-            isEmpty={accounts.length === 0}
-            emptyMessage="No user accounts found"
-          >
-            {accounts.map((account) => (
-              <AdminTableRow key={account.userId} isHoverable={true}>
-                <AdminTableCell className="text-sm font-medium text-foreground">
-                  {account.fullName}
-                </AdminTableCell>
-                <AdminTableCell className="text-sm text-muted-foreground">
-                  {account.email}
-                </AdminTableCell>
-                <AdminTableCell className="text-sm text-muted-foreground">
-                  {account.phone || '—'}
-                </AdminTableCell>
-                <AdminTableCell>
-                  <StatusBadge
-                    status={account.role === 'admin' ? 'warning' : 'default'}
-                    label={account.role === 'admin' ? 'Admin' : 'Passenger'}
-                  />
-                </AdminTableCell>
-                <AdminTableCell>
-                  <StatusBadge
-                    status={account.isActive ? 'success' : 'default'}
-                    label={account.isActive ? 'Active' : 'Inactive'}
-                  />
-                </AdminTableCell>
-                <AdminTableCell>
-                  <StatusBadge
-                    status={account.emailVerified ? 'success' : 'default'}
-                    label={account.emailVerified ? 'Yes' : 'No'}
-                  />
-                </AdminTableCell>
-                <AdminTableCell className="text-sm text-muted-foreground">
-                  {new Date(account.createdAt).toLocaleDateString()}
-                </AdminTableCell>
-                <AdminTableCell align="right">
-                  <div className="flex items-center justify-end gap-2">
-                    {account.role === 'admin' ? (
-                      <button
-                        onClick={() => handleEditAccount(account)}
-                        style={{ color: 'var(--primary)' }}
-                        className="hover:opacity-80 disabled:opacity-50"
-                        title="Edit account"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleResetPasswordClick(account)}
-                        style={{ color: 'var(--primary)' }}
-                        className="hover:opacity-80 disabled:opacity-50"
-                        title="Reset password"
-                      >
-                        <Key className="h-4 w-4" />
-                      </button>
-                    )}
-                    {account.isActive ? (
-                      <button
-                        onClick={() => handleDeactivateAccount(account)}
-                        style={{ color: 'var(--destructive)' }}
-                        className="hover:opacity-80 disabled:opacity-50"
-                        title="Deactivate account"
-                      >
-                        <Lock className="h-4 w-4" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleReactivateClick(account)}
-                        style={{ color: 'var(--success)' }}
-                        className="hover:opacity-80 disabled:opacity-50"
-                        title="Reactivate account"
-                      >
-                        <Unlock className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </AdminTableCell>
-              </AdminTableRow>
-            ))}
-          </AdminTable>
-
-          {/* Pagination */}
-          <div className="flex justify-center">
-            <AdminTablePagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              total={pagination.total}
-              onPageChange={handlePageChange}
+        {isLoading && accounts.length === 0 ? (
+          <AdminLoadingSpinner message="Loading user accounts..." />
+        ) : accounts.length === 0 ? (
+          <AdminEmptyState
+            icon={Users}
+            title="No user accounts found"
+            description={
+              searchTerm || statusFilter !== '' || roleFilter
+                ? 'Try adjusting your search or filter criteria'
+                : 'Create your first account to get started'
+            }
+          />
+        ) : (
+          <div className="bg-card rounded-lg border border-border overflow-hidden">
+            <AdminTable
+              columns={[
+                { key: 'fullName', label: 'Full Name' },
+                { key: 'email', label: 'Email' },
+                { key: 'phone', label: 'Phone' },
+                { key: 'role', label: 'Role' },
+                { key: 'status', label: 'Status' },
+                { key: 'emailVerified', label: 'Email Verified' },
+                { key: 'createdAt', label: 'Created' },
+                { key: 'actions', label: 'Actions', align: 'right' },
+              ]}
               isLoading={isLoading}
-            />
+              isEmpty={false}
+            >
+              {accounts.map((account) => (
+                <AdminTableRow key={account.userId} isHoverable={true}>
+                  <AdminTableCell className="text-sm font-medium text-foreground">
+                    {account.fullName}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-sm text-muted-foreground">
+                    {account.email}
+                  </AdminTableCell>
+                  <AdminTableCell className="text-sm text-muted-foreground">
+                    {account.phone || '—'}
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <StatusBadge
+                      status={account.role === 'admin' ? 'warning' : 'default'}
+                      label={account.role === 'admin' ? 'Admin' : 'Passenger'}
+                    />
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <StatusBadge
+                      status={account.isActive ? 'success' : 'default'}
+                      label={account.isActive ? 'Active' : 'Inactive'}
+                    />
+                  </AdminTableCell>
+                  <AdminTableCell>
+                    <StatusBadge
+                      status={account.emailVerified ? 'success' : 'default'}
+                      label={account.emailVerified ? 'Yes' : 'No'}
+                    />
+                  </AdminTableCell>
+                  <AdminTableCell className="text-sm text-muted-foreground">
+                    {new Date(account.createdAt).toLocaleDateString()}
+                  </AdminTableCell>
+                  <AdminTableCell align="right">
+                    <div className="flex items-center justify-end gap-2">
+                      {account.role === 'admin' ? (
+                        <button
+                          onClick={() => handleEditAccount(account)}
+                          style={{ color: 'var(--primary)' }}
+                          className="hover:opacity-80 disabled:opacity-50"
+                          title="Edit account"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleResetPasswordClick(account)}
+                          style={{ color: 'var(--primary)' }}
+                          className="hover:opacity-80 disabled:opacity-50"
+                          title="Reset password"
+                        >
+                          <Key className="h-4 w-4" />
+                        </button>
+                      )}
+                      {account.isActive ? (
+                        <button
+                          onClick={() => handleDeactivateAccount(account)}
+                          style={{ color: 'var(--destructive)' }}
+                          className="hover:opacity-80 disabled:opacity-50"
+                          title="Deactivate account"
+                        >
+                          <Lock className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReactivateClick(account)}
+                          style={{ color: 'var(--success)' }}
+                          className="hover:opacity-80 disabled:opacity-50"
+                          title="Reactivate account"
+                        >
+                          <Unlock className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </AdminTableCell>
+                </AdminTableRow>
+              ))}
+            </AdminTable>
+
+            {/* Pagination */}
+            <div className="flex justify-center">
+              <AdminTablePagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                total={pagination.total}
+                onPageChange={handlePageChange}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
       {/* Admin Account Form Drawer */}
       <AdminAccountFormDrawer
