@@ -52,6 +52,7 @@ export interface OperatorAdminData {
   total_routes: number
   total_buses: number
   rating: number
+  rating_count: number
   approved_at?: string
   created_at: string
 }

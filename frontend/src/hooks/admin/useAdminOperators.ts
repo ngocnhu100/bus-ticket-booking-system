@@ -25,7 +25,7 @@ export function useAdminOperators() {
   const { toast } = useToast()
 
   const fetchOperators = useCallback(
-    async (status?: string, page = 1, limit = 20) => {
+    async (status?: string, page = 1, limit = 5) => {
       setIsLoading(true)
       setError(null)
       try {
@@ -50,6 +50,7 @@ export function useAdminOperators() {
             status: op.status as OperatorAdminData['status'],
             total_routes: op.totalRoutes || 0,
             total_buses: op.totalBuses || 0,
+            rating_count: op.ratingCount || 0,
             rating: op.rating || 0,
             approved_at: op.approvedAt,
             created_at: op.createdAt,

@@ -276,7 +276,6 @@ export function useAdminTrips() {
         toast({
           title: 'Error',
           description: message,
-          variant: 'destructive',
         })
         throw err
       } finally {

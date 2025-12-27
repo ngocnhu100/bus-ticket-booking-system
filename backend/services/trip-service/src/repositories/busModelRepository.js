@@ -159,6 +159,18 @@ class BusModelRepository {
     const result = await pool.query(query, [busId]);
     return result.rows[0]?.layout_json || null;
   }
+
+  async deleteSeatLayout(busId) {
+    // Delete the seat layout
+    const deleteLayoutQuery = 'DELETE FROM seat_layouts WHERE bus_id = $1 RETURNING *;';
+    const layoutResult = await pool.query(deleteLayoutQuery, [busId]);
+
+    // Also delete all seats for this bus since they were generated from the layout
+    const deleteSeatsQuery = 'DELETE FROM seats WHERE bus_id = $1;';
+    await pool.query(deleteSeatsQuery, [busId]);
+
+    return layoutResult.rowCount > 0;
+  }
 }
 
 module.exports = new BusModelRepository();

@@ -16,7 +16,12 @@ import { TripFilters } from '@/components/admin/TripFilters'
 import { TripCalendarView } from '@/components/admin/TripCalendarView'
 import { TripFormDrawer } from '@/components/admin/TripFormDrawer'
 import { useAdminTrips } from '@/hooks/admin/useAdminTrips'
-import type { TripData } from '@/types/adminTripTypes'
+import type {
+  TripData,
+  TripCreateRequest,
+  TripUpdateRequest,
+  TripFilterParams,
+} from '@/types/adminTripTypes'
 import '@/styles/admin.css'
 
 // ============================================================================
@@ -159,6 +164,9 @@ const AdminTripSchedulingPage: React.FC = () => {
     setFilters({
       ...newFilters,
       page: 1,
+      limit: newFilters.limit || 10,
+      sort_by: newFilters.sort_by || 'departure_time',
+      sort_order: newFilters.sort_order || 'asc',
     })
     fetchTrips(1, newFilters.limit || 10, newFilters)
   }
@@ -461,7 +469,7 @@ const AdminTripSchedulingPage: React.FC = () => {
                   onEditTrip={handleEditTrip}
                 />
               ) : (
-                <div>
+                <div className="bg-card overflow-hidden max-w-full">
                   <AdminTable
                     columns={[
                       { key: 'select', label: '', align: 'center' },

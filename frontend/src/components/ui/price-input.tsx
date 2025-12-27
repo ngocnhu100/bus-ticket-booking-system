@@ -36,7 +36,7 @@ export const PriceInput: React.FC<PriceInputProps> = ({
   }
 
   // Compute the current display value
-  const getCurrentDisplayValue = (): string => {
+  const getCurrentDisplayValue = React.useCallback((): string => {
     if (isEditingRef.current) {
       // When editing, show raw number for easier input
       const numValue =
@@ -48,7 +48,7 @@ export const PriceInput: React.FC<PriceInputProps> = ({
         typeof value === 'number' ? value : parseNumber(value?.toString() || '')
       return numValue > 0 ? formatNumber(numValue) : ''
     }
-  }
+  }, [value])
 
   const [displayValue, setDisplayValue] = useState('')
 

@@ -83,6 +83,7 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - AUTH_SERVICE_URL=http://auth-service:3001
+      - API_GATEWAY_URL=http://api-gateway:3000
       - JWT_SECRET=super-secret-jwt-key-for-development-change-in-production-2025
       - CLOUDINARY_CLOUD_NAME=dleqkiaj0
       - CLOUDINARY_API_KEY=957383667687537

@@ -118,8 +118,11 @@ const AdminSeatMapManagement: React.FC = () => {
       setShowEditor(false)
       // Refresh buses to update has_seat_layout status
       await loadBuses()
-    } catch (err) {
-      setError('Failed to save seat layout')
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message || 'Failed to save seat layout'
+      setError(errorMessage)
       setShowErrorModal(true)
       console.error(err)
     } finally {
@@ -271,11 +274,13 @@ const AdminSeatMapManagement: React.FC = () => {
                     <button
                       onClick={() => loadSeatLayout(bus)}
                       className="inline-flex items-center text-primary hover:text-primary/80 disabled:opacity-50"
-                      disabled={loading}
+                      disabled={loading || bus.status === 'active'}
                       title={
-                        bus.has_seat_layout
-                          ? 'Edit seat layout'
-                          : 'Create seat layout'
+                        bus.status === 'active'
+                          ? 'Seat layout can only be modified when bus is inactive or in maintenance'
+                          : bus.has_seat_layout
+                            ? 'Edit seat layout'
+                            : 'Create seat layout'
                       }
                     >
                       {bus.has_seat_layout ? (

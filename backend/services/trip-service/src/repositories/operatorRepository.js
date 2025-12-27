@@ -30,7 +30,7 @@ class OperatorRepository {
       result.rows.map(async (op) => {
         const stats = await pool.query(
           `SELECT 
-             (SELECT COUNT(*) FROM routes WHERE operator_id = $1) as total_routes,
+             --(SELECT COUNT(*) FROM routes WHERE operator_id = $1) as total_routes,
              (SELECT COUNT(*) FROM buses WHERE operator_id = $1) as total_buses,
              (SELECT COUNT(*) FROM ratings WHERE operator_id = $1 AND is_approved = true) as total_ratings,
              (SELECT AVG(overall_rating) FROM ratings WHERE operator_id = $1 AND is_approved = true) as avg_rating`,

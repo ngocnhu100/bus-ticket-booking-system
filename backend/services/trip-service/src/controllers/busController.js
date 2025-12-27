@@ -340,6 +340,18 @@ class BusController {
         });
       }
 
+      // Business rule: Only allow seat layout changes when bus is inactive or in maintenance
+      if (bus.status !== 'inactive' && bus.status !== 'maintenance') {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'BUS_STATUS_INVALID',
+            message:
+              'Seat layout can only be changed when bus is inactive or in maintenance status',
+          },
+        });
+      }
+
       const layout = await busModelRepository.setSeatLayout(req.params.id, layout_json);
 
       // Regenerate seats from layout
@@ -382,6 +394,45 @@ class BusController {
       res.status(500).json({
         success: false,
         error: { code: 'SYS_001', message: 'Error getting seat layout' },
+      });
+    }
+  }
+
+  // DELETE /buses/:id/seat-layout - Delete seat layout for a specific bus
+  async deleteSeatLayout(req, res) {
+    try {
+      // Verify bus exists
+      const bus = await busRepository.findById(req.params.id);
+      if (!bus) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'BUS_002', message: 'Bus not found' },
+        });
+      }
+
+      // Business rule: Only allow seat layout changes when bus is inactive or in maintenance
+      if (bus.status !== 'inactive' && bus.status !== 'maintenance') {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'BUS_STATUS_INVALID',
+            message:
+              'Seat layout can only be changed when bus is inactive or in maintenance status',
+          },
+        });
+      }
+
+      const result = await busModelRepository.deleteSeatLayout(req.params.id);
+
+      res.json({
+        success: true,
+        message: 'Seat layout deleted successfully',
+      });
+    } catch (err) {
+      console.error('Delete seat layout error:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Error deleting seat layout' },
       });
     }
   }

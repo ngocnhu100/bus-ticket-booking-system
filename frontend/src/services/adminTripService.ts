@@ -76,13 +76,37 @@ class AdminTripService {
             let aVal: string | number | Date | undefined
             let bVal: string | number | Date | undefined
 
-            // Handle nested properties
+            // Handle specific sortable properties
             if (params.sort_by === 'departure_time') {
               aVal = a.schedule?.departure_time
               bVal = b.schedule?.departure_time
+            } else if (params.sort_by === 'bookings') {
+              aVal = a.bookings
+              bVal = b.bookings
+            } else if (params.sort_by === 'created_at') {
+              // created_at might not exist in Trip interface, handle gracefully
+              aVal = (a as TripData & { created_at?: string }).created_at
+              bVal = (b as TripData & { created_at?: string }).created_at
+            } else if (params.sort_by === 'status') {
+              aVal = a.status
+              bVal = b.status
             } else {
-              aVal = a[params.sort_by as keyof TripData]
-              bVal = b[params.sort_by as keyof TripData]
+              // For any other property, try to get it but ensure it's a primitive type
+              const propValue = a[params.sort_by as keyof TripData]
+              if (
+                typeof propValue === 'string' ||
+                typeof propValue === 'number' ||
+                propValue instanceof Date
+              ) {
+                aVal = propValue as string | number | Date
+                bVal = b[params.sort_by as keyof TripData] as
+                  | string
+                  | number
+                  | Date
+              } else {
+                // If property is not sortable, maintain original order
+                return 0
+              }
             }
 
             if (aVal == null) return 1

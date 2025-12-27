@@ -197,7 +197,7 @@ class TripRepository {
       },
       pickup_points,
       dropoff_points,
-      status: row.status === 'scheduled' ? 'active' : row.status, // Map để khớp interface
+      status: row.status, // Return actual status from database
     };
   }
 
@@ -454,7 +454,7 @@ class TripRepository {
     const offset = (page - 1) * limit;
     const values = [];
     let index = 1;
-    let where_clauses = [`t.status = 'active'`];
+    let where_clauses = [`t.status != 'inactive'`];
 
     // Build filters
     if (origin) {

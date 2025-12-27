@@ -52,25 +52,55 @@ class TripService {
     const existing = await tripRepository.findById(id);
     if (!existing) throw new Error('Trip not found');
 
+    // Prepare updated trip data with auto-calculation of arrival_time
+    let updatedTripData = { ...tripData };
+
+    // If departure_time is being updated and arrival_time is not provided, calculate it
+    if (tripData.departure_time && !tripData.arrival_time) {
+      // Get route info (either from existing trip or updated route_id)
+      const routeId = tripData.route_id || existing.route.route_id;
+      const route = await routeRepository.findById(routeId);
+      if (!route) throw new Error('Route not found');
+
+      // Calculate arrival_time based on route duration
+      if (route.estimated_minutes) {
+        const departureTime = new Date(tripData.departure_time);
+        departureTime.setMinutes(departureTime.getMinutes() + parseInt(route.estimated_minutes));
+        updatedTripData.arrival_time = departureTime.toISOString();
+      }
+    }
+
     // Nếu update thời gian, check tính hợp lệ
-    if (tripData.departure_time || tripData.arrival_time) {
-      const dep = tripData.departure_time || existing.schedule.departure_time;
-      const arr = tripData.arrival_time || existing.schedule.arrival_time;
+    if (updatedTripData.departure_time || updatedTripData.arrival_time) {
+      const dep = updatedTripData.departure_time || existing.schedule.departure_time;
+      const arr = updatedTripData.arrival_time || existing.schedule.arrival_time;
       if (new Date(dep) >= new Date(arr))
         throw new Error('Invalid times: Departure must be before Arrival');
     }
 
     // Nếu update Bus hoặc Thời gian, check overlap
-    if (tripData.bus_id || tripData.departure_time || tripData.arrival_time) {
-      const busId = tripData.bus_id || existing.bus.bus_id;
-      const dep = tripData.departure_time || existing.schedule.departure_time;
-      const arr = tripData.arrival_time || existing.schedule.arrival_time;
+    const busChanged = tripData.bus_id && tripData.bus_id !== existing.bus.bus_id;
+    const depChanged =
+      tripData.departure_time &&
+      new Date(tripData.departure_time).getTime() !==
+        new Date(existing.schedule.departure_time).getTime();
+    const arrChanged =
+      tripData.arrival_time &&
+      new Date(tripData.arrival_time).getTime() !==
+        new Date(existing.schedule.arrival_time).getTime();
+
+    console.log('Changes detected:', { busChanged, depChanged, arrChanged });
+
+    if (busChanged || depChanged || arrChanged) {
+      const busId = updatedTripData.bus_id || existing.bus.bus_id;
+      const dep = updatedTripData.departure_time || existing.schedule.departure_time;
+      const arr = updatedTripData.arrival_time || existing.schedule.arrival_time;
 
       const hasOverlap = await tripRepository.checkOverlap(busId, dep, arr, id);
       if (hasOverlap) throw new Error('Bus schedule overlap');
     }
 
-    return await tripRepository.update(id, tripData);
+    return await tripRepository.update(id, updatedTripData);
   }
 
   async getTripWithDetails(id) {

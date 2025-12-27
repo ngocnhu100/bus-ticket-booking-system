@@ -132,6 +132,7 @@ app.get(
 // Bus seat layout management (mỗi bus có seat layout riêng)
 app.post('/buses/:id/seat-layout', authenticate, authorize(['admin']), busController.setSeatLayout);
 app.get('/buses/:id/seat-layout', authenticate, authorize(['admin']), busController.getSeatLayout);
+app.delete('/buses/:id/seat-layout', authenticate, authorize(['admin']), busController.deleteSeatLayout);
 
 // ============================= ADMIN: OPERATOR MANAGEMENT (mới thêm - thẳng trong index.js) =============================
 
