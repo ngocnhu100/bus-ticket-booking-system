@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronUp, ChevronDown, Trash2, Plus, Loader } from 'lucide-react'
 import type { RouteAdminData } from '@/types/trip.types'
-import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { validateCreateRoute, validateUpdateRoute } from '@/lib/validation'
 
 const emptyForm: Omit<RouteAdminData, 'route_id' | 'created_at'> = {
-  operator_id: 'default-operator',
   origin: '',
   destination: '',
   distance_km: 0,
@@ -24,7 +22,6 @@ interface RouteFormDrawerProps {
   onClose: () => void
   initialRoute: RouteAdminData | null
   onSave: (values: Omit<RouteAdminData, 'route_id' | 'created_at'>) => void
-  operators?: Array<{ operator_id: string; name?: string }>
 }
 
 export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
@@ -32,7 +29,6 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
   onClose,
   initialRoute,
   onSave,
-  operators = [],
 }) => {
   const [form, setForm] =
     useState<Omit<RouteAdminData, 'route_id' | 'created_at'>>(emptyForm)
@@ -56,7 +52,6 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
   useEffect(() => {
     if (initialRoute) {
       setForm({
-        operator_id: initialRoute.operator_id,
         origin: initialRoute.origin,
         destination: initialRoute.destination,
         distance_km: initialRoute.distance_km,
@@ -161,7 +156,6 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
     // Use validator from lib/validation.ts
     const validationErrors = initialRoute
       ? validateUpdateRoute({
-          operator_id: form.operator_id,
           origin: form.origin,
           destination: form.destination,
           distance_km: form.distance_km,
@@ -171,7 +165,6 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
           route_stops: form.route_stops,
         })
       : validateCreateRoute({
-          operator_id: form.operator_id,
           origin: form.origin,
           destination: form.destination,
           distance_km: form.distance_km,
@@ -257,32 +250,6 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
         >
           {/* Route Info */}
           <div className="space-y-3">
-            <div>
-              <label
-                className="block text-xs font-medium"
-                style={{ color: 'var(--foreground)' }}
-              >
-                Operator *
-              </label>
-              <CustomDropdown
-                options={[
-                  { id: '', label: 'Select Operator' },
-                  ...operators.map((op) => ({
-                    id: op.operator_id,
-                    label: op.name || op.operator_id,
-                  })),
-                ]}
-                value={form.operator_id}
-                onChange={(value) => handleChange('operator_id', value)}
-                placeholder="Select Operator"
-              />
-              {errors.operator_id && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.operator_id}
-                </p>
-              )}
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label

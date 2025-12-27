@@ -33,8 +33,8 @@ class TripRepository {
         
       FROM trips t
       JOIN routes r ON t.route_id = r.route_id
-      JOIN operators o ON r.operator_id = o.operator_id
       JOIN buses b ON t.bus_id = b.bus_id
+      JOIN operators o ON b.operator_id = o.operator_id
       JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
     `;
   }
@@ -189,6 +189,7 @@ class TripRepository {
         available_seats: available_seats > 0 ? available_seats : 0,
         occupancy_rate: total_seats > 0 ? parseFloat((booked_seats / total_seats).toFixed(2)) : 0,
       },
+      bookings: booked_seats,
       policies: row.policies || {
         cancellation_policy: 'Standard cancellation',
         modification_policy: 'Flexible',
@@ -264,6 +265,159 @@ class TripRepository {
     const query = `${this._getSelectClause()} WHERE t.trip_id = $1`;
     const result = await pool.query(query, [id]);
     return this._mapRowToTrip(result.rows[0]);
+  }
+
+  /**
+   * Get all trips with admin filtering, searching, sorting, and pagination
+   * Supports: status, route_id, bus_id, operator_id filters
+   * Supports: search in route origin/destination
+   * Supports: date range filtering by departure_time
+   * Supports: sorting by departure_time, bookings, created_at, price
+   */
+  async findAll({
+    limit = 20,
+    offset = 0,
+    status,
+    route_id,
+    bus_id,
+    operator_id,
+    search,
+    departure_date_from,
+    departure_date_to,
+    sort_by = 'departure_time',
+    sort_order = 'desc',
+  } = {}) {
+    try {
+      let countQuery = `SELECT COUNT(*) as total FROM trips t 
+        JOIN routes r ON t.route_id = r.route_id
+        JOIN buses b ON t.bus_id = b.bus_id
+        JOIN operators o ON b.operator_id = o.operator_id
+        JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+        LEFT JOIN (SELECT trip_id, COUNT(*) as booking_count FROM bookings WHERE status = 'confirmed' GROUP BY trip_id) bk ON t.trip_id = bk.trip_id`;
+
+      let query = `SELECT
+        t.trip_id, t.departure_time, t.arrival_time, t.base_price, t.status, t.policies::jsonb AS policies, t.created_at,
+        r.route_id, r.origin, r.destination, r.distance_km, r.estimated_minutes,
+        o.operator_id, o.name as operator_name, o.logo_url as operator_logo,
+        b.bus_id, b.plate_number, b.type as bus_type, bm.name as bus_model,
+        b.seat_capacity, b.amenities::jsonb AS amenities,
+        COALESCE(bk.booking_count, 0) as booked_seats
+      FROM trips t
+      JOIN routes r ON t.route_id = r.route_id
+      JOIN buses b ON t.bus_id = b.bus_id
+      JOIN operators o ON b.operator_id = o.operator_id
+      JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+      LEFT JOIN (SELECT trip_id, COUNT(*) as booking_count FROM bookings WHERE status = 'confirmed' GROUP BY trip_id) bk ON t.trip_id = bk.trip_id`;
+
+      const values = [];
+      let index = 1;
+
+      // Build WHERE clause
+      const whereConditions = [];
+
+      if (status) {
+        whereConditions.push(`t.status = $${index}`);
+        values.push(status);
+        index++;
+      }
+
+      if (route_id) {
+        whereConditions.push(`t.route_id = $${index}`);
+        values.push(route_id);
+        index++;
+      }
+
+      if (bus_id) {
+        whereConditions.push(`t.bus_id = $${index}`);
+        values.push(bus_id);
+        index++;
+      }
+
+      if (operator_id) {
+        whereConditions.push(`o.operator_id = $${index}`);
+        values.push(operator_id);
+        index++;
+      }
+
+      if (search) {
+        // Search in route origin and destination
+        whereConditions.push(`(
+          UPPER(r.origin) LIKE UPPER($${index}) OR
+          UPPER(r.destination) LIKE UPPER($${index})
+        )`);
+        values.push(`%${search}%`);
+        index++;
+      }
+
+      if (departure_date_from) {
+        whereConditions.push(`t.departure_time >= $${index}`);
+        values.push(departure_date_from);
+        index++;
+      }
+
+      if (departure_date_to) {
+        whereConditions.push(`t.departure_time <= $${index}`);
+        values.push(departure_date_to);
+        index++;
+      }
+
+      if (whereConditions.length > 0) {
+        const whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
+        countQuery += whereClause;
+        query += whereClause;
+      }
+
+      // Get total count
+      const countResult = await pool.query(countQuery, values);
+      const total = parseInt(countResult.rows[0].total);
+
+      // Build ORDER BY clause
+      let orderBy = 't.departure_time DESC, t.trip_id DESC'; // default
+      if (sort_by === 'departure_time') {
+        orderBy = `t.departure_time ${sort_order === 'asc' ? 'ASC' : 'DESC'}, t.trip_id DESC`;
+      } else if (sort_by === 'bookings') {
+        orderBy = `COALESCE(bk.booking_count, 0) ${sort_order === 'asc' ? 'ASC' : 'DESC'}, t.trip_id DESC`;
+      } else if (sort_by === 'created_at') {
+        orderBy = `t.created_at ${sort_order === 'asc' ? 'ASC' : 'DESC'}, t.trip_id DESC`;
+      } else if (sort_by === 'price') {
+        orderBy = `t.base_price ${sort_order === 'asc' ? 'ASC' : 'DESC'}, t.trip_id DESC`;
+      }
+
+      // Add ORDER BY, LIMIT, OFFSET with correct parameter indices
+      const limitIndex = index;
+      const offsetIndex = index + 1;
+      query += ` ORDER BY ${orderBy} LIMIT $${limitIndex} OFFSET $${offsetIndex}`;
+      values.push(limit, offset);
+
+      console.log('[TRIP QUERY]', { query, values });
+
+      const result = await pool.query(query, values);
+
+      console.log(
+        '[TRIP RESULT] Returned rows:',
+        result.rows.length,
+        result.rows.map((r) => ({
+          trip_id: r.trip_id,
+          origin: r.origin,
+          destination: r.destination,
+          departure_time: r.departure_time,
+          status: r.status,
+        }))
+      );
+
+      // Map all rows to TripData format
+      const trips = await Promise.all(result.rows.map((row) => this._mapRowToTrip(row)));
+
+      return {
+        data: trips,
+        total: total,
+        limit: limit,
+        offset: offset,
+      };
+    } catch (err) {
+      console.error('Error in findAll trips:', err);
+      throw err;
+    }
   }
 
   async checkOverlap(bus_id, departure_time, arrival_time, exclude_trip_id = null) {

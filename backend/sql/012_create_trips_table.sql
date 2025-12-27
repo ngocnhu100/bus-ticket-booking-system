@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS trips (
     arrival_time TIMESTAMP NOT NULL,
     base_price DECIMAL(12,2) NOT NULL CHECK (base_price > 0),
     policies JSONB DEFAULT '{}'::jsonb,
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'scheduled', 'in_progress', 'completed', 'cancelled')),
+    --status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('active', 'inactive', 'scheduled', 'in_progress', 'completed', 'cancelled')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

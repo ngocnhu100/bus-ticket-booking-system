@@ -26,7 +26,6 @@ const mapToRouteAdminData = (routeData, stops = [], points = []) => {
 
   return {
     route_id: routeData.route_id,
-    operator_id: routeData.operator_id,
     origin: routeData.origin,
     destination: routeData.destination,
     distance_km: Number(routeData.distance_km),

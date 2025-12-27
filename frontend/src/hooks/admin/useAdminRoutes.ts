@@ -23,7 +23,6 @@ export function useAdminRoutes() {
       searchTerm = '',
       minDistance?: number,
       maxDistance?: number,
-      operatorId?: string,
       minDuration?: number,
       maxDuration?: number,
       origin?: string,
@@ -43,9 +42,6 @@ export function useAdminRoutes() {
         }
         if (maxDistance !== undefined) {
           params.append('max_distance', maxDistance.toString())
-        }
-        if (operatorId) {
-          params.append('operator_id', operatorId)
         }
         if (minDuration !== undefined) {
           params.append('min_duration', minDuration.toString())
@@ -89,7 +85,6 @@ export function useAdminRoutes() {
         await request('/trips/routes', {
           method: 'POST',
           body: {
-            operator_id: routeData.operator_id,
             origin: routeData.origin,
             destination: routeData.destination,
             distance_km: routeData.distance_km,

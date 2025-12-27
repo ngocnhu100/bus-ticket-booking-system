@@ -7,28 +7,45 @@ const seatLockService = require('./seatLockService');
 
 class TripService {
   async createTrip(tripData) {
-    // 1. Validate logic thời gian
-    if (new Date(tripData.departure_time) >= new Date(tripData.arrival_time)) {
-      throw new Error('Departure time must be before arrival time');
-    }
-
-    // 2. Validate Route & Bus tồn tại (Nếu không có constraint FK trong DB thì bắt buộc phải check)
+    // 1. Fetch Route & Bus to validate and get info
     const route = await routeRepository.findById(tripData.route_id);
     if (!route) throw new Error('Route not found');
 
     const bus = await busRepository.findById(tripData.bus_id);
     if (!bus) throw new Error('Bus not found');
 
-    // 3. Check trùng lịch xe (Overlap)
+    // 2. Calculate arrival_time if not provided (based on route duration)
+    let arrivalTime = tripData.arrival_time;
+    if (!arrivalTime && route.estimated_minutes) {
+      const departureTime = new Date(tripData.departure_time);
+      departureTime.setMinutes(departureTime.getMinutes() + parseInt(route.estimated_minutes));
+      arrivalTime = departureTime.toISOString();
+    }
+
+    if (!arrivalTime) {
+      throw new Error(
+        'Could not calculate arrival time - please provide it explicitly or ensure route has estimated_minutes'
+      );
+    }
+
+    // 3. Validate logic thời gian
+    if (new Date(tripData.departure_time) >= new Date(arrivalTime)) {
+      throw new Error('Departure time must be before arrival time');
+    }
+
+    // 4. Check trùng lịch xe (Overlap)
     const hasOverlap = await tripRepository.checkOverlap(
       tripData.bus_id,
       tripData.departure_time,
-      tripData.arrival_time
+      arrivalTime
     );
     if (hasOverlap) throw new Error('Bus schedule overlap');
 
-    // 4. Create & Return
-    return await tripRepository.create(tripData);
+    // 5. Create & Return
+    return await tripRepository.create({
+      ...tripData,
+      arrival_time: arrivalTime,
+    });
   }
 
   async updateTrip(id, tripData) {
@@ -63,6 +80,11 @@ class TripService {
   async searchTrips(filters) {
     // Có thể thêm logic business ở đây nếu cần (ví dụ filter khuyến mãi)
     return await tripRepository.search(filters);
+  }
+
+  async getAllTrips(filters) {
+    // Get all trips with admin filters
+    return await tripRepository.findAll(filters);
   }
 
   async deleteTrip(id) {

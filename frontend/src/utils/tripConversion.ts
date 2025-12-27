@@ -223,6 +223,7 @@ export const legacyTripToTripFormat = (legacyTrip: unknown): Trip => {
         name: p.name,
         address: p.address,
         time: p.time || (trip.departureTime as string),
+        departure_offset_minutes: 0, // Default to 0, can be adjusted later
       })) || [],
     dropoff_points:
       routeDetails?.dropoffPoints?.map((p) => ({
@@ -230,6 +231,7 @@ export const legacyTripToTripFormat = (legacyTrip: unknown): Trip => {
         name: p.name,
         address: p.address,
         time: p.time || (trip.arrivalTime as string),
+        departure_offset_minutes: 0, // Default to 0, can be adjusted later
       })) || [],
     route_stops:
       routeDetails?.stops?.map((stop, index) => {

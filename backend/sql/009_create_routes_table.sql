@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS routes (
   route_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  operator_id UUID REFERENCES operators(operator_id) ON DELETE CASCADE,
   origin VARCHAR(100) NOT NULL,
   destination VARCHAR(100) NOT NULL,
   distance_km INTEGER NOT NULL,

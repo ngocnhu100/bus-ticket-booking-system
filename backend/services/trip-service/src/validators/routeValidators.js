@@ -6,11 +6,6 @@ const uuidPattern =
   /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 
 const createRouteSchema = Joi.object({
-  operator_id: Joi.string().pattern(uuidPattern).required().messages({
-    'string.pattern.base': 'operator_id must be a valid UUID',
-    'any.required': 'operator_id is required',
-  }),
-
   origin: Joi.string().trim().min(2).max(100).required().messages({
     'any.required': 'origin is required',
     'string.empty': 'origin cannot be empty',
@@ -108,9 +103,6 @@ const createRouteSchema = Joi.object({
   });
 
 const updateRouteSchema = Joi.object({
-  operator_id: Joi.string().pattern(uuidPattern).optional().messages({
-    'string.pattern.base': 'operator_id must be a valid UUID',
-  }),
   origin: Joi.string().trim().min(2).max(100).optional(),
   destination: Joi.string().trim().min(2).max(100).optional(),
   distance_km: Joi.number().integer().min(1).max(5000).optional(),

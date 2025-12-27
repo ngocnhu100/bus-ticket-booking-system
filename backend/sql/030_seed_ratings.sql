@@ -14,10 +14,11 @@ DECLARE
 BEGIN
     -- Loop through existing bookings with users and create ratings
     FOR booking_record IN
-        SELECT b.booking_id, b.user_id, t.trip_id, r.operator_id
+        SELECT b.booking_id, b.user_id, t.trip_id, bus.operator_id
         FROM bookings b
         JOIN trips t ON b.trip_id = t.trip_id
         JOIN routes r ON t.route_id = r.route_id
+        JOIN buses bus ON t.bus_id = bus.bus_id
         WHERE b.user_id IS NOT NULL
         AND b.status = 'confirmed'
         ORDER BY b.created_at DESC

@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import { type Trip } from '../../types/trip.types'
+import { type TripData } from '@/types/adminTripTypes'
 import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react'
 
 interface TripCalendarViewProps {
-  trips: Trip[]
-  onEditTrip?: (trip: Trip) => void
+  trips: TripData[]
+  onEditTrip?: (trip: TripData) => void
 }
 
 export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
@@ -20,12 +20,18 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
   // Group trips by date
   const tripsByDate = trips.reduce(
     (acc, trip) => {
+      // Handle cases where departure_time might be undefined or null
+      if (!trip.schedule?.departure_time) {
+        console.warn('Trip missing departure_time:', trip.trip_id)
+        return acc
+      }
+
       const dateKey = trip.schedule.departure_time.split('T')[0]
       if (!acc[dateKey]) acc[dateKey] = []
       acc[dateKey].push(trip)
       return acc
     },
-    {} as Record<string, Trip[]>
+    {} as Record<string, TripData[]>
   )
 
   const formatDateKey = (date: Date) => date.toISOString().slice(0, 10)
@@ -333,13 +339,15 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                         className="font-medium leading-tight"
                         style={{ color: 'var(--foreground)' }}
                       >
-                        <div className="truncate">{trip.route.origin}</div>
+                        <div className="truncate">
+                          {trip.route?.origin || 'Unknown'}
+                        </div>
                         <div
                           className="text-[10px] flex items-center gap-1"
                           style={{ color: 'var(--muted-foreground)' }}
                         >
                           <ArrowRight className="w-3 h-3" />{' '}
-                          {trip.route.destination}
+                          {trip.route?.destination || 'Unknown'}
                         </div>
                       </div>
                       {/* Times */}
@@ -351,15 +359,15 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                           className="font-medium"
                           style={{ color: 'var(--foreground)' }}
                         >
-                          {trip.schedule.departure_time
-                            .split('T')[1]
-                            ?.slice(0, 5)}
+                          {trip.schedule?.departure_time
+                            ?.split('T')[1]
+                            ?.slice(0, 5) || 'N/A'}
                         </span>
                         <ArrowRight className="w-3 h-3" />
                         <span>
-                          {trip.schedule.arrival_time
-                            .split('T')[1]
-                            ?.slice(0, 5)}
+                          {trip.schedule?.arrival_time
+                            ?.split('T')[1]
+                            ?.slice(0, 5) || 'N/A'}
                         </span>
                       </div>
                       {/* Bus */}
@@ -367,7 +375,7 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                         className="text-[10px] truncate"
                         style={{ color: 'var(--muted-foreground)' }}
                       >
-                        {trip.bus.model}
+                        {trip.bus?.model || 'Unknown Bus'}
                       </div>
                       {/* Price and Status */}
                       <div className="text-[10px] flex items-center justify-between gap-1">
@@ -375,12 +383,15 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                           className="font-medium"
                           style={{ color: 'var(--foreground)' }}
                         >
-                          {trip.pricing.base_price.toLocaleString('vi-VN')} VND
+                          {(trip.pricing?.base_price || 0).toLocaleString(
+                            'vi-VN'
+                          )}{' '}
+                          VND
                         </span>
                         <span
                           className="px-1.5 py-0.5 rounded-full text-[9px] font-medium"
                           style={
-                            trip.status === 'active'
+                            trip.status === 'in_progress'
                               ? {
                                   backgroundColor:
                                     'color-mix(in srgb, var(--success) 30%, var(--card))',
@@ -392,7 +403,9 @@ export const TripCalendarView: React.FC<TripCalendarViewProps> = ({
                                 }
                           }
                         >
-                          {trip.status === 'active' ? 'Active' : 'Inactive'}
+                          {trip.status === 'in_progress'
+                            ? 'In Progress'
+                            : trip.status}
                         </span>
                       </div>
                     </div>

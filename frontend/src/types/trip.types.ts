@@ -8,7 +8,6 @@
  */
 export interface RouteAdminData {
   route_id?: string
-  operator_id: string
   origin: string
   destination: string
   distance_km: number
@@ -175,6 +174,42 @@ export interface Policies {
  * Matches POST and PUT /trips request
  */
 
+// ============================================================================
+// TRIP CREATION AND UPDATE REQUESTS
+// ============================================================================
+
+export interface TripCreateRequest {
+  route_id: string
+  bus_id: string
+  operator_id: string
+  departure_time: string // ISO 8601 format
+  arrival_time?: string // ISO 8601 format (optional - calculated by backend)
+  base_price: number
+  service_fee?: number
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  policies?: {
+    cancellation_policy: string
+    refund_policy: string
+    modification_policy: string
+  }
+}
+
+export interface TripUpdateRequest {
+  route_id?: string
+  bus_id?: string
+  operator_id?: string
+  departure_time?: string
+  arrival_time?: string
+  base_price?: number
+  service_fee?: number
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  policies?: {
+    cancellation_policy: string
+    refund_policy: string
+    modification_policy: string
+  }
+}
+
 export interface Trip {
   trip_id: string
   route: {
@@ -213,11 +248,18 @@ export interface Trip {
     available_seats: number
     occupancy_rate?: number
   }
+  bookings?: number // Number of confirmed bookings
   policies: Policies
   pickup_points: PickupPoint[]
   dropoff_points: DropoffPoint[]
   route_stops?: RouteStop[]
-  status: 'active' | 'inactive'
+  status:
+    | 'active'
+    | 'inactive'
+    | 'scheduled'
+    | 'in_progress'
+    | 'completed'
+    | 'cancelled'
 }
 
 // ============================================================================

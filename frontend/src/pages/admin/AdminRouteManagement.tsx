@@ -27,7 +27,6 @@ import { SearchInput } from '@/components/ui/search-input'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
-import { useAdminOperators } from '@/hooks/admin/useAdminOperators'
 
 type ValidationErrorDetail = { field: string; message: string }
 
@@ -52,7 +51,6 @@ const AdminRouteManagement: React.FC = () => {
     updateRoute,
     deleteRoute,
   } = useAdminRoutes()
-  const { operators, fetchOperators } = useAdminOperators()
 
   const { toast } = useToast()
 
@@ -64,9 +62,6 @@ const AdminRouteManagement: React.FC = () => {
   >('ALL')
   const [durationFilter, setDurationFilter] = useState<
     'ALL' | 'SHORT' | 'MEDIUM' | 'LONG'
-  >('ALL')
-  const [operatorFilter, setOperatorFilter] = useState<
-    'ALL' | (typeof operators)[number]['operator_id']
   >('ALL')
   const [showForm, setShowForm] = useState(false)
   const [editingRoute, setEditingRoute] = useState<RouteAdminData | null>(null)
@@ -117,7 +112,6 @@ const AdminRouteManagement: React.FC = () => {
       } else if (durationFilter === 'LONG') {
         minDuration = 721
       }
-      const operatorId = operatorFilter === 'ALL' ? undefined : operatorFilter
       try {
         const paginationData = await fetchRoutes(
           currentPage,
@@ -125,7 +119,6 @@ const AdminRouteManagement: React.FC = () => {
           searchTerm,
           minDistance,
           maxDistance,
-          operatorId,
           minDuration,
           maxDuration,
           originFilter,
@@ -142,7 +135,6 @@ const AdminRouteManagement: React.FC = () => {
       }
     }
     loadRoutes()
-    fetchOperators('approved') // Only fetch approved operators
   }, [
     currentPage,
     searchTerm,
@@ -150,10 +142,8 @@ const AdminRouteManagement: React.FC = () => {
     destinationFilter,
     distanceFilter,
     durationFilter,
-    operatorFilter,
     fetchRoutes,
     toast,
-    fetchOperators,
   ])
 
   const handleCreateRoute = () => {
@@ -274,7 +264,6 @@ const AdminRouteManagement: React.FC = () => {
     setDestinationFilter('')
     setDistanceFilter('ALL')
     setDurationFilter('ALL')
-    setOperatorFilter('ALL')
     setCurrentPage(1)
   }
 
@@ -323,8 +312,7 @@ const AdminRouteManagement: React.FC = () => {
                 originFilter ||
                 destinationFilter ||
                 distanceFilter !== 'ALL' ||
-                durationFilter !== 'ALL' ||
-                operatorFilter !== 'ALL') && (
+                durationFilter !== 'ALL') && (
                 <button
                   onClick={resetFilters}
                   className="text-xs text-muted-foreground hover:text-foreground underline"
@@ -333,7 +321,7 @@ const AdminRouteManagement: React.FC = () => {
                 </button>
               )}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Origin Filter */}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -410,27 +398,6 @@ const AdminRouteManagement: React.FC = () => {
                   placeholder="Select Duration"
                 />
               </div>
-              {/* Operator Filter */}
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  Operator
-                </label>
-                <CustomDropdown
-                  options={[
-                    { id: 'ALL', label: 'All Operators' },
-                    ...operators.map((op) => ({
-                      id: op.operator_id,
-                      label: op.name || op.operator_id,
-                    })),
-                  ]}
-                  value={operatorFilter}
-                  onChange={(value) => {
-                    setOperatorFilter(value as 'ALL' | string)
-                    setCurrentPage(1)
-                  }}
-                  placeholder="Select Operator"
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -443,10 +410,7 @@ const AdminRouteManagement: React.FC = () => {
             icon={MapPin}
             title="No routes found"
             description={
-              searchTerm ||
-              distanceFilter !== 'ALL' ||
-              durationFilter !== 'ALL' ||
-              operatorFilter !== 'ALL'
+              searchTerm || distanceFilter !== 'ALL' || durationFilter !== 'ALL'
                 ? 'Try adjusting your search or filter criteria'
                 : 'Create your first route to get started'
             }
@@ -546,14 +510,6 @@ const AdminRouteManagement: React.FC = () => {
                               </h4>
                               <p className="text-sm text-muted-foreground">
                                 {route.route_id}
-                              </p>
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-medium text-foreground mb-2">
-                                Operator ID
-                              </h4>
-                              <p className="text-sm text-muted-foreground">
-                                {route.operator_id}
                               </p>
                             </div>
                             <div>
@@ -763,7 +719,6 @@ const AdminRouteManagement: React.FC = () => {
           onClose={() => setShowForm(false)}
           initialRoute={editingRoute}
           onSave={handleSaveRoute}
-          operators={operators}
         />
 
         {/* Delete Confirmation Dialog */}

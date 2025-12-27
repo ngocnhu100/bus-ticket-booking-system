@@ -20,6 +20,7 @@ export interface LayoutData {
   columns: number
   seats: Seat[]
   total_seats: number
+  currentFloor?: number
 }
 
 export interface BackendLayoutRow {

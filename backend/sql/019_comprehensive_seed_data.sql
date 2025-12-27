@@ -196,45 +196,29 @@ INSERT INTO buses (operator_id, bus_model_id, license_plate, plate_number, ameni
 ON CONFLICT DO NOTHING;
 
 -- 5. Routes
-INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_minutes) VALUES
-((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
- 'Ho Chi Minh City', 'Hanoi', 1726, 1800),
+INSERT INTO routes (origin, destination, distance_km, estimated_minutes) VALUES
+('Ho Chi Minh City', 'Hanoi', 1726, 1800),
 
-((SELECT operator_id FROM operators WHERE name = 'The Sinh Tourist' LIMIT 1),
- 'Ho Chi Minh City', 'Da Nang', 964, 900),
+('Ho Chi Minh City', 'Da Nang', 964, 900),
 
-((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
- 'Hanoi', 'Da Nang', 764, 720),
+('Hanoi', 'Da Nang', 764, 720),
 
-((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
- 'Ho Chi Minh City', 'Hue', 1083, 1020),
+('Ho Chi Minh City', 'Hue', 1083, 1020),
 
-((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
- 'Hanoi', 'Ho Chi Minh City', 1726, 1800),
+('Hanoi', 'Ho Chi Minh City', 1726, 1800),  
+('Da Nang', 'Ho Chi Minh City', 964, 900),
 
-((SELECT operator_id FROM operators WHERE name = 'Sao Viet' LIMIT 1),
- 'Da Nang', 'Ho Chi Minh City', 964, 900),
+('Hanoi', 'Sapa', 376, 480),
 
-((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
- 'Hanoi', 'Sapa', 376, 480),
+('Ho Chi Minh City', 'Nha Trang', 448, 420),
+('Da Nang', 'Hanoi', 764, 720),
 
-((SELECT operator_id FROM operators WHERE name = 'The Sinh Tourist' LIMIT 1),
- 'Ho Chi Minh City', 'Nha Trang', 448, 420),
+('Hanoi', 'Hai Phong', 102, 90),
 
-((SELECT operator_id FROM operators WHERE name = 'Futa Bus Lines' LIMIT 1),
- 'Da Nang', 'Hanoi', 764, 720),
+('Ho Chi Minh City', 'Can Tho', 169, 150),
+('Da Nang', 'Quang Ngai', 150, 120),
 
-((SELECT operator_id FROM operators WHERE name = 'Giant I' LIMIT 1),
- 'Hanoi', 'Hai Phong', 102, 90),
-
-((SELECT operator_id FROM operators WHERE name = 'Kumho Samco' LIMIT 1),
- 'Ho Chi Minh City', 'Can Tho', 169, 150),
-
-((SELECT operator_id FROM operators WHERE name = 'Sao Viet' LIMIT 1),
- 'Da Nang', 'Quang Ngai', 150, 120),
-
-((SELECT operator_id FROM operators WHERE name = 'Sapaco Tourist' LIMIT 1),
- 'Ho Chi Minh City', 'Da Lat', 306, 360)
+('Ho Chi Minh City', 'Da Lat', 306, 360)
 ON CONFLICT DO NOTHING;
 
 -- 6. Route Stops

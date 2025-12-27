@@ -4,12 +4,15 @@ const {
   create_trip_schema: createTripSchema,
   update_trip_schema: updateTripSchema,
   search_trip_schema: searchTripSchema,
+  admin_create_trip_schema: adminCreateTripSchema,
+  admin_update_trip_schema: adminUpdateTripSchema,
 } = require('../validators/tripValidators');
 
 class TripController {
   async create(req, res) {
     try {
-      const { error, value } = createTripSchema.validate(req.body);
+      // Use admin schema since this endpoint requires admin authorization
+      const { error, value } = adminCreateTripSchema.validate(req.body);
       if (error) {
         return res.status(422).json({
           success: false,
@@ -58,7 +61,8 @@ class TripController {
 
   async update(req, res) {
     try {
-      const { error, value } = updateTripSchema.validate(req.body);
+      // Use admin schema since this endpoint requires admin authorization
+      const { error, value } = adminUpdateTripSchema.validate(req.body);
       if (error) {
         return res.status(422).json({
           success: false,
@@ -134,6 +138,72 @@ class TripController {
     }
   }
 
+  // ========== ADMIN LIST ENDPOINT ==========
+
+  /**
+   * Get all trips with admin filtering, searching, sorting, and pagination
+   * GET / (Admin endpoint)
+   */
+  async getAll(req, res) {
+    try {
+      // Pagination
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+
+      // Filters
+      const status = req.query.status;
+      const route_id = req.query.route_id;
+      const bus_id = req.query.bus_id;
+      const operator_id = req.query.operator_id;
+      const departure_date_from = req.query.departure_date_from;
+      const departure_date_to = req.query.departure_date_to;
+
+      // Search
+      const search = req.query.search; // Search in route origin/destination
+
+      // Sorting
+      const sort_by = req.query.sort_by || 'departure_time'; // departure_time, bookings, created_at
+      const sort_order = req.query.sort_order === 'asc' ? 'asc' : 'desc'; // asc or desc
+
+      // Convert page to offset
+      const offset = (page - 1) * limit;
+
+      const result = await tripService.getAllTrips({
+        limit,
+        offset,
+        status,
+        route_id,
+        bus_id,
+        operator_id,
+        departure_date_from,
+        departure_date_to,
+        search,
+        sort_by,
+        sort_order,
+      });
+
+      // Calculate total pages
+      const totalPages = Math.ceil(result.total / limit);
+
+      res.json({
+        success: true,
+        data: {
+          trips: result.data,
+          total: result.total,
+          page,
+          limit,
+          total_pages: totalPages,
+        },
+      });
+    } catch (err) {
+      console.error('Error in getAll trips:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Error fetching trips list' },
+      });
+    }
+  }
+
   async getSeats(req, res) {
     try {
       const { id: tripId } = req.params;
@@ -201,6 +271,125 @@ class TripController {
       res.status(500).json({
         success: false,
         error: { code: 'SYS_ERROR', message: 'Internal Server Error' },
+      });
+    }
+  }
+
+  // ========== ADMIN ENDPOINTS ==========
+
+  /**
+   * Assign a bus to a trip
+   * POST /trips/:id/assign-bus
+   */
+  async assignBus(req, res) {
+    try {
+      const { bus_id } = req.body;
+      if (!bus_id) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'bus_id is required' },
+        });
+      }
+
+      const trip = await tripService.updateTrip(req.params.id, { bus_id });
+      res.json({
+        success: true,
+        data: trip,
+        message: 'Bus assigned to trip successfully',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to assign bus' },
+      });
+    }
+  }
+
+  /**
+   * Assign a route to a trip
+   * POST /trips/:id/assign-route
+   */
+  async assignRoute(req, res) {
+    try {
+      const { route_id } = req.body;
+      if (!route_id) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'route_id is required' },
+        });
+      }
+
+      const trip = await tripService.updateTrip(req.params.id, { route_id });
+      res.json({
+        success: true,
+        data: trip,
+        message: 'Route assigned to trip successfully',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to assign route' },
+      });
+    }
+  }
+
+  /**
+   * Update trip status
+   * PATCH /trips/:id/status
+   */
+  async updateStatus(req, res) {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VAL_001', message: 'status is required' },
+        });
+      }
+
+      const trip = await tripService.updateTrip(req.params.id, { status });
+      res.json({
+        success: true,
+        data: trip,
+        message: 'Trip status updated successfully',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to update status' },
+      });
+    }
+  }
+
+  /**
+   * Cancel a trip (with potential refund processing)
+   * POST /trips/:id/cancel
+   */
+  async cancelTrip(req, res) {
+    try {
+      const { refund_reason } = req.body || {};
+
+      // Update trip status to cancelled
+      const trip = await tripService.updateTrip(req.params.id, {
+        status: 'cancelled',
+      });
+
+      // TODO: Implement refund logic integration with payment service
+      // For now, just mark as cancelled and let bookings handle refunds
+
+      res.json({
+        success: true,
+        data: trip,
+        message: 'Trip cancelled successfully. Refunds will be processed.',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to cancel trip' },
       });
     }
   }

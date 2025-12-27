@@ -4,7 +4,6 @@ const pool = require('../database');
 class RouteRepository {
   async create(routeData) {
     const {
-      operator_id,
       origin,
       destination,
       distance_km,
@@ -14,16 +13,14 @@ class RouteRepository {
       route_stops,
     } = routeData;
 
-    // Check for existing route with same origin-destination for this operator
+    // Check for existing route with same origin-destination
     const checkQuery = `
       SELECT route_id FROM routes 
-      WHERE operator_id = $1 AND LOWER(origin) = LOWER($2) AND LOWER(destination) = LOWER($3)
+      WHERE LOWER(origin) = LOWER($1) AND LOWER(destination) = LOWER($2)
     `;
-    const checkResult = await pool.query(checkQuery, [operator_id, origin, destination]);
+    const checkResult = await pool.query(checkQuery, [origin, destination]);
     if (checkResult.rows.length > 0) {
-      const error = new Error(
-        'A route with this origin and destination already exists for this operator'
-      );
+      const error = new Error('A route with this origin and destination already exists');
       error.code = 'DUPLICATE_ROUTE';
       throw error;
     }
@@ -33,12 +30,11 @@ class RouteRepository {
 
       // Insert the route
       const routeQuery = `
-        INSERT INTO routes (operator_id, origin, destination, distance_km, estimated_minutes)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO routes (origin, destination, distance_km, estimated_minutes)
+        VALUES ($1, $2, $3, $4)
         RETURNING *;
       `;
       const routeResult = await client.query(routeQuery, [
-        operator_id,
         origin,
         destination,
         distance_km,
@@ -166,7 +162,6 @@ class RouteRepository {
     limit = 20,
     offset = 0,
     search,
-    operator_id,
     min_distance,
     max_distance,
     min_duration,
@@ -177,7 +172,6 @@ class RouteRepository {
     let countQuery = `SELECT COUNT(*) as total FROM routes r`;
     let query = `SELECT
       r.route_id,
-      r.operator_id,
       r.origin,
       r.destination,
       r.distance_km,
@@ -191,12 +185,6 @@ class RouteRepository {
 
     // Build WHERE clause
     const whereConditions = [];
-
-    if (operator_id) {
-      whereConditions.push(`r.operator_id = $${index}`);
-      values.push(operator_id);
-      index++;
-    }
 
     if (min_distance !== undefined) {
       whereConditions.push(`r.distance_km >= $${index}`);
@@ -276,7 +264,7 @@ class RouteRepository {
       const values = [];
       let idx = 1;
 
-      const allowed = ['origin', 'destination', 'distance_km', 'estimated_minutes', 'operator_id'];
+      const allowed = ['origin', 'destination', 'distance_km', 'estimated_minutes'];
       for (const key of allowed) {
         if (routeData[key] !== undefined) {
           fields.push(`${key} = $${idx++}`);
@@ -542,7 +530,6 @@ class RouteRepository {
     const query = `
     SELECT 
       r.route_id,
-      r.operator_id,
       r.origin,
       r.destination,
       r.distance_km,

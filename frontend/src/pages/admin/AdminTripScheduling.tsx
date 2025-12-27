@@ -1,496 +1,149 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import {
+  AdminTable,
+  AdminTableRow,
+  AdminTableCell,
+  AdminTablePagination,
+  StatusBadge,
+} from '@/components/admin/table'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { useAdminTripData } from '@/hooks/admin/useAdminTrip'
-import type { Trip, RouteAdminData, BusAdminData } from '../../types/trip.types'
-import '@/styles/admin.css'
+import { ErrorModal } from '@/components/ui/error-modal'
+import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
+import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
+import { FileX, Edit, SquareX, ChevronDown, ChevronRight } from 'lucide-react'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
 import { TripFilters } from '@/components/admin/TripFilters'
-import { TripList } from '@/components/admin/TripList'
 import { TripCalendarView } from '@/components/admin/TripCalendarView'
-import { TripTableView } from '@/components/admin/TripTableView'
 import { TripFormDrawer } from '@/components/admin/TripFormDrawer'
-import { CustomDatePicker } from '@/components/ui/custom-datepicker'
+import { useAdminTrips } from '@/hooks/admin/useAdminTrips'
+import type { TripData } from '@/types/adminTripTypes'
+import '@/styles/admin.css'
 
 // ============================================================================
-// API CONFIGURATION
-// ============================================================================
-// MOCK DATA (Fallback only)
-// ============================================================================
-
-const initialRoutes: RouteAdminData[] = [
-  {
-    route_id: 'r1',
-    operator_id: 'op-001',
-    origin: 'Ho Chi Minh City',
-    destination: 'Da Lat',
-    distance_km: 308,
-    estimated_minutes: 360,
-    pickup_points: [
-      {
-        point_id: 'p1',
-        name: 'Ben Thanh Station',
-        address: 'Ben Thanh, District 1',
-        time: '08:00',
-      },
-    ],
-    dropoff_points: [
-      {
-        point_id: 'd1',
-        name: 'Da Lat Station',
-        address: 'District 1',
-        time: '14:00',
-      },
-    ],
-    route_stops: [],
-  },
-  {
-    route_id: 'r2',
-    operator_id: 'op-001',
-    origin: 'Ho Chi Minh City',
-    destination: 'Nha Trang',
-    distance_km: 450,
-    estimated_minutes: 480,
-    pickup_points: [
-      {
-        point_id: 'p2',
-        name: 'Ben Thanh Station',
-        address: 'Ben Thanh, District 1',
-        time: '06:30',
-      },
-    ],
-    dropoff_points: [
-      {
-        point_id: 'd2',
-        name: 'Nha Trang Station',
-        address: 'Nha Trang City',
-        time: '11:00',
-      },
-    ],
-    route_stops: [],
-  },
-]
-
-const initialBuses: BusAdminData[] = [
-  {
-    bus_id: 'b1',
-    name: 'Limousine 20-seat',
-    type: 'limousine',
-    capacity: 20,
-    model: 'Hyundai Universe Limousine',
-    plate_number: '51B-12345',
-    amenities: ['WiFi', 'AC', 'Toilet', 'Entertainment'],
-    status: 'active',
-  },
-  {
-    bus_id: 'b2',
-    name: 'Sleeper 40-seat',
-    type: 'sleeper',
-    capacity: 40,
-    model: 'Thaco Universe Sleeper',
-    plate_number: '51B-12346',
-    amenities: ['WiFi', 'AC', 'Sleeping Beds', 'Toilet'],
-    status: 'active',
-  },
-]
-
-// Trips data structure reflecting GET /trips/search response format from API
-const initialTrips: Trip[] = [
-  {
-    trip_id: 'trp_xyz789',
-    route: {
-      route_id: 'r1',
-      origin: 'Ho Chi Minh City',
-      destination: 'Da Lat',
-      distance_km: 308,
-      estimated_minutes: 360,
-    },
-    operator: {
-      operator_id: 'opr_futa',
-      name: 'Futa Bus Lines',
-      rating: 4.5,
-      logo: 'https://cdn.example.com/futa-logo.png',
-    },
-    bus: {
-      bus_id: 'b1',
-      model: 'Limousine 20-seat',
-      plate_number: '51B-12345',
-      seat_capacity: 20,
-      bus_type: 'limousine',
-      amenities: ['wifi', 'ac', 'toilet', 'entertainment'],
-    },
-    schedule: {
-      departure_time: '2025-11-30T08:00:00Z',
-      arrival_time: '2025-11-30T12:30:00Z',
-      duration: 270,
-    },
-    pricing: {
-      base_price: 350000,
-      currency: 'VND',
-      service_fee: 10000,
-    },
-    availability: {
-      total_seats: 20,
-      available_seats: 8,
-      occupancy_rate: 60,
-    },
-    policies: {
-      cancellation_policy: 'free cancellation up to 24 hours before departure',
-      modification_policy: 'modification allowed up to 12 hours before',
-      refund_policy: '80% refund if cancelled 24h+ before departure',
-    },
-    pickup_points: [
-      {
-        point_id: 'pp_001',
-        name: 'Ben Xe Mien Dong',
-        address: '292 Dinh Bo Linh, Binh Thanh, HCM',
-        time: '2025-11-30T08:00:00Z',
-      },
-    ],
-    dropoff_points: [
-      {
-        point_id: 'dp_001',
-        name: 'Ben Xe My Dinh',
-        address: 'Pham Hung, Nam Tu Liem, Hanoi',
-        time: '2025-11-30T12:30:00Z',
-      },
-    ],
-    status: 'active',
-  },
-  {
-    trip_id: 'trp_abc123',
-    route: {
-      route_id: 'r1',
-      origin: 'Ho Chi Minh City',
-      destination: 'Da Lat',
-      distance_km: 308,
-      estimated_minutes: 360,
-    },
-    operator: {
-      operator_id: 'op-001',
-      name: 'Futa Bus Lines',
-      rating: 4.5,
-    },
-    bus: {
-      bus_id: 'b2',
-      model: 'Sleeper 40-seat',
-      plate_number: '51B-67890',
-      seat_capacity: 40,
-      bus_type: 'sleeper',
-      amenities: ['wifi', 'ac', 'toilet', 'entertainment', 'bed'],
-    },
-    schedule: {
-      departure_time: '2025-11-30T14:00:00Z',
-      arrival_time: '2025-11-30T18:15:00Z',
-      duration: 255,
-    },
-    pricing: {
-      base_price: 300000,
-      currency: 'VND',
-      service_fee: 10000,
-    },
-    availability: {
-      total_seats: 40,
-      available_seats: 12,
-      occupancy_rate: 70,
-    },
-    policies: {
-      cancellation_policy: 'free cancellation up to 24 hours before departure',
-      modification_policy: 'modification allowed up to 12 hours before',
-      refund_policy: '80% refund if cancelled 24h+ before departure',
-    },
-    pickup_points: [
-      {
-        point_id: 'pp_002',
-        name: 'Ben Xe Mien Dong',
-        address: '292 Dinh Bo Linh, Binh Thanh, HCM',
-        time: '2025-11-30T14:00:00Z',
-      },
-    ],
-    dropoff_points: [
-      {
-        point_id: 'dp_002',
-        name: 'Ben Xe My Dinh',
-        address: 'Pham Hung, Nam Tu Liem, Hanoi',
-        time: '2025-11-30T18:15:00Z',
-      },
-    ],
-    status: 'active',
-  },
-  {
-    trip_id: 'trp_def456',
-    route: {
-      route_id: 'r2',
-      origin: 'Ho Chi Minh City',
-      destination: 'Nha Trang',
-      distance_km: 441,
-      estimated_minutes: 420,
-    },
-    operator: {
-      operator_id: 'opr_futa',
-      name: 'Futa Bus Lines',
-      rating: 4.5,
-      logo: 'https://cdn.example.com/futa-logo.png',
-    },
-    bus: {
-      bus_id: 'b1',
-      model: 'Limousine 20-seat',
-      plate_number: '51B-12345',
-      seat_capacity: 20,
-      bus_type: 'limousine',
-      amenities: ['wifi', 'ac', 'toilet', 'entertainment'],
-    },
-    schedule: {
-      departure_time:
-        new Date(Date.now() + 86400000).toISOString().split('T')[0] +
-        'T06:30:00Z',
-      arrival_time:
-        new Date(Date.now() + 86400000).toISOString().split('T')[0] +
-        'T11:00:00Z',
-      duration: 270,
-    },
-    pricing: {
-      base_price: 400000,
-      currency: 'VND',
-      service_fee: 10000,
-    },
-    availability: {
-      total_seats: 20,
-      available_seats: 5,
-      occupancy_rate: 75,
-    },
-    policies: {
-      cancellation_policy: 'free cancellation up to 24 hours before departure',
-      modification_policy: 'modification allowed up to 12 hours before',
-      refund_policy: '80% refund if cancelled 24h+ before departure',
-    },
-    pickup_points: [
-      {
-        point_id: 'pp_003',
-        name: 'Ben Xe Mien Dong',
-        address: '292 Dinh Bo Linh, Binh Thanh, HCM',
-        time:
-          new Date(Date.now() + 86400000).toISOString().split('T')[0] +
-          'T06:30:00Z',
-      },
-    ],
-    dropoff_points: [
-      {
-        point_id: 'dp_003',
-        name: 'Ben Xe My Dinh',
-        address: 'Pham Hung, Nam Tu Liem, Hanoi',
-        time:
-          new Date(Date.now() + 86400000).toISOString().split('T')[0] +
-          'T11:00:00Z',
-      },
-    ],
-    status: 'active',
-  },
-]
-
-// ============================================================================
-// MAIN PAGE COMPONENT
+// ADMIN TRIP SCHEDULING PAGE - REAL API INTEGRATION
 // ============================================================================
 
 const AdminTripSchedulingPage: React.FC = () => {
-  const { trips, buses, routes, createTrip, updateTrip, deleteTrip, refetch } =
-    useAdminTripData(initialTrips, initialBuses, initialRoutes)
-
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
-  const [viewMode, setViewMode] = useState<'CALENDAR' | 'LIST'>('CALENDAR')
+  // UI state
+  const [viewMode, setViewMode] = useState<'CALENDAR' | 'LIST'>('LIST')
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [editingTrip, setEditingTrip] = useState<Trip | null>(null)
+  const [editingTrip, setEditingTrip] = useState<TripData | null>(null)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
-  const [dialogMessage, setDialogMessage] = useState('')
+  const [confirmDialogConfig, setConfirmDialogConfig] = useState<{
+    title: string
+    message: string
+    action: () => Promise<void>
+  }>({
+    title: '',
+    message: '',
+    action: async () => {},
+  })
 
   // Filter state
-  const [filters, setFilters] = useState({
-    route_id: '',
-    bus_id: '',
-    status: '',
-  })
-  const [appliedFilters, setAppliedFilters] = useState({
-    route_id: '',
-    bus_id: '',
-    status: '',
+  const [filters, setFilters] = useState<{
+    page: number
+    limit: number
+    sort_by: string
+    sort_order: 'asc' | 'desc'
+    status?: string
+    route_id?: string
+    departure_date_from?: string
+    departure_date_to?: string
+  }>({
+    page: 1,
+    limit: 10,
+    sort_by: 'departure_time',
+    sort_order: 'asc',
   })
 
   // Bulk operations state
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([])
+  const [expandedTripId, setExpandedTripId] = useState<string | null>(null)
 
-  // Fetch data on mount
-  React.useEffect(() => {
-    refetch()
-  }, [refetch])
+  // Use the admin trips hook
+  const {
+    trips,
+    isLoading,
+    error,
+    pagination,
+    fetchTrips,
+    createTrip,
+    updateTrip,
+    deleteTrip,
+    cancelTrip,
+    updateTripStatus,
+    clearError,
+  } = useAdminTrips()
 
+  // Update filtered trips when trips change
+  const [filteredTrips, setFilteredTrips] = useState<TripData[]>([])
+  useEffect(() => {
+    setFilteredTrips(trips)
+  }, [trips])
+
+  const totalTrips = pagination.total
+
+  // Map trip & buses status to badge status
+  const getBadgeStatus = (
+    status: string
+  ): 'success' | 'danger' | 'default' | 'warning' => {
+    switch (status) {
+      case 'active':
+      case 'completed':
+        return 'success'
+      case 'cancelled':
+        return 'danger'
+      case 'in_progress':
+        return 'warning'
+      case 'scheduled':
+        return 'default'
+      default:
+        return 'default'
+    }
+  }
+
+  // Fetch trips on mount and when filters change
+  useEffect(() => {
+    fetchTrips(filters.page, filters.limit, filters)
+  }, [fetchTrips, filters])
+
+  /**
+   * Handle create trip
+   */
   const handleCreateClick = () => {
     setEditingTrip(null)
     setDrawerOpen(true)
   }
 
-  const handleEditTrip = (trip: Trip) => {
+  /**
+   * Handle edit trip
+   */
+  const handleEditTrip = (trip: TripData) => {
     setEditingTrip(trip)
     setDrawerOpen(true)
   }
 
-  // Validation
-  const validateTripForm = (form: Trip): string[] => {
-    const errors: string[] = []
-
-    // Required fields
-    if (!form.route.route_id) errors.push('Route is required')
-    if (!form.bus.bus_id) errors.push('Bus is required')
-    if (!form.schedule.departure_time) errors.push('Departure time is required')
-    if (!form.schedule.arrival_time) errors.push('Arrival time is required')
-    if (form.pricing.base_price < 0) errors.push('Base price must be positive')
-
-    // Time validation
-    if (form.schedule.departure_time && form.schedule.arrival_time) {
-      const depTime = form.schedule.departure_time
-      const arrTime = form.schedule.arrival_time
-      if (depTime >= arrTime) {
-        errors.push('Arrival time must be after departure time')
-      }
-    }
-
-    return errors
-  }
-
-  // Filter and get trips for selected date
-  const filteredTrips = trips.filter((trip) => {
-    if (selectedDate) {
-      const tripDate = new Date(trip.schedule.departure_time)
-      const selected = new Date(selectedDate)
-      if (tripDate.toDateString() !== selected.toDateString()) return false
-    }
-
-    if (
-      appliedFilters.route_id &&
-      trip.route.route_id !== appliedFilters.route_id
-    )
-      return false
-    if (appliedFilters.bus_id && trip.bus.bus_id !== appliedFilters.bus_id)
-      return false
-    if (
-      appliedFilters.status &&
-      trip.status !== appliedFilters.status.toLowerCase()
-    )
-      return false
-
-    return true
-  })
-
-  const handleApplyFilters = () => {
-    setAppliedFilters(filters)
-  }
-
-  const handleClearFilters = () => {
-    setFilters({
-      route_id: '',
-      bus_id: '',
-      status: '',
-    })
-    setAppliedFilters({
-      route_id: '',
-      bus_id: '',
-      status: '',
-    })
-  }
-
-  const handleSaveTrip = async (data: {
-    trip: Trip
-    isRecurring: boolean
-    recurrencePattern: string
-    repeatBasedOn: 'departure' | 'arrival'
-    endsOn: 'never' | 'date'
-    endDate: string
-  }) => {
-    const {
-      trip,
-      isRecurring,
-      recurrencePattern,
-      repeatBasedOn,
-      endsOn,
-      endDate,
-    } = data
-    // Validate form
-    const validationErrors = validateTripForm(trip)
-    if (validationErrors.length > 0) {
-      return
-    }
-
-    if (isRecurring && recurrencePattern) {
-      // Generate and post recurring trips
-      const baseTrip = { ...trip }
-      const baseTime =
-        repeatBasedOn === 'departure'
-          ? baseTrip.schedule.departure_time
-          : baseTrip.schedule.arrival_time
-      const startDate = new Date(baseTime)
-      const endDateObj =
-        endsOn === 'date' && endDate
-          ? new Date(endDate)
-          : new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000) // 1 year if never
-
-      const currentDate = new Date(startDate)
-      while (currentDate <= endDateObj) {
-        const newTrip = { ...baseTrip }
-        newTrip.trip_id = `${baseTrip.trip_id}_${currentDate.toISOString().split('T')[0]}`
-        if (repeatBasedOn === 'departure') {
-          newTrip.schedule.departure_time = currentDate.toISOString()
-          const arrTime = new Date(currentDate)
-          arrTime.setMinutes(arrTime.getMinutes() + baseTrip.schedule.duration)
-          newTrip.schedule.arrival_time = arrTime.toISOString()
-          newTrip.pickup_points = newTrip.pickup_points.map((p) => ({
-            ...p,
-            time: currentDate.toISOString(),
-          }))
-          newTrip.dropoff_points = newTrip.dropoff_points.map((d) => ({
-            ...d,
-            time: arrTime.toISOString(),
-          }))
-        } else {
-          // repeatBasedOn === 'arrival'
-          newTrip.schedule.arrival_time = currentDate.toISOString()
-          const depTime = new Date(currentDate)
-          depTime.setMinutes(depTime.getMinutes() - baseTrip.schedule.duration)
-          newTrip.schedule.departure_time = depTime.toISOString()
-          newTrip.pickup_points = newTrip.pickup_points.map((p) => ({
-            ...p,
-            time: depTime.toISOString(),
-          }))
-          newTrip.dropoff_points = newTrip.dropoff_points.map((d) => ({
-            ...d,
-            time: currentDate.toISOString(),
-          }))
-        }
-        try {
-          await createTrip(newTrip)
-        } catch (error) {
-          console.error('Failed to create recurring trip:', error)
-          // Stop the entire series on the first error
-          break
-        }
-
-        // Increment date
-        if (recurrencePattern === 'daily') {
-          currentDate.setDate(currentDate.getDate() + 1)
-        } else if (recurrencePattern === 'weekly') {
-          currentDate.setDate(currentDate.getDate() + 7)
-        }
-      }
+  /**
+   * Handle save trip (create or update)
+   */
+  const handleSaveTrip = async (
+    tripData: TripCreateRequest | TripUpdateRequest
+  ) => {
+    if (editingTrip) {
+      // Update existing trip
+      await updateTrip(editingTrip.trip_id, tripData)
     } else {
-      if (trip.trip_id) {
-        // Update existing trip
-        await updateTrip(trip.trip_id, trip)
-      } else {
-        // Create new trip
-        await createTrip(trip)
-      }
+      // Create new trip
+      await createTrip(tripData)
     }
+
     setDrawerOpen(false)
+    setEditingTrip(null)
   }
 
-  // Bulk operations
+  /**
+   * Handle select single trip
+   */
   const handleSelectTrip = (tripId: string, selected: boolean) => {
     if (selected) {
       setSelectedTripIds((prev) => [...prev, tripId])
@@ -499,52 +152,82 @@ const AdminTripSchedulingPage: React.FC = () => {
     }
   }
 
-  const handleSelectAllTrips = (selected: boolean) => {
-    if (selected) {
-      setSelectedTripIds(filteredTrips.map((trip) => trip.trip_id))
-    } else {
-      setSelectedTripIds([])
-    }
+  /**
+   * Handle apply filters
+   */
+  const handleApplyFilters = (newFilters: TripFilterParams) => {
+    setFilters({
+      ...newFilters,
+      page: 1,
+    })
+    fetchTrips(1, newFilters.limit || 10, newFilters)
   }
 
+  /**
+   * Handle clear filters
+   */
+  const handleClearFilters = () => {
+    setFilters({
+      page: 1,
+      limit: 10,
+      sort_by: 'departure_time',
+      sort_order: 'asc',
+    })
+  }
+
+  /**
+   * Handle bulk status update
+   */
+  const handleBulkStatusUpdate = async (
+    status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+  ) => {
+    if (selectedTripIds.length === 0) return
+
+    for (const tripId of selectedTripIds) {
+      await updateTripStatus(tripId, { status })
+    }
+    // Refresh trips
+    await fetchTrips()
+    setSelectedTripIds([])
+  }
+
+  /**
+   * Handle bulk delete
+   */
+  /**
+   * Handle bulk delete
+   */
   const handleBulkDelete = () => {
     if (selectedTripIds.length === 0) return
 
-    setDialogMessage(
-      `Are you sure you want to delete ${selectedTripIds.length} trip(s)? This action cannot be undone.`
-    )
+    setConfirmDialogConfig({
+      title: 'Delete Trips',
+      message: `Are you sure you want to delete ${selectedTripIds.length} trip(s)? This action cannot be undone.`,
+      action: async () => {
+        for (const tripId of selectedTripIds) {
+          await deleteTrip(tripId)
+        }
+        setSelectedTripIds([])
+        setOpenConfirmDialog(false)
+      },
+    })
     setOpenConfirmDialog(true)
   }
 
-  const handleConfirmDelete = async () => {
-    for (const tripId of selectedTripIds) {
-      try {
-        await deleteTrip(tripId)
-      } catch (error) {
-        console.error(`Failed to delete trip ${tripId}:`, error)
-        // Continue with next trip
-      }
-    }
-    setSelectedTripIds([])
-    setOpenConfirmDialog(false)
-  }
-
-  const handleBulkStatusUpdate = async (newStatus: 'ACTIVE' | 'INACTIVE') => {
-    if (selectedTripIds.length === 0) return
-
-    const statusValue = newStatus === 'ACTIVE' ? 'active' : 'inactive'
-    for (const tripId of selectedTripIds) {
-      const trip = trips.find((t) => t.trip_id === tripId)
-      if (trip) {
-        try {
-          await updateTrip(tripId, { ...trip, status: statusValue })
-        } catch (error) {
-          console.error(`Failed to update status for trip ${tripId}:`, error)
-          // Continue with next trip
-        }
-      }
-    }
-    setSelectedTripIds([])
+  /**
+   * Handle cancel trip
+   */
+  const handleCancelTrip = async (tripId: string) => {
+    setConfirmDialogConfig({
+      title: 'Cancel Trip',
+      message:
+        'Are you sure you want to cancel this trip? This will automatically process refunds for all confirmed bookings.',
+      action: async () => {
+        await cancelTrip(tripId, { process_refunds: true })
+        setOpenConfirmDialog(false)
+      },
+    })
+    setOpenConfirmDialog(true)
   }
 
   return (
@@ -567,23 +250,19 @@ const AdminTripSchedulingPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <CustomDatePicker
-            selected={selectedDate}
-            onChange={(date: Date | null) => setSelectedDate(date)}
-            dateFormat="EEEE, MMMM d, yyyy"
-            placeholderText="Select date"
-            className="w-64"
-          />
           <button
             onClick={handleCreateClick}
-            className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2"
+            disabled={isLoading}
+            className="inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50"
             style={{
               backgroundColor: 'var(--primary)',
               color: 'var(--primary-foreground)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor =
-                'color-mix(in srgb, var(--primary) 90%, black)'
+              if (!isLoading) {
+                e.currentTarget.style.backgroundColor =
+                  'color-mix(in srgb, var(--primary) 90%, black)'
+              }
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'var(--primary)'
@@ -631,50 +310,59 @@ const AdminTripSchedulingPage: React.FC = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <button
-                onClick={() => handleBulkStatusUpdate('ACTIVE')}
-                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 min-w-0"
+                onClick={() => handleBulkStatusUpdate('scheduled')}
+                disabled={isLoading}
+                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 min-w-0 disabled:opacity-50"
                 style={{
                   backgroundColor: 'var(--primary)',
                   color: 'var(--primary-foreground)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    'color-mix(in srgb, var(--primary) 90%, black)'
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor =
+                      'color-mix(in srgb, var(--primary) 90%, black)'
+                  }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--primary)'
                 }}
               >
-                Activate
+                Schedule
               </button>
               <button
-                onClick={() => handleBulkStatusUpdate('INACTIVE')}
-                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 min-w-0"
+                onClick={() => handleBulkStatusUpdate('cancelled')}
+                disabled={isLoading}
+                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 min-w-0 disabled:opacity-50"
                 style={{
                   border: '1px solid var(--border)',
                   backgroundColor: 'var(--card)',
                   color: 'var(--foreground)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--muted)'
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = 'var(--muted)'
+                  }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--card)'
                 }}
               >
-                Deactivate
+                Cancel
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 min-w-0"
+                disabled={isLoading}
+                className="inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 min-w-0 disabled:opacity-50"
                 style={{
                   backgroundColor: 'var(--muted)',
                   color: 'var(--muted-foreground)',
                   border: '1px solid var(--border)',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--accent)'
-                  e.currentTarget.style.color = 'var(--accent-foreground)'
+                  if (!isLoading) {
+                    e.currentTarget.style.backgroundColor = 'var(--accent)'
+                    e.currentTarget.style.color = 'var(--accent-foreground)'
+                  }
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--muted)'
@@ -689,90 +377,271 @@ const AdminTripSchedulingPage: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-[420px,1fr] gap-8">
-        {/* Left: Filters + Trip List */}
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* Left: Filters */}
+        <div className="space-y-6 xl:col-span-1">
           <TripFilters
-            routes={routes}
-            buses={buses}
             filters={filters}
-            onFiltersChange={setFilters}
-            onApplyFilters={handleApplyFilters}
+            onFiltersChange={handleApplyFilters}
             onClearFilters={handleClearFilters}
-          />
-          <TripList
-            trips={filteredTrips}
-            onEditTrip={handleEditTrip}
-            selectedTripIds={selectedTripIds}
-            onSelectTrip={handleSelectTrip}
-            onSelectAll={handleSelectAllTrips}
           />
         </div>
 
-        {/* Right: Calendar / List View */}
-        <div
-          className="flex h-full flex-col rounded-2xl p-6 shadow-sm"
-          style={{
-            border: '1px solid var(--border)',
-            backgroundColor: 'var(--card)',
-          }}
-        >
-          <div className="mb-6 flex items-center justify-between">
-            <div
-              className="inline-flex rounded-full p-1"
-              style={{
-                border: '1px solid var(--border)',
-                backgroundColor: 'var(--muted)',
-              }}
-            >
-              <button
-                className={`rounded-full px-4 py-2 transition ${
-                  viewMode === 'CALENDAR' ? 'shadow-sm' : ''
-                }`}
+        {/* Right: Trip Table / Calendar View */}
+        <div className="xl:col-span-3">
+          <div
+            className="flex flex-col rounded-2xl p-6 shadow-sm min-h-150"
+            style={{
+              border: '1px solid var(--border)',
+              backgroundColor: 'var(--card)',
+            }}
+          >
+            <div className="mb-6 flex items-center justify-between">
+              <div
+                className="inline-flex rounded-full p-1"
                 style={{
-                  backgroundColor:
-                    viewMode === 'CALENDAR' ? 'var(--card)' : 'transparent',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--muted)',
+                }}
+              >
+                <button
+                  className={`rounded-full px-4 py-2 transition ${
+                    viewMode === 'CALENDAR' ? 'shadow-sm' : ''
+                  }`}
+                  style={{
+                    backgroundColor:
+                      viewMode === 'CALENDAR' ? 'var(--card)' : 'transparent',
+                    color:
+                      viewMode === 'CALENDAR'
+                        ? 'var(--foreground)'
+                        : 'var(--muted-foreground)',
+                  }}
+                  onClick={() => setViewMode('CALENDAR')}
+                >
+                  Calendar
+                </button>
+                <button
+                  className={`rounded-full px-4 py-2 transition ${
+                    viewMode === 'LIST' ? 'shadow-sm' : ''
+                  }`}
+                  style={{
+                    backgroundColor:
+                      viewMode === 'LIST' ? 'var(--card)' : 'transparent',
+                    color:
+                      viewMode === 'LIST'
+                        ? 'var(--foreground)'
+                        : 'var(--muted-foreground)',
+                  }}
+                  onClick={() => setViewMode('LIST')}
+                >
+                  List
+                </button>
+              </div>
 
-                  color:
-                    viewMode === 'CALENDAR'
-                      ? 'var(--foreground)'
-                      : 'var(--muted-foreground)',
-                }}
-                onClick={() => setViewMode('CALENDAR')}
+              <span
+                className="text-sm"
+                style={{ color: 'var(--muted-foreground)' }}
               >
-                Calendar
-              </button>
-              <button
-                className={`rounded-full px-4 py-2 transition ${
-                  viewMode === 'LIST' ? 'shadow-sm' : ''
-                }`}
-                style={{
-                  backgroundColor:
-                    viewMode === 'LIST' ? 'var(--card)' : 'transparent',
-                  color:
-                    viewMode === 'LIST'
-                      ? 'var(--foreground)'
-                      : 'var(--muted-foreground)',
-                }}
-                onClick={() => setViewMode('LIST')}
-              >
-                List
-              </button>
+                {filteredTrips.length} trips
+              </span>
             </div>
-          </div>
 
-          <div className="flex-1 overflow-auto">
-            {viewMode === 'CALENDAR' ? (
-              <TripCalendarView trips={trips} onEditTrip={handleEditTrip} />
-            ) : (
-              <TripTableView
-                trips={trips}
-                selectedTripIds={selectedTripIds}
-                onSelectTrip={handleSelectTrip}
-                onSelectAll={handleSelectAllTrips}
-                onEditTrip={handleEditTrip}
-              />
-            )}
+            <div className="flex-1 overflow-auto">
+              {isLoading ? (
+                <AdminLoadingSpinner />
+              ) : filteredTrips.length === 0 ? (
+                <AdminEmptyState
+                  icon={FileX}
+                  title="No trips found"
+                  description="Try adjusting your filters or create a new trip."
+                />
+              ) : viewMode === 'CALENDAR' ? (
+                <TripCalendarView
+                  trips={filteredTrips}
+                  onEditTrip={handleEditTrip}
+                />
+              ) : (
+                <div>
+                  <AdminTable
+                    columns={[
+                      { key: 'select', label: '', align: 'center' },
+                      { key: 'route', label: 'Route' },
+                      { key: 'bus', label: 'Bus' },
+                      { key: 'departure_time', label: 'Departure Time' },
+                      { key: 'bookings', label: 'Bookings' },
+                      { key: 'status', label: 'Status' },
+                      { key: 'actions', label: 'Actions' },
+                    ]}
+                  >
+                    {filteredTrips.map((trip) => (
+                      <React.Fragment key={trip.trip_id}>
+                        <AdminTableRow
+                          onClick={() =>
+                            setExpandedTripId(
+                              expandedTripId === trip.trip_id
+                                ? null
+                                : trip.trip_id
+                            )
+                          }
+                          className="hover:bg-muted/30 cursor-pointer transition-colors"
+                        >
+                          <AdminTableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="mr-1">
+                                {expandedTripId === trip.trip_id ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={selectedTripIds.includes(trip.trip_id)}
+                                onChange={(e) => {
+                                  e.stopPropagation()
+                                  handleSelectTrip(
+                                    trip.trip_id,
+                                    e.target.checked
+                                  )
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          </AdminTableCell>
+                          <AdminTableCell>
+                            {trip.route?.origin} - {trip.route?.destination}
+                          </AdminTableCell>
+                          <AdminTableCell>
+                            {trip.bus?.plate_number}
+                          </AdminTableCell>
+                          <AdminTableCell>
+                            {new Date(
+                              trip.schedule.departure_time
+                            ).toLocaleString()}
+                          </AdminTableCell>
+                          <AdminTableCell align="center">
+                            {trip.bookings || 0}
+                          </AdminTableCell>
+                          <AdminTableCell>
+                            <StatusBadge
+                              status={getBadgeStatus(trip.status)}
+                              label={
+                                trip.status[0].toUpperCase() +
+                                trip.status.slice(1)
+                              }
+                            />
+                          </AdminTableCell>
+                          <AdminTableCell>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditTrip(trip)
+                                }}
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                title="Edit"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCancelTrip(trip.trip_id)
+                                }}
+                                className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                                title="Cancel"
+                              >
+                                <SquareX size={16} />
+                              </button>
+                            </div>
+                          </AdminTableCell>
+                        </AdminTableRow>
+                        {expandedTripId === trip.trip_id && (
+                          <AdminTableRow>
+                            <td colSpan={7} className="bg-muted/30 px-6 py-4">
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-3 gap-6">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-foreground mb-2">
+                                      Trip ID
+                                    </h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {trip.trip_id}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-foreground mb-2">
+                                      Bus
+                                    </h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {trip.bus?.model || 'N/A'} (
+                                      {trip.bus?.plate_number})
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-foreground mb-2">
+                                      Price
+                                    </h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {trip.pricing?.base_price?.toLocaleString() ||
+                                        'N/A'}{' '}
+                                      đ
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="border-t border-border pt-4">
+                                  <h4 className="text-sm font-medium text-foreground mb-3">
+                                    Policies
+                                  </h4>
+                                  <div className="space-y-3">
+                                    <div className="p-3 bg-card rounded-lg border border-border">
+                                      <h5 className="text-xs font-semibold text-foreground mb-1 uppercase">
+                                        Cancellation Policy
+                                      </h5>
+                                      <p className="text-sm text-muted-foreground">
+                                        {trip.policies?.cancellation_policy ||
+                                          'No policy defined'}
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-card rounded-lg border border-border">
+                                      <h5 className="text-xs font-semibold text-foreground mb-1 uppercase">
+                                        Modification Policy
+                                      </h5>
+                                      <p className="text-sm text-muted-foreground">
+                                        {trip.policies?.modification_policy ||
+                                          'No policy defined'}
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-card rounded-lg border border-border">
+                                      <h5 className="text-xs font-semibold text-foreground mb-1 uppercase">
+                                        Refund Policy
+                                      </h5>
+                                      <p className="text-sm text-muted-foreground">
+                                        {trip.policies?.refund_policy ||
+                                          'No policy defined'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </AdminTableRow>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </AdminTable>
+                  <AdminTablePagination
+                    currentPage={filters.page}
+                    totalPages={Math.ceil(totalTrips / filters.limit)}
+                    total={totalTrips}
+                    onPageChange={(page) =>
+                      setFilters((prev) => ({ ...prev, page }))
+                    }
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -783,20 +652,28 @@ const AdminTripSchedulingPage: React.FC = () => {
           open={drawerOpen}
           onClose={() => {
             setDrawerOpen(false)
+            setEditingTrip(null)
           }}
-          routes={routes}
-          buses={buses}
           initialTrip={editingTrip}
           onSave={handleSaveTrip}
         />
       )}
 
+      {/* Confirm Dialog */}
       <ConfirmDialog
         open={openConfirmDialog}
         onClose={() => setOpenConfirmDialog(false)}
-        onConfirm={handleConfirmDelete}
-        title="Confirm Deletion"
-        message={dialogMessage}
+        onConfirm={confirmDialogConfig.action}
+        title={confirmDialogConfig.title}
+        message={confirmDialogConfig.message}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        open={!!error}
+        onClose={clearError}
+        title="Error"
+        message={error || ''}
       />
     </DashboardLayout>
   )

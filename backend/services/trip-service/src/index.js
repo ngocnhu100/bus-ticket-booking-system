@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cron = require('node-cron');
 require('dotenv').config();
 
 const tripController = require('./controllers/tripController');
@@ -41,6 +42,18 @@ app.use(express.json());
   }
 })();
 
+// Start trip status update cron job
+const tripStatusUpdateService = require('./services/tripStatusUpdateService');
+cron.schedule('*/1 * * * *', async () => {
+  // Run every minute
+  try {
+    await tripStatusUpdateService.updateTripStatuses();
+  } catch (error) {
+    console.error('❌ Error updating trip statuses:', error);
+  }
+});
+console.log('✅ Trip status update cron job started (runs every minute)');
+
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
 
@@ -49,6 +62,9 @@ app.use('/upload', uploadRoutes);
 
 // --- Public routes ---
 app.get('/search', tripController.search);
+
+// --- Admin: Trip listing (must come before /:id route) ---
+app.get('/', authenticate, authorize(['admin']), tripController.getAll);
 
 // **Các route cụ thể phải đứng trước `/:id`**
 app.get('/routes', routeController.getAll);
@@ -72,6 +88,12 @@ app.get('/:id/seats/my-locks', optionalAuthenticate, seatLockController.getMyLoc
 app.post('/', authenticate, authorize(['admin']), tripController.create);
 app.put('/:id', authenticate, authorize(['admin']), tripController.update);
 app.delete('/:id', authenticate, authorize(['admin']), tripController.delete);
+
+// --- Admin: Trip advanced operations ---
+app.post('/:id/assign-bus', authenticate, authorize(['admin']), tripController.assignBus);
+app.post('/:id/assign-route', authenticate, authorize(['admin']), tripController.assignRoute);
+app.patch('/:id/status', authenticate, authorize(['admin']), tripController.updateStatus);
+app.post('/:id/cancel', authenticate, authorize(['admin']), tripController.cancelTrip);
 
 // --- Admin: Route management ---
 app.post('/routes', authenticate, authorize(['admin']), routeController.create);

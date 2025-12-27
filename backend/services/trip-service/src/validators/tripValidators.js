@@ -2,9 +2,9 @@
 const Joi = require('joi');
 
 const policies_schema = Joi.object({
-  cancellation_policy: Joi.string().required(),
-  modification_policy: Joi.string().required(),
-  refund_policy: Joi.string().required(),
+  cancellation_policy: Joi.string().allow('').required(),
+  modification_policy: Joi.string().allow('').required(),
+  refund_policy: Joi.string().allow('').required(),
 });
 
 const create_trip_schema = Joi.object({
@@ -19,6 +19,45 @@ const create_trip_schema = Joi.object({
     refund_policy: 'Refundable up to 24h',
   }),
   status: Joi.string().valid('active', 'inactive').optional().default('active'),
+});
+
+// Admin create schema (for admin trip form)
+const admin_create_trip_schema = Joi.object({
+  route_id: Joi.string().uuid().required(),
+  bus_id: Joi.string().uuid().required(),
+  departure_time: Joi.date().iso().required(),
+  arrival_time: Joi.alternatives()
+    .try(
+      Joi.date().iso(),
+      Joi.string().valid('') // Allow empty string
+    )
+    .optional(),
+  base_price: Joi.number().min(0).required(),
+  service_fee: Joi.number().min(0).optional().default(0),
+  policies: policies_schema.optional().default({
+    cancellation_policy: 'Standard cancellation',
+    modification_policy: 'Flexible',
+    refund_policy: 'Refundable up to 24h',
+  }),
+});
+
+// Admin update schema (for admin trip form)
+const admin_update_trip_schema = Joi.object({
+  route_id: Joi.string().uuid().optional(),
+  bus_id: Joi.string().uuid().optional(),
+  departure_time: Joi.date().iso().optional(),
+  arrival_time: Joi.alternatives()
+    .try(
+      Joi.date().iso(),
+      Joi.string().valid('') // Allow empty string
+    )
+    .optional(),
+  base_price: Joi.number().min(0).optional(),
+  service_fee: Joi.number().min(0).optional(),
+  status: Joi.string()
+    .valid('scheduled', 'in_progress', 'completed', 'cancelled', 'active', 'inactive')
+    .optional(),
+  policies: policies_schema.optional(),
 });
 
 const update_trip_schema = Joi.object({
@@ -84,4 +123,10 @@ const search_trip_schema = Joi.object({
     .default('departure_time ASC'),
 });
 
-module.exports = { create_trip_schema, update_trip_schema, search_trip_schema };
+module.exports = {
+  create_trip_schema,
+  update_trip_schema,
+  search_trip_schema,
+  admin_create_trip_schema,
+  admin_update_trip_schema,
+};

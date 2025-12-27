@@ -191,7 +191,6 @@ class RouteController {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
       const search = req.query.search ? decodeURIComponent(req.query.search) : undefined;
-      const operator_id = req.query.operator_id;
       const min_distance = req.query.min_distance ? parseFloat(req.query.min_distance) : undefined;
       const max_distance = req.query.max_distance ? parseFloat(req.query.max_distance) : undefined;
       const min_duration = req.query.min_duration ? parseFloat(req.query.min_duration) : undefined;
@@ -215,7 +214,6 @@ class RouteController {
         limit,
         offset,
         search,
-        operator_id,
         min_distance,
         max_distance,
         min_duration,

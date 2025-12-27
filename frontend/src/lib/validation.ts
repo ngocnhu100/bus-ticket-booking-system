@@ -98,7 +98,6 @@ type RouteStopPayload = {
 }
 
 type CreateRoutePayload = {
-  operator_id: string
   origin: string
   destination: string
   distance_km: number
@@ -110,21 +109,14 @@ type CreateRoutePayload = {
 
 type UpdateRoutePayload = Partial<CreateRoutePayload>
 
-const isValidUUID = (value: string) => {
-  const uuidPattern =
-    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
-  return uuidPattern.test(value)
-}
+// const isValidUUID = (value: string) => {
+//   const uuidPattern =
+//     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+//   return uuidPattern.test(value)
+// }
 
 export function validateCreateRoute(payload: CreateRoutePayload) {
   const errors: Record<string, string> = {}
-
-  // operator_id validation
-  if (!payload.operator_id) {
-    errors['operator_id'] = 'operator_id is required'
-  } else if (!isValidUUID(payload.operator_id)) {
-    errors['operator_id'] = 'operator_id must be a valid UUID'
-  }
 
   // origin validation
   if (!payload.origin || !between(payload.origin, 2, 100)) {

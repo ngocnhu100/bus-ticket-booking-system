@@ -11,12 +11,14 @@ interface BusModel {
 
 const emptyForm: Omit<BusAdminData, 'bus_id' | 'created_at'> = {
   operator_id: '',
+  name: '',
   model: '',
   plate_number: '',
   type: 'standard',
   capacity: 20,
   amenities: [],
   image_urls: [],
+  status: 'active',
 }
 
 interface BusFormDrawerProps {

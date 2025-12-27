@@ -1,31 +1,44 @@
-import type { RouteAdminData, BusAdminData } from '../../types/trip.types'
+import { useState, useEffect } from 'react'
+import type { TripFilterParams } from '@/types/adminTripTypes'
 import { CustomDropdown } from '../ui/custom-dropdown'
-import { ArrowRight } from 'lucide-react'
-
-export interface TripFiltersData {
-  route_id: string
-  bus_id: string
-  status: string
-}
+import { CustomDatePicker } from '../ui/custom-datepicker'
+import { adminTripService } from '@/services/adminTripService'
+import type { RouteAdminData } from '@/types/trip.types'
 
 interface TripFiltersProps {
-  routes: RouteAdminData[]
-  buses: BusAdminData[]
-  filters: TripFiltersData
-  onFiltersChange: (filters: TripFiltersData) => void
-  onApplyFilters: () => void
+  filters: TripFilterParams
+  onFiltersChange: (filters: TripFilterParams) => void
   onClearFilters: () => void
 }
 
 export const TripFilters: React.FC<TripFiltersProps> = ({
-  routes,
-  buses,
   filters,
   onFiltersChange,
-  onApplyFilters,
   onClearFilters,
 }) => {
-  const handleFilterChange = (key: keyof TripFiltersData, value: string) => {
+  const [routes, setRoutes] = useState<RouteAdminData[]>([])
+  const [dateFrom, setDateFrom] = useState<Date | null>(
+    filters.departure_date_from ? new Date(filters.departure_date_from) : null
+  )
+  const [dateTo, setDateTo] = useState<Date | null>(
+    filters.departure_date_to ? new Date(filters.departure_date_to) : null
+  )
+
+  useEffect(() => {
+    const loadRoutes = async () => {
+      try {
+        const response = await adminTripService.getAllRoutes()
+        setRoutes(response)
+      } catch (error) {
+        console.error('Failed to fetch routes:', error)
+      }
+    }
+    loadRoutes()
+  }, [])
+  const handleFilterChange = (
+    key: keyof TripFilterParams,
+    value: string | number | undefined
+  ) => {
     onFiltersChange({
       ...filters,
       [key]: value,
@@ -44,46 +57,19 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="mr-2">
+      <div className="space-y-6">
+        <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Route
+            Search
           </label>
-          <CustomDropdown
-            options={[
-              { id: '', label: 'All routes' },
-              ...routes.map((r) => ({
-                id: r.route_id || '',
-                label: (
-                  <span className="flex items-center gap-1">
-                    {r.origin}
-                    <ArrowRight className="w-4 h-4" />
-                    {r.destination}
-                  </span>
-                ),
-              })),
-            ]}
-            value={filters.route_id}
-            onChange={(value) => handleFilterChange('route_id', value)}
-            placeholder="All routes"
-          />
-        </div>
-
-        <div className="mr-2">
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Bus
-          </label>
-          <CustomDropdown
-            options={[
-              { id: '', label: 'All buses' },
-              ...buses.map((b) => ({
-                id: b.bus_id || '',
-                label: b.name,
-              })),
-            ]}
-            value={filters.bus_id}
-            onChange={(value) => handleFilterChange('bus_id', value)}
-            placeholder="All buses"
+          <input
+            type="text"
+            placeholder="Search by origin or destination..."
+            value={filters.search || ''}
+            onChange={(e) =>
+              handleFilterChange('search', e.target.value || undefined)
+            }
+            className="w-full px-3 py-2 border border-input bg-background rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
           />
         </div>
 
@@ -94,22 +80,121 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
           <CustomDropdown
             options={[
               { id: '', label: 'All statuses' },
-              { id: 'active', label: 'Active' },
-              { id: 'inactive', label: 'Inactive' },
+              { id: 'scheduled', label: 'Scheduled' },
+              { id: 'in_progress', label: 'In Progress' },
+              { id: 'completed', label: 'Completed' },
+              { id: 'cancelled', label: 'Cancelled' },
             ]}
-            value={filters.status}
-            onChange={(value) => handleFilterChange('status', value)}
+            value={filters.status || ''}
+            onChange={(value) =>
+              handleFilterChange('status', value || undefined)
+            }
             placeholder="All statuses"
           />
         </div>
-      </div>
 
-      <button
-        onClick={onApplyFilters}
-        className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-      >
-        Apply Filters
-      </button>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Route
+          </label>
+          <CustomDropdown
+            options={[
+              { id: '', label: 'All routes' },
+              ...routes.map((route) => ({
+                id: route.route_id || '',
+                label: `${route.origin} - ${route.destination}`,
+              })),
+            ]}
+            value={filters.route_id || ''}
+            onChange={(value) =>
+              handleFilterChange('route_id', value || undefined)
+            }
+            placeholder="All routes"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Departure Date From
+          </label>
+          <CustomDatePicker
+            selected={dateFrom}
+            onChange={(date) => {
+              setDateFrom(date)
+              handleFilterChange(
+                'departure_date_from',
+                date ? date.toISOString().split('T')[0] : undefined
+              )
+            }}
+            placeholderText="Select start date"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Departure Date To
+          </label>
+          <CustomDatePicker
+            selected={dateTo}
+            onChange={(date) => {
+              setDateTo(date)
+              handleFilterChange(
+                'departure_date_to',
+                date ? date.toISOString().split('T')[0] : undefined
+              )
+            }}
+            placeholderText="Select end date"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Per Page
+          </label>
+          <CustomDropdown
+            options={[
+              { id: '10', label: '10' },
+              { id: '20', label: '20' },
+              { id: '50', label: '50' },
+              { id: '100', label: '100' },
+            ]}
+            value={(filters.limit || 20).toString()}
+            onChange={(value) => handleFilterChange('limit', parseInt(value))}
+            placeholder="20"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Sort By
+          </label>
+          <CustomDropdown
+            options={[
+              { id: 'departure_time', label: 'Departure Time' },
+              { id: 'bookings', label: 'Bookings' },
+              { id: 'created_at', label: 'Created At' },
+            ]}
+            value={filters.sort_by || 'departure_time'}
+            onChange={(value) => handleFilterChange('sort_by', value)}
+            placeholder="Departure Time"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">
+            Sort Order
+          </label>
+          <CustomDropdown
+            options={[
+              { id: 'asc', label: 'Ascending' },
+              { id: 'desc', label: 'Descending' },
+            ]}
+            value={filters.sort_order || 'asc'}
+            onChange={(value) => handleFilterChange('sort_order', value)}
+            placeholder="Ascending"
+          />
+        </div>
+      </div>
     </div>
   )
 }
