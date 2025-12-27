@@ -356,9 +356,15 @@ class BookingRepository {
       bookingId,
     ];
 
+    console.log('[updatePayment] Query:', query);
+    console.log('[updatePayment] Values:', values);
+
     const result = await db.query(query, values);
 
+    console.log('[updatePayment] Result:', result.rows);
+
     if (result.rows.length === 0) {
+      console.warn('[updatePayment] No rows updated for bookingId:', bookingId);
       return null;
     }
 

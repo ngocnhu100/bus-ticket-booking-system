@@ -1,0 +1,1 @@
+ALTER TABLE bookings ADD COLUMN app_trans_id VARCHAR(64);

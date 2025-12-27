@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom'
 
 // Types
 interface User {
-  userId: number
+  userId: string
   email: string
   phone: string | null
   fullName: string

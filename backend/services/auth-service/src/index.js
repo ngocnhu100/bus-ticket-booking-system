@@ -9,6 +9,47 @@ const authController = require('./authController');
 const { authenticate } = require('./authMiddleware');
 
 const app = express();
+
+// Avatar upload
+const upload = require('./controllers/avatarMulter');
+const uploadAvatar = require('./controllers/uploadAvatar.controller');
+// Route: upload avatar (protected, follow doc)
+app.put('/users/profile', authenticate, upload.single('avatar'), async (req, res, next) => {
+  req.userRepository = require('./userRepository');
+  try {
+    await uploadAvatar(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /users/profile (follow doc)
+app.get('/users/profile', authenticate, async (req, res, next) => {
+  try {
+    // Lấy user từ DB
+    const userRepository = require('./userRepository');
+    const user = await userRepository.findById(req.user.user_id);
+    if (!user) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'User not found' } });
+    // Chuẩn hóa response
+    res.json({
+      success: true,
+      data: {
+        userId: user.user_id,
+        email: user.email,
+        phone: user.phone,
+        fullName: user.full_name,
+        role: user.role,
+        avatar: user.avatar,
+        emailVerified: user.email_verified,
+        phoneVerified: user.phone_verified,
+        preferences: user.preferences,
+        createdAt: user.created_at,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'test' ? 3002 : 3001);
 
 // Middleware

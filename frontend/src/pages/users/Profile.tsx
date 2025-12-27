@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 import React, { useState } from 'react'
-import { updateUserProfile } from '@/api/userProfileApi'
+// Không dùng updateUserProfile cũ nữa, tự gọi request
+import { request } from '@/api/auth'
 // ...existing code...
 const Profile = () => {
   const { user, updateUser } = useAuth()
@@ -16,7 +17,9 @@ const Profile = () => {
     fullName: user?.fullName || '',
     email: user?.email || '',
     phone: user?.phone || '',
+    avatar: user?.avatar || '',
   })
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [message, setMessage] = useState<{
     type: 'success' | 'error'
     text: string
@@ -29,11 +32,24 @@ const Profile = () => {
       fullName: user?.fullName || '',
       email: user?.email || '',
       phone: user?.phone || '',
+      avatar: user?.avatar || '',
     })
   }, [user])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  // Xử lý upload avatar qua API backend
+  // Chỉ lưu file vào state, upload khi Save
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setAvatarFile(e.target.files[0])
+      setForm((prev) => ({
+        ...prev,
+        avatar: URL.createObjectURL(e.target.files[0]),
+      }))
+    }
   }
 
   const handleEdit = () => setIsEditing(true)
@@ -49,25 +65,45 @@ const Profile = () => {
     setSaving(true)
     setMessage(null)
     try {
-      await updateUserProfile({
-        fullName: form.fullName,
-        phone: form.phone,
-      })
+      let res
+      if (avatarFile) {
+        // Nếu có file ảnh, gửi multipart/form-data
+        const formData = new FormData()
+        formData.append('fullName', form.fullName)
+        formData.append('phone', form.phone)
+        formData.append('avatar', avatarFile)
+        res = await request('/users/profile', {
+          method: 'PUT',
+          body: formData,
+        })
+      } else {
+        // Không có file, gửi JSON
+        res = await request('/users/profile', {
+          method: 'PUT',
+          body: {
+            fullName: form.fullName,
+            phone: form.phone,
+            avatar: form.avatar,
+          },
+        })
+      }
       await updateUser() // Lấy lại thông tin user mới nhất từ API
-      setMessage({ type: 'success', text: 'Profile updated successfully!' })
+      setMessage({
+        type: 'success',
+        text: res.message || 'Profile updated successfully!',
+      })
       setIsEditing(false)
+      setAvatarFile(null)
     } catch (error: unknown) {
       let errorMessage = 'Failed to update profile'
-      interface ErrorWithMessage {
-        message: string
-      }
       if (
         error &&
         typeof error === 'object' &&
         'message' in error &&
-        typeof (error as ErrorWithMessage).message === 'string'
+        typeof (error as unknown as { message?: string }).message === 'string'
       ) {
-        errorMessage = (error as ErrorWithMessage).message
+        errorMessage = (error as unknown as { message?: string })
+          .message as string
       }
       setMessage({
         type: 'error',
@@ -96,6 +132,23 @@ const Profile = () => {
                 {message.text}
               </div>
             )}
+            {/* Avatar */}
+            <div className="space-y-2 flex flex-col items-center">
+              <Label>Avatar</Label>
+              <img
+                src={form.avatar || '/default-avatar.png'}
+                alt="avatar"
+                className="w-24 h-24 rounded-full object-cover border"
+              />
+              {isEditing && (
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={saving}
+                />
+              )}
+            </div>
             {/* Full Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>

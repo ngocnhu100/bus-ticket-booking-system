@@ -47,6 +47,7 @@ services:
       - PORT=3001
       - DB_HOST=postgres
       - DB_PORT=5432
+      # DB_NAME=bus_ticket_dev (dòng cũ, kiểm tra tên DB thực tế, cần khớp với DB đã tạo)
       - DB_NAME=bus_ticket_dev
       - DB_USER=postgres
       - DB_PASSWORD=postgres
@@ -251,6 +252,7 @@ services:
       - TRIP_SERVICE_URL=http://trip-service:3002
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
       - BOOKING_SERVICE_URL=http://booking-service:3004
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
       - ANALYTICS_SERVICE_URL=http://analytics-service:3006
       - CHATBOT_SERVICE_URL=http://chatbot-service:3007
       - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}

@@ -9,7 +9,8 @@ interface BookingInfo {
   contactPhone: string
 }
 
-function getBookingIdFromQuery() {
+// Lấy bookingId từ query hoặc fallback từ apptransid (ZaloPay)
+async function getBookingIdFromQueryAsync() {
   const params = new URLSearchParams(window.location.search)
   // Ưu tiên lấy từ extraData (base64)
   const extraData = params.get('extraData')
@@ -23,7 +24,23 @@ function getBookingIdFromQuery() {
     }
   }
   // Fallback: lấy bookingId trực tiếp từ query nếu có
-  return params.get('bookingId') || ''
+  const bookingId = params.get('bookingId')
+  if (bookingId) return bookingId
+  // Nếu là ZaloPay, thử lấy từ apptransid (orderId)
+  const apptransid = params.get('apptransid')
+  if (apptransid) {
+    // Gọi API backend để tra cứu bookingId từ apptransid
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/payments/zalopay/booking-id?apptransid=${apptransid}`
+      )
+      const data = await res.json()
+      if (data.success && data.bookingId) return data.bookingId
+    } catch {
+      // ignore
+    }
+  }
+  return ''
 }
 
 function getPaymentResultFromQuery() {
@@ -119,7 +136,7 @@ function StatusIcon({ status, cancel }: { status?: string; cancel?: string }) {
 
 const PaymentResult: React.FC = () => {
   const navigate = useNavigate()
-  const bookingId = getBookingIdFromQuery()
+  const [bookingId, setBookingId] = useState<string>('')
   const paymentResult = getPaymentResultFromQuery()
   const { status, loading, error } = usePaymentStatus(bookingId)
   const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null)
@@ -139,6 +156,11 @@ const PaymentResult: React.FC = () => {
   }
 
   // Fetch booking info for redirect to lookup page
+  // Lấy bookingId từ query hoặc tra cứu từ apptransid nếu cần
+  useEffect(() => {
+    getBookingIdFromQueryAsync().then(setBookingId)
+  }, [])
+
   useEffect(() => {
     const currentStatus = manualStatus || status
     if (bookingId && currentStatus === 'PAID') {
@@ -181,17 +203,11 @@ const PaymentResult: React.FC = () => {
 
   // If we have MoMo result in URL, update booking status
   useEffect(() => {
-    console.log('[PaymentResult] useEffect triggered')
-    console.log('[PaymentResult] bookingId:', bookingId)
-    console.log('[PaymentResult] paymentResult:', paymentResult)
-
     if (
       bookingId &&
       paymentResult.resultCode &&
       paymentResult.resultCode === '0'
     ) {
-      console.log('[PaymentResult] Calling internal confirm-payment API...')
-      // MoMo payment successful, call internal confirm endpoint
       fetch(`${API_BASE_URL}/bookings/internal/${bookingId}/confirm-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,26 +218,13 @@ const PaymentResult: React.FC = () => {
           paymentStatus: 'paid',
         }),
       })
-        .then((res) => {
-          console.log(
-            '[PaymentResult] Confirm API response status:',
-            res.status
-          )
-          return res.json()
-        })
+        .then((res) => res.json())
         .then((data) => {
-          console.log('[PaymentResult] Confirm API response:', data)
-          // If confirm successful, update status immediately
           if (data.success) {
-            console.log('[PaymentResult] Setting manual status to PAID')
             setManualStatus('PAID')
           }
         })
-        .catch((err) => {
-          console.error('[PaymentResult] Failed to confirm payment:', err)
-        })
-    } else {
-      console.log('[PaymentResult] Conditions not met for confirm API')
+        .catch(() => {})
     }
   }, [bookingId, paymentResult.resultCode, paymentResult.orderId])
 

@@ -4,6 +4,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const axios = require('axios');
 const { authenticate, authorize } = require('./authMiddleware.js');
+const multer = require('multer');
+const upload = multer();
 // Always load .env file for development and Docker environments
 require('dotenv').config();
 
@@ -81,6 +83,51 @@ app.use('/auth', async (req, res) => {
   }
 });
 
+// Proxy /users/profile về auth-service (hỗ trợ cả multipart/form-data và JSON)
+app.all('/users/profile', upload.any(), async (req, res) => {
+  try {
+    const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
+    const queryString = Object.keys(req.query).length
+      ? '?' + new URLSearchParams(req.query).toString()
+      : '';
+    let data = req.body;
+    let headers = {
+      authorization: req.headers.authorization,
+    };
+    if (req.is('multipart/form-data') && req.files && req.files.length > 0) {
+      const FormData = require('form-data');
+      const form = new FormData();
+      Object.entries(req.body).forEach(([k, v]) => form.append(k, v));
+      req.files.forEach(f => form.append(f.fieldname, f.buffer, { filename: f.originalname, contentType: f.mimetype }));
+      data = form;
+      headers = { ...headers, ...form.getHeaders() };
+    } else {
+      headers['content-type'] = 'application/json';
+    }
+    const response = await axios({
+      method: req.method,
+      url: `${authServiceUrl}/users/profile${queryString}`,
+      data,
+      headers,
+      timeout: 30000,
+    });
+    Object.keys(response.headers).forEach((key) => {
+      res.set(key, response.headers[key]);
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`❌ Auth service /users/profile error:`, error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(500).json({
+        success: false,
+        error: { code: 'GATEWAY_001', message: 'Auth service unavailable' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+});
 // Notification service routes (if needed for direct access)
 app.use('/notification', authenticate, async (req, res) => {
   try {
@@ -113,6 +160,44 @@ app.use('/notification', authenticate, async (req, res) => {
       res.status(500).json({
         success: false,
         error: { code: 'GATEWAY_002', message: 'Notification service unavailable' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+});
+
+// Payment service routes
+app.use('/payments', async (req, res) => {
+  try {
+    const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://payment-service:3005';
+    // Giữ nguyên prefix /payments khi forward
+    const fullPath = req.baseUrl + req.path;
+    const queryString = req.originalUrl.includes('?') ? '?' + req.originalUrl.split('?')[1] : '';
+    console.log(
+      `🔄 Proxying ${req.method} ${req.originalUrl} to ${paymentServiceUrl}${fullPath}${queryString}`
+    );
+    const response = await require('axios')({
+      method: req.method,
+      url: `${paymentServiceUrl}${fullPath}${queryString}`,
+      data: req.body,
+      headers: {
+        authorization: req.headers.authorization,
+        'content-type': req.headers['content-type'] || 'application/json',
+      },
+      timeout: 15000,
+    });
+    Object.keys(response.headers).forEach((key) => {
+      if (key !== 'transfer-encoding') res.setHeader(key, response.headers[key]);
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`❌ Payment service error:`, error.message);
+    if (error.response) {
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      res.status(503).json({
+        success: false,
+        error: { code: 'GATEWAY_007', message: 'Payment service unavailable' },
         timestamp: new Date().toISOString(),
       });
     }

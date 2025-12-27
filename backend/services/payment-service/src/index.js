@@ -9,11 +9,17 @@ const PORT = process.env.PORT || 3005;
 
 // Route webhook cho từng gateway
 const webhookController = require('./controllers/webhookController');
-app.post('/webhooks/:gateway', express.raw({ type: 'application/json' }), webhookController.handleWebhook);
-
+// Tách middleware cho từng gateway
+app.post('/webhooks/zalopay', express.raw({ type: '*/*' }), (req, res) => webhookController.handleWebhook(req, res, 'zalopay'));
+app.post('/webhooks/momo', express.json(), (req, res) => webhookController.handleWebhook(req, res, 'momo'));
+app.post('/webhooks/payos', express.json(), (req, res) => webhookController.handleWebhook(req, res, 'payos'));
+app.post('/webhooks/card', express.raw({ type: '*/*' }), (req, res) => webhookController.handleWebhook(req, res, 'card')); // Stripe cũng cần raw body để verify signature
 
 // Các route khác dùng express.json bình thường
 app.use(express.json());
+// Đăng ký route tra cứu bookingId từ apptransid cho ZaloPay
+const zalopayController = require('./controllers/zalopayController');
+app.get('/payments/zalopay/booking-id', zalopayController.getBookingIdFromAppTransId);
 app.post('/api/payment', require('./controllers/paymentController').createPayment);
 
 // Route test webhook payouts

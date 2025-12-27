@@ -1817,19 +1817,20 @@ class BookingService {
    */
   async confirmBookingWithPayment(bookingId, paymentData) {
     try {
+      console.log('[confirmBookingWithPayment] Called with:', { bookingId, paymentData });
       // Update booking status to confirmed
-      await bookingRepository.updateStatus(bookingId, 'confirmed');
-      
+      const statusResult = await bookingRepository.updateStatus(bookingId, 'confirmed');
+      console.log('[confirmBookingWithPayment] updateStatus result:', statusResult ? { booking_id: statusResult.booking_id, status: statusResult.status } : null);
       // Update payment status
-      await bookingRepository.updatePayment(bookingId, {
+      const paymentResult = await bookingRepository.updatePayment(bookingId, {
         paymentMethod: paymentData.paymentMethod || 'momo',
         paymentStatus: 'paid',
         transactionRef: paymentData.transactionRef || null,
       });
-
+      console.log('[confirmBookingWithPayment] updatePayment result:', paymentResult ? { booking_id: paymentResult.booking_id, payment_status: paymentResult.payment_status, payment_method: paymentResult.payment_method } : null);
       // Get updated booking
       const booking = await bookingRepository.findById(bookingId);
-
+      console.log('[confirmBookingWithPayment] findById result:', booking ? { booking_id: booking.booking_id, payment_status: booking.payment_status, status: booking.status, payment_method: booking.payment_method } : null);
       // Trigger e-ticket generation if not already generated
       if (!booking.ticket_url) {
         try {
@@ -1839,7 +1840,6 @@ class BookingService {
           // Don't fail the confirmation if ticket generation fails
         }
       }
-
       return booking;
     } catch (error) {
       console.error('[BookingService] confirmBookingWithPayment error:', error);

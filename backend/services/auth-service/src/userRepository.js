@@ -1,6 +1,11 @@
 const pool = require('./database');
 
 class UserRepository {
+    async updateUserAvatar(userId, avatarUrl) {
+      const query = 'UPDATE users SET avatar = $1, updated_at = NOW() WHERE user_id = $2 RETURNING avatar';
+      const result = await pool.query(query, [avatarUrl, userId]);
+      return result.rows[0];
+    }
   async create(userData) {
     const {
       email,

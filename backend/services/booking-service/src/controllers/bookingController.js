@@ -17,36 +17,27 @@ class BookingController {
       try {
         const { id } = req.params;
         const { paymentMethod, transactionRef, amount, paymentStatus } = req.body;
-        
+        console.log('[internalConfirmPayment] Called with:', { id, paymentMethod, transactionRef, amount, paymentStatus });
         // Confirm booking and update payment status (idempotent)
         const booking = await bookingService.getBookingById(id, null);
-        
+        console.log('[internalConfirmPayment] booking:', booking ? { booking_id: booking.booking_id, payment_status: booking.payment_status, status: booking.status, payment_method: booking.payment_method } : null);
         if (!booking) {
+          console.warn('[internalConfirmPayment] Booking not found:', id);
           return res.status(404).json({
             success: false,
             error: { code: 'BOOKING_003', message: 'Booking not found' },
             timestamp: new Date().toISOString()
           });
         }
-        
-        // If already paid, just return success (idempotent)
-        if (booking.payment_status === 'paid') {
-          return res.json({
-            success: true,
-            message: 'Booking already paid',
-            data: booking,
-            timestamp: new Date().toISOString()
-          });
-        }
-        
-        // Update booking status and payment status
+        // Luôn gọi confirmBookingWithPayment để đảm bảo idempotent và luôn cập nhật payment info
+        console.log('[internalConfirmPayment] Calling confirmBookingWithPayment (idempotent)...', { id, paymentMethod, transactionRef, amount, paymentStatus });
         const confirmedBooking = await bookingService.confirmBookingWithPayment(id, {
           paymentMethod,
           transactionRef,
           amount,
           paymentStatus: paymentStatus || 'paid'
         });
-        
+        console.log('[internalConfirmPayment] confirmBookingWithPayment result:', confirmedBooking ? { booking_id: confirmedBooking.booking_id, payment_status: confirmedBooking.payment_status, status: confirmedBooking.status, payment_method: confirmedBooking.payment_method } : null);
         res.json({
           success: true,
           data: confirmedBooking,
