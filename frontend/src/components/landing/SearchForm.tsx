@@ -311,7 +311,7 @@ export function SearchForm() {
                   <div className="relative">
                     <div
                       id="datepicker-portal"
-                      className="absolute top-full left-0 z-50 mt-2"
+                      className="absolute top-full left-0 z-10000 mt-2"
                     ></div>
                     <DatePicker
                       selected={formData.date}
@@ -345,7 +345,7 @@ export function SearchForm() {
 
                         return classes
                       }}
-                      popperClassName="!z-50"
+                      popperClassName="!z-[10000]"
                       popperPlacement="bottom-start"
                       portalId="datepicker-portal"
                     />
@@ -455,7 +455,7 @@ export function SearchForm() {
 
       {/* Search History Panel - Only show for authenticated users */}
       {user?.userId && historyLoaded && searches.length > 0 && (
-        <div className="relative z-10 px-4">
+        <div className="px-4">
           <SearchHistoryPanel
             searches={searches}
             onSelectSearch={handleRepeatSearch}

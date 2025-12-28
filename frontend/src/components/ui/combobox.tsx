@@ -103,7 +103,7 @@ export function Combobox({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-10001 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto">
           {filteredOptions.length === 0 ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               No cities found

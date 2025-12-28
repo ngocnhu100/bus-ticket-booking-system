@@ -29,7 +29,7 @@ export function SearchHistoryPanel({
   )
 
   return (
-    <Card className="w-full max-w-4xl mx-auto shadow-lg border-primary/20 relative z-20">
+    <Card className="w-full max-w-4xl mx-auto shadow-lg border-primary/20">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
