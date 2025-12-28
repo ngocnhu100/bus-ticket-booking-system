@@ -25,6 +25,7 @@ export interface RouteAdminData {
 export interface BusAdminData {
   operator_id?: string
   operator_name?: string
+  operator_name?: string
   bus_id?: string
   name: string
   model: string

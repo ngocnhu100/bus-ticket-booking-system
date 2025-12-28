@@ -7,6 +7,9 @@ import type {
 import { adminTripService } from '@/services/adminTripService'
 import { CustomDropdown } from '../ui/custom-dropdown'
 import { PriceInput } from '../ui/price-input'
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 
 interface RoutesData {
   route_id: string
@@ -587,19 +590,40 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
                 >
                   Departure Time
                 </label>
-                <input
-                  type="datetime-local"
-                  className="mt-1 w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-                  style={{
-                    border: '1px solid var(--border)',
-                    backgroundColor: 'var(--card)',
-                    color: 'var(--foreground)',
-                  }}
-                  value={updateForm.departure_time}
-                  onChange={(e) =>
-                    handleUpdateChange('departure_time', e.target.value)
-                  }
-                />
+                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <DateTimePicker
+                    value={
+                      updateForm.departure_time
+                        ? new Date(updateForm.departure_time)
+                        : null
+                    }
+                    onChange={(newValue) =>
+                      handleUpdateChange(
+                        'departure_time',
+                        newValue ? newValue.toISOString() : ''
+                      )
+                    }
+                    slotProps={{
+                      textField: {
+                        className:
+                          'mt-1 w-full rounded-xl px-3 py-2 text-sm focus:outline-none',
+                        sx: {
+                          '& .MuiInputBase-root': {
+                            border: '1px solid var(--border)',
+                            backgroundColor: 'var(--card)',
+                            color: 'var(--foreground)',
+                            '&:focus': {
+                              outline: 'none',
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            color: 'var(--foreground)',
+                          },
+                        },
+                      },
+                    }}
+                  />
+                </LocalizationProvider>
                 {validationErrors.departure_time && (
                   <p className="mt-1 text-xs text-red-500">
                     {validationErrors.departure_time}
@@ -819,20 +843,41 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
                   >
                     Departure Time *
                   </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    className="mt-1 w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-                    style={{
-                      border: '1px solid var(--border)',
-                      backgroundColor: 'var(--card)',
-                      color: 'var(--foreground)',
-                    }}
-                    value={createForm.departure_time}
-                    onChange={(e) =>
-                      handleCreateChange('departure_time', e.target.value)
-                    }
-                  />
+                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                    <DateTimePicker
+                      value={
+                        createForm.departure_time
+                          ? new Date(createForm.departure_time)
+                          : null
+                      }
+                      onChange={(newValue) =>
+                        handleCreateChange(
+                          'departure_time',
+                          newValue ? newValue.toISOString() : ''
+                        )
+                      }
+                      slotProps={{
+                        textField: {
+                          required: true,
+                          className:
+                            'mt-1 w-full rounded-2xl px-3 py-2 text-sm focus:outline-none',
+                          sx: {
+                            '& .MuiInputBase-root': {
+                              border: '1px solid var(--border)',
+                              backgroundColor: 'var(--card)',
+                              color: 'var(--foreground)',
+                              '&:focus': {
+                                outline: 'none',
+                              },
+                            },
+                            '& .MuiInputBase-input': {
+                              color: 'var(--foreground)',
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </LocalizationProvider>
                   <p
                     className="mt-1 text-xs"
                     style={{ color: 'var(--muted-foreground)' }}
