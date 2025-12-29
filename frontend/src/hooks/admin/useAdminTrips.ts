@@ -252,6 +252,68 @@ export function useAdminTrips() {
     [fetchTrips, toast]
   )
 
+  const markDeparted = useCallback(
+    async (tripId: string) => {
+      setIsLoading(true)
+      try {
+        await request(`/trips/${tripId}/mark-departed`, {
+          method: 'POST',
+        })
+
+        toast({
+          title: 'Success',
+          description: 'Trip marked as departed successfully',
+        })
+
+        // Refresh trips list
+        await fetchTrips()
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to mark trip as departed'
+        setError(message)
+        toast({
+          title: 'Error',
+          description: message,
+        })
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [fetchTrips, toast]
+  )
+
+  const markArrived = useCallback(
+    async (tripId: string) => {
+      setIsLoading(true)
+      try {
+        await request(`/trips/${tripId}/mark-arrived`, {
+          method: 'POST',
+        })
+
+        toast({
+          title: 'Success',
+          description: 'Trip marked as arrived successfully',
+        })
+
+        // Refresh trips list
+        await fetchTrips()
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to mark trip as arrived'
+        setError(message)
+        toast({
+          title: 'Error',
+          description: message,
+        })
+        throw err
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [fetchTrips, toast]
+  )
+
   const refundBooking = useCallback(
     async (bookingId: string, reason?: string) => {
       setIsLoading(true)
@@ -296,6 +358,8 @@ export function useAdminTrips() {
     deleteTrip,
     cancelTrip,
     updateTripStatus,
+    markDeparted,
+    markArrived,
     refundBooking,
     clearError,
   }

@@ -46,7 +46,7 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm mb-10">
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Filters</h2>
         <button

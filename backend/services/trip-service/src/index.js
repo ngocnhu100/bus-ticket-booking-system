@@ -81,6 +81,7 @@ app.get('/alternatives/destinations', tripController.getAlternativeDestinations)
 
 // --- Dynamic trip route ---
 app.get('/:id/seats', tripController.getSeats);
+app.get('/:id/passengers', authenticate, authorize(['admin']), tripController.getPassengers);
 app.get('/:id', tripController.getById);
 
 // --- Seat lock management ---
@@ -100,6 +101,8 @@ app.delete('/:id', authenticate, authorize(['admin']), tripController.delete);
 app.post('/:id/assign-bus', authenticate, authorize(['admin']), tripController.assignBus);
 app.post('/:id/assign-route', authenticate, authorize(['admin']), tripController.assignRoute);
 app.patch('/:id/status', authenticate, authorize(['admin']), tripController.updateStatus);
+app.post('/:id/mark-departed', authenticate, authorize(['admin']), tripController.markDeparted);
+app.post('/:id/mark-arrived', authenticate, authorize(['admin']), tripController.markArrived);
 app.post('/:id/cancel', authenticate, authorize(['admin']), tripController.cancelTrip);
 
 // --- Admin: Route management ---

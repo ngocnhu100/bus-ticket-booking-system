@@ -10,10 +10,10 @@ class PassengerRepository {
    */
   async createBatch(bookingId, passengers) {
     const client = await db.connect();
-    
+
     try {
       await client.query('BEGIN');
-      
+
       const query = `
         INSERT INTO booking_passengers (
           booking_id,
@@ -25,12 +25,12 @@ class PassengerRepository {
         ) VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `;
-      
+
       const createdPassengers = [];
-      
+
       for (let i = 0; i < passengers.length; i++) {
         const passenger = passengers[i];
-        
+
         // Validate required fields before insert
         if (!passenger.seatCode) {
           throw new Error(`Passenger ${i + 1}: seatCode is required`);
@@ -41,29 +41,31 @@ class PassengerRepository {
         if (!passenger.price || passenger.price <= 0) {
           throw new Error(`Passenger ${i + 1}: invalid price (${passenger.price})`);
         }
-        
+
         const values = [
           bookingId,
           passenger.seatCode,
           passenger.price,
           passenger.fullName,
           passenger.phone || null,
-          passenger.documentId || null
+          passenger.documentId || null,
         ];
-        
+
         console.log(`[PassengerRepository] Inserting passenger ${i + 1}:`, {
           bookingId,
           seatCode: passenger.seatCode,
           price: passenger.price,
-          fullName: passenger.fullName
+          fullName: passenger.fullName,
         });
-        
+
         const result = await client.query(query, values);
         createdPassengers.push(mapToPassenger(result.rows[0]));
       }
-      
+
       await client.query('COMMIT');
-      console.log(`[PassengerRepository] Successfully created ${createdPassengers.length} passengers`);
+      console.log(
+        `[PassengerRepository] Successfully created ${createdPassengers.length} passengers`
+      );
       return createdPassengers;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -85,7 +87,7 @@ class PassengerRepository {
       WHERE booking_id = $1
       ORDER BY created_at ASC
     `;
-    
+
     const result = await db.query(query, [bookingId]);
     return result.rows.map(mapToPassenger);
   }
@@ -100,13 +102,13 @@ class PassengerRepository {
       SELECT * FROM booking_passengers 
       WHERE ticket_id = $1
     `;
-    
+
     const result = await db.query(query, [ticketId]);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToPassenger(result.rows[0]);
   }
 
@@ -137,20 +139,20 @@ class PassengerRepository {
       WHERE ticket_id = $4
       RETURNING *
     `;
-    
+
     const values = [
       passengerData.full_name || passengerData.fullName,
       passengerData.phone,
       passengerData.document_id || passengerData.documentId,
-      ticketId
+      ticketId,
     ];
-    
+
     const result = await db.query(query, values);
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return mapToPassenger(result.rows[0]);
   }
 
@@ -169,6 +171,35 @@ class PassengerRepository {
     `;
 
     const result = await db.query(query, [newSeatCode, ticketId]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return mapToPassenger(result.rows[0]);
+  }
+
+  /**
+   * Update passenger boarding status
+   * @param {string} ticketId - Passenger ticket ID
+   * @param {object} updateData - Update data containing boarding_status, boarded_at, boarded_by
+   * @returns {Promise<object|null>} Updated passenger
+   */
+  async updateBoardingStatus(ticketId, updateData) {
+    const { boarding_status, boarded_at, boarded_by } = updateData;
+
+    const query = `
+      UPDATE booking_passengers
+      SET
+        boarding_status = $1,
+        boarded_at = $2,
+        boarded_by = $3
+      WHERE ticket_id = $4
+      RETURNING *
+    `;
+
+    const values = [boarding_status, boarded_at, boarded_by, ticketId];
+    const result = await db.query(query, values);
 
     if (result.rows.length === 0) {
       return null;

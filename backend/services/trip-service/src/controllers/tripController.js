@@ -444,6 +444,62 @@ class TripController {
   }
 
   /**
+   * Mark trip as departed
+   * POST /trips/:id/mark-departed
+   */
+  async markDeparted(req, res) {
+    try {
+      const trip = await tripService.updateTrip(
+        req.params.id,
+        {
+          status: 'in_progress',
+          departure_time: new Date(),
+        },
+        req.headers.authorization
+      );
+      res.json({
+        success: true,
+        data: trip,
+        message: 'Trip marked as departed successfully',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to mark trip as departed' },
+      });
+    }
+  }
+
+  /**
+   * Mark trip as arrived
+   * POST /trips/:id/mark-arrived
+   */
+  async markArrived(req, res) {
+    try {
+      const trip = await tripService.updateTrip(
+        req.params.id,
+        {
+          status: 'completed',
+          arrival_time: new Date(),
+        },
+        req.headers.authorization
+      );
+      res.json({
+        success: true,
+        data: trip,
+        message: 'Trip marked as arrived successfully',
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to mark trip as arrived' },
+      });
+    }
+  }
+
+  /**
    * Cancel a trip (with potential refund processing)
    * POST /trips/:id/cancel
    */
@@ -609,6 +665,51 @@ class TripController {
       res.status(500).json({
         success: false,
         error: { code: 'SYS_ERROR', message: 'Failed to get alternative destinations' },
+      });
+    }
+  }
+
+  /**
+   * Get passenger list for a trip (Admin only)
+   * GET /:id/passengers
+   */
+  async getPassengers(req, res) {
+    try {
+      const { id: tripId } = req.params;
+
+      const passengers = await tripService.getBookingsForTrip(tripId);
+
+      if (!passengers) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'TRIP_NOT_FOUND', message: 'Trip not found' },
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          trip_id: tripId,
+          total_passengers: passengers.reduce(
+            (sum, booking) => sum + (booking.passengers?.length || 0),
+            0
+          ),
+          total_bookings: passengers.length,
+          bookings: passengers.map((booking) => ({
+            booking_id: booking.booking_id,
+            booking_reference: booking.booking_reference,
+            contact_email: booking.contact_email,
+            contact_phone: booking.contact_phone,
+            passengers: booking.passengers || [],
+            passenger_count: booking.passengers?.length || 0,
+          })),
+        },
+      });
+    } catch (err) {
+      console.error('[TripController] Error getting passengers:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to get passenger list' },
       });
     }
   }

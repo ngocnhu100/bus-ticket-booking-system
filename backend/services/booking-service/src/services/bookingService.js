@@ -1245,7 +1245,10 @@ class BookingService {
         data: {
           bookingReference: booking.booking_reference,
           refundAmount: booking.cancellation?.refund_amount || 0,
-          reason: booking.cancellation_reason || booking.cancellation?.reason || 'Booking cancelled by admin',
+          reason:
+            booking.cancellation_reason ||
+            booking.cancellation?.reason ||
+            'Booking cancelled by admin',
         },
       });
     } catch (error) {
@@ -2143,6 +2146,40 @@ class BookingService {
     } catch (error) {
       console.error('[BookingService] Error in bulk refund processing:', error);
       throw new Error(`Failed to process bulk refund: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update passenger boarding status
+   * @param {string} ticketId - Passenger ticket ID
+   * @param {string} boardingStatus - New boarding status ('not_boarded', 'boarded', 'no_show')
+   * @param {string} adminId - Admin user ID who performed the action
+   * @returns {Promise<object|null>} Updated passenger data or null if not found
+   */
+  async updatePassengerBoardingStatus(ticketId, boardingStatus, adminId) {
+    try {
+      console.log(
+        `[BookingService] Updating boarding status for ticket ${ticketId} to ${boardingStatus}`
+      );
+
+      const updateData = {
+        boarding_status: boardingStatus,
+        boarded_at: boardingStatus === 'boarded' ? new Date() : null,
+        boarded_by: boardingStatus === 'boarded' ? adminId : null,
+      };
+
+      const updatedPassenger = await passengerRepository.updateBoardingStatus(ticketId, updateData);
+
+      if (updatedPassenger) {
+        console.log(`[BookingService] Successfully updated boarding status for ticket ${ticketId}`);
+      } else {
+        console.log(`[BookingService] Passenger with ticket ${ticketId} not found`);
+      }
+
+      return updatedPassenger;
+    } catch (error) {
+      console.error('[BookingService] Error updating passenger boarding status:', error);
+      throw new Error(`Failed to update passenger boarding status: ${error.message}`);
     }
   }
 }

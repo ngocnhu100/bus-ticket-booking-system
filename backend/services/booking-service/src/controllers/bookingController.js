@@ -1,5 +1,8 @@
 const bookingService = require('../services/bookingService');
+const bookingRepository = require('../repositories/bookingRepository');
 const { mapToBooking } = require('../utils/helpers');
+const fs = require('fs');
+const path = require('path');
 const {
   createBookingSchema,
   cancelBookingSchema,
@@ -691,6 +694,205 @@ class BookingController {
   }
 
   /**
+   * Serve ticket PDF file by booking reference
+   * GET /:bookingReference/ticket
+   * Query params (for guests): email or phone
+   */
+  async serveTicket(req, res) {
+    try {
+      const { bookingReference } = req.params;
+      const { email, phone } = req.query; // For guest verification
+      const isAuthenticated = !!req.user; // Check if user is authenticated
+      const userId = req.user?.userId || req.user?.user_id;
+
+      console.log(
+        '[serveTicket] Request for:',
+        bookingReference,
+        'isAuthenticated:',
+        isAuthenticated,
+        'userId:',
+        userId,
+        'email:',
+        email,
+        'phone:',
+        phone
+      );
+
+      // Find booking by reference
+      const booking = await bookingRepository.findByReference(bookingReference);
+      if (!booking) {
+        console.log('[serveTicket] Booking not found:', bookingReference);
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_002',
+            message: 'Booking not found',
+          },
+        });
+      }
+
+      console.log(
+        '[serveTicket] Found booking:',
+        booking.booking_reference,
+        'status:',
+        booking.status,
+        'contact_email:',
+        booking.contact_email,
+        'user_id:',
+        booking.user_id
+      );
+
+      // Check if booking is confirmed (has ticket)
+      if (booking.status !== 'confirmed') {
+        console.log('[serveTicket] Booking not confirmed:', booking.status);
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'BOOK_003',
+            message: 'Ticket not available - booking not confirmed',
+          },
+        });
+      }
+
+      // ===== SECURITY CHECK =====
+      // Case 1: Authenticated user (has valid JWT token)
+      if (isAuthenticated && userId) {
+        console.log('[serveTicket] Checking authenticated user ownership');
+        // Registered user: Check ownership
+        if (booking.user_id !== userId) {
+          console.log(
+            '[serveTicket] ❌ Ownership check failed: booking.user_id:',
+            booking.user_id,
+            'userId:',
+            userId
+          );
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'AUTH_003',
+              message: 'Unauthorized to access this ticket',
+            },
+          });
+        }
+        console.log('[serveTicket] ✅ Ownership check passed');
+      }
+      // Case 2: Guest user (no token) - MUST provide email or phone verification
+      else if (!isAuthenticated) {
+        console.log('[serveTicket] Guest access - requiring email or phone verification');
+        // Guest: Require email or phone verification
+        if (!email && !phone) {
+          console.log('[serveTicket] ❌ Guest verification failed: no email or phone provided');
+          return res.status(401).json({
+            success: false,
+            error: {
+              code: 'AUTH_005',
+              message: 'Authentication required. Provide email or phone as query params.',
+            },
+          });
+        }
+        // Verify contact info matches booking
+        const contactMatch =
+          (email && booking.contact_email === email) || (phone && booking.contact_phone === phone);
+        if (!contactMatch) {
+          console.log(
+            '[serveTicket] ❌ Contact verification failed: provided email:',
+            email,
+            'phone:',
+            phone,
+            'booking.contact_email:',
+            booking.contact_email,
+            'booking.contact_phone:',
+            booking.contact_phone
+          );
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'AUTH_003',
+              message: 'Contact information does not match booking records',
+            },
+          });
+        }
+        console.log('[serveTicket] ✅ Contact verification passed');
+      }
+
+      console.log('[serveTicket] Security check passed');
+
+      // Get ticket filename from booking data
+      let ticketFilename = booking.e_ticket?.filename;
+      if (!ticketFilename && booking.ticket_url) {
+        // Extract filename from ticket_url: /bookings/tickets/filename.pdf
+        const urlMatch = booking.ticket_url.match(/\/bookings\/tickets\/(.+)$/);
+        if (urlMatch) {
+          ticketFilename = urlMatch[1];
+        }
+      }
+      if (!ticketFilename) {
+        // Fallback: try pattern ticket-{reference}-{timestamp}.pdf
+        const ticketsDir = path.join(__dirname, '../../tickets');
+        if (fs.existsSync(ticketsDir)) {
+          const files = fs.readdirSync(ticketsDir);
+          const matchingFile = files.find(
+            (file) => file.startsWith(`ticket-${bookingReference}-`) && file.endsWith('.pdf')
+          );
+          if (matchingFile) {
+            ticketFilename = matchingFile;
+          }
+        }
+      }
+      if (!ticketFilename) {
+        ticketFilename = `${bookingReference}.pdf`;
+      }
+
+      console.log('[serveTicket] Ticket filename:', ticketFilename);
+
+      const ticketPath = path.join(__dirname, '../../tickets', ticketFilename);
+
+      // Check if file exists
+      if (!fs.existsSync(ticketPath)) {
+        console.warn(`Ticket file not found: ${ticketPath}`);
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'FILE_001',
+            message: 'Ticket file not found',
+          },
+        });
+      }
+
+      console.log('[serveTicket] Serving file:', ticketPath);
+
+      // Serve the PDF file
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${bookingReference}-ticket.pdf"`);
+
+      const fileStream = fs.createReadStream(ticketPath);
+      fileStream.pipe(res);
+
+      fileStream.on('error', (error) => {
+        console.error('Error streaming ticket file:', error);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            error: {
+              code: 'SYS_001',
+              message: 'Error serving ticket file',
+            },
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error serving ticket:', error);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to serve ticket',
+        },
+      });
+    }
+  }
+
+  /**
    * Health check endpoint
    * GET /health
    */
@@ -1057,6 +1259,66 @@ class BookingController {
         error: {
           code: 'SYS_001',
           message: 'Failed to process bulk refund',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Update passenger boarding status (Admin only)
+   * PATCH /admin/passengers/:ticketId/boarding-status
+   */
+  async updatePassengerBoardingStatus(req, res) {
+    try {
+      const { ticketId } = req.params;
+      const { boarding_status } = req.body;
+      const adminId = req.user?.user_id; // From auth middleware
+
+      // Validate boarding status
+      const validStatuses = ['not_boarded', 'boarded', 'no_show'];
+      if (!validStatuses.includes(boarding_status)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Invalid boarding status. Must be: not_boarded, boarded, or no_show',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Update boarding status
+      const updatedPassenger = await bookingService.updatePassengerBoardingStatus(
+        ticketId,
+        boarding_status,
+        adminId
+      );
+
+      if (!updatedPassenger) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'PASSENGER_001',
+            message: 'Passenger not found',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      res.json({
+        success: true,
+        data: updatedPassenger,
+        message: `Passenger boarding status updated to ${boarding_status}`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('⚠️ Update passenger boarding status error:', error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to update passenger boarding status',
         },
         timestamp: new Date().toISOString(),
       });

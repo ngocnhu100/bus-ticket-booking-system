@@ -161,9 +161,7 @@ class TripRepository {
       } else if (typeof row.image_url === 'string') {
         try {
           const parsed = JSON.parse(row.image_url);
-          image_urls = Array.isArray(parsed)
-            ? parsed.filter((url) => url)
-            : [row.image_url];
+          image_urls = Array.isArray(parsed) ? parsed.filter((url) => url) : [row.image_url];
         } catch {
           image_urls = [row.image_url];
         }
@@ -676,8 +674,12 @@ class TripRepository {
         b.contact_phone,
         json_agg(
           json_build_object(
+            'ticket_id', bp.ticket_id,
             'full_name', bp.full_name,
-            'seat_code', bp.seat_code
+            'seat_code', bp.seat_code,
+            'boarding_status', bp.boarding_status,
+            'boarded_at', bp.boarded_at,
+            'boarded_by', bp.boarded_by
           )
         ) as passengers
       FROM bookings b

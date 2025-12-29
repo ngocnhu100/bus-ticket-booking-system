@@ -10,7 +10,17 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ErrorModal } from '@/components/ui/error-modal'
 import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
-import { FileX, Edit, SquareX, ChevronDown, ChevronRight } from 'lucide-react'
+import PassengerListModal from '@/components/admin/PassengerListModal'
+import {
+  FileX,
+  Edit,
+  SquareX,
+  ChevronDown,
+  ChevronRight,
+  Users,
+  PlaneTakeoff,
+  PlaneLanding,
+} from 'lucide-react'
 import { DashboardLayout } from '@/components/admin/DashboardLayout'
 import { TripFilters } from '@/components/admin/TripFilters'
 import { TripCalendarView } from '@/components/admin/TripCalendarView'
@@ -33,6 +43,10 @@ const AdminTripSchedulingPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'CALENDAR' | 'LIST'>('LIST')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingTrip, setEditingTrip] = useState<TripData | null>(null)
+  const [passengerModalOpen, setPassengerModalOpen] = useState(false)
+  const [selectedTripForPassengers, setSelectedTripForPassengers] = useState<
+    string | null
+  >(null)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const [confirmDialogConfig, setConfirmDialogConfig] = useState<{
     title: string
@@ -78,6 +92,8 @@ const AdminTripSchedulingPage: React.FC = () => {
     deleteTrip,
     cancelTrip,
     updateTripStatus,
+    markDeparted,
+    markArrived,
     clearError,
   } = useAdminTrips()
 
@@ -476,8 +492,8 @@ const AdminTripSchedulingPage: React.FC = () => {
                     columns={[
                       { key: 'select', label: '', align: 'center' },
                       { key: 'route', label: 'Route' },
-                      { key: 'bus', label: 'Bus' },
                       { key: 'departure_time', label: 'Departure Time' },
+                      { key: 'estimated_arrival', label: 'Estimated Arrival' },
                       { key: 'bookings', label: 'Bookings' },
                       { key: 'status', label: 'Status' },
                       { key: 'actions', label: 'Actions' },
@@ -522,12 +538,21 @@ const AdminTripSchedulingPage: React.FC = () => {
                             {trip.route?.origin} - {trip.route?.destination}
                           </AdminTableCell>
                           <AdminTableCell>
-                            {trip.bus?.plate_number}
-                          </AdminTableCell>
-                          <AdminTableCell>
                             {new Date(
                               trip.schedule.departure_time
                             ).toLocaleString()}
+                          </AdminTableCell>
+                          <AdminTableCell>
+                            {(() => {
+                              const departureTime = new Date(
+                                trip.schedule.departure_time
+                              ).getTime()
+                              const duration = trip.route?.duration || 0
+                              const estimatedArrival = new Date(
+                                departureTime + duration * 60000
+                              )
+                              return estimatedArrival.toLocaleString()
+                            })()}
                           </AdminTableCell>
                           <AdminTableCell align="center">
                             {trip.bookings || 0}
@@ -549,6 +574,41 @@ const AdminTripSchedulingPage: React.FC = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
+                                  setSelectedTripForPassengers(trip.trip_id)
+                                  setPassengerModalOpen(true)
+                                }}
+                                className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                title="View Passengers"
+                              >
+                                <Users size={16} />
+                              </button>
+                              {trip.status === 'scheduled' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    markDeparted(trip.trip_id)
+                                  }}
+                                  className="p-1 text-yellow-600 hover:bg-blue-50 rounded"
+                                  title="Mark as Departed"
+                                >
+                                  <PlaneTakeoff size={16} />
+                                </button>
+                              )}
+                              {trip.status === 'in_progress' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    markArrived(trip.trip_id)
+                                  }}
+                                  className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                                  title="Mark as Arrived"
+                                >
+                                  <PlaneLanding size={16} />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
                                   handleEditTrip(trip)
                                 }}
                                 className="p-1 text-blue-600 hover:bg-blue-50 rounded"
@@ -556,16 +616,19 @@ const AdminTripSchedulingPage: React.FC = () => {
                               >
                                 <Edit size={16} />
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleCancelTrip(trip.trip_id)
-                                }}
-                                className="p-1 text-orange-600 hover:bg-orange-50 rounded"
-                                title="Cancel"
-                              >
-                                <SquareX size={16} />
-                              </button>
+                              {(trip.status === 'scheduled' ||
+                                trip.status === 'in_progress') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleCancelTrip(trip.trip_id)
+                                  }}
+                                  className="p-1 text-orange-600 hover:bg-orange-50 rounded"
+                                  title="Cancel"
+                                >
+                                  <SquareX size={16} />
+                                </button>
+                              )}
                             </div>
                           </AdminTableCell>
                         </AdminTableRow>
@@ -593,7 +656,7 @@ const AdminTripSchedulingPage: React.FC = () => {
                                   </div>
                                   <div>
                                     <h4 className="text-sm font-medium text-foreground mb-2">
-                                      Price
+                                      Base Price
                                     </h4>
                                     <p className="text-sm text-muted-foreground">
                                       {trip.pricing?.base_price?.toLocaleString() ||
@@ -687,6 +750,16 @@ const AdminTripSchedulingPage: React.FC = () => {
         onClose={clearError}
         title="Error"
         message={error || ''}
+      />
+
+      {/* Passenger List Modal */}
+      <PassengerListModal
+        open={passengerModalOpen}
+        onClose={() => {
+          setPassengerModalOpen(false)
+          setSelectedTripForPassengers(null)
+        }}
+        tripId={selectedTripForPassengers || ''}
       />
     </DashboardLayout>
   )

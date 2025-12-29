@@ -44,6 +44,14 @@ app.post(
   bookingController.processBulkRefundForTrip
 );
 
+// Update passenger boarding status (Admin only)
+app.patch(
+  '/admin/passengers/:ticketId/boarding-status',
+  authenticate,
+  authorize(['admin']),
+  bookingController.updatePassengerBoardingStatus
+);
+
 // Public routes (no authentication required)
 // Guest booking lookup - accepts phone OR email
 app.get('/guest/lookup', bookingController.guestLookup);
@@ -53,6 +61,10 @@ app.get('/reference/:reference', bookingController.getByReference);
 
 // Share ticket (public endpoint with validation)
 app.post('/:bookingReference/share', bookingController.shareTicket);
+
+// Serve ticket by booking reference (public with verification)
+// Requires either: JWT token OR email/phone query params that match booking
+app.get('/:bookingReference/ticket', optionalAuthenticate, bookingController.serveTicket);
 
 // Internal idempotent confirm-payment endpoint for payment-service webhook
 app.post('/internal/:id/confirm-payment', bookingController.internalConfirmPayment);
