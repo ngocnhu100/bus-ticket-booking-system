@@ -1,11 +1,18 @@
 // index.js
 const express = require('express');
+const cors = require('cors');
 const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3005;
 
+// Enable CORS for all origins (you can restrict this in production)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Route webhook cho từng gateway
 const webhookController = require('./controllers/webhookController');

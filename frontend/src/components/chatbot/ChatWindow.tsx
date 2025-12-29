@@ -9,24 +9,28 @@ interface ChatWindowProps {
   title?: string
   messages: ChatMessage[]
   onSendMessage: (message: string) => void
+  onMessageFromAction?: (message: ChatMessage) => void
   onClose: () => void
   onMinimize?: () => void
   onNewSession?: () => void
   isLoading: boolean
   isMinimized?: boolean
   error?: string | null
+  sessionId?: string
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   title = 'Chat Assistant',
   messages,
   onSendMessage,
+  onMessageFromAction,
   onClose,
   onMinimize,
   onNewSession,
   isLoading,
   isMinimized = false,
   error,
+  sessionId,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -226,6 +230,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             isLoading={isLoading}
             containerRef={containerRef}
             onSuggestionClick={onSendMessage}
+            onMessageFromAction={onMessageFromAction}
+            sessionId={sessionId}
           />
 
           {/* Auto-scroll anchor */}

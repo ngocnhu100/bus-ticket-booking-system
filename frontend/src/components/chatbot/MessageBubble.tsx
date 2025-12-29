@@ -4,20 +4,34 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ChatMessage, ChatAction } from '../../types/chatbot.types'
 import { MessageCircle } from 'lucide-react'
+import { PassengerInfoForm } from './PassengerInfoForm'
 
 interface MessageBubbleProps {
   message: ChatMessage
   onSuggestionClick?: (suggestion: string) => void
+  onMessageFromAction?: (message: ChatMessage) => void
+  sessionId?: string
 }
 
 interface ChatActionRendererProps {
   action: ChatAction
   onSuggestionClick?: (suggestion: string) => void
+  onMessageFromAction?: (message: ChatMessage) => void
+  sessionId?: string
+}
+
+interface PassengerField {
+  name: string
+  type: string
+  label: string
+  required: boolean
 }
 
 const ChatActionRenderer: React.FC<ChatActionRendererProps> = ({
   action,
   onSuggestionClick,
+  onMessageFromAction,
+  sessionId,
 }) => {
   // Log for debugging
   console.log('[ChatActionRenderer] Rendering action:', {
@@ -50,10 +64,30 @@ const ChatActionRenderer: React.FC<ChatActionRendererProps> = ({
           onSeatsSelected={onSuggestionClick}
         />
       )
+    case 'passenger_info_form':
+      console.log(
+        '[ChatActionRenderer] Rendering PassengerInfoForm with action:',
+        action
+      )
+      return (
+        <PassengerInfoForm
+          data={{
+            seats: action.seats as (
+              | string
+              | { seat_code: string; price: number }
+            )[],
+            required_fields: action.required_fields as PassengerField[],
+          }}
+          sessionId={sessionId || ''}
+          onFormSubmitted={onMessageFromAction}
+        />
+      )
     case 'booking_confirmation':
       return <BookingConfirmation data={action.data} />
     case 'payment_link':
       return <PaymentLink data={action.data} />
+    case 'payment_method_selector':
+      return <PaymentMethodSelector data={action.data} />
     default:
       console.warn('[ChatActionRenderer] Unknown action type:', action.type)
       return null
@@ -437,6 +471,132 @@ const PaymentLink: React.FC<PaymentLinkProps> = ({ data }) => {
   )
 }
 
+interface PaymentMethodData {
+  bookingId: string
+  bookingReference: string
+  amount: number
+  paymentMethods: Array<{
+    id: string
+    name: string
+    icon: string
+    available: boolean
+  }>
+}
+
+interface PaymentMethodSelectorProps {
+  data: unknown
+}
+
+const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
+  data,
+}) => {
+  const paymentData = data as Partial<PaymentMethodData>
+  const [isProcessing, setIsProcessing] = React.useState(false)
+  const [selectedMethod, setSelectedMethod] = React.useState<string | null>(
+    null
+  )
+
+  const handlePaymentSelect = async (methodId: string) => {
+    if (!paymentData.bookingId) return
+
+    setSelectedMethod(methodId)
+    setIsProcessing(true)
+
+    try {
+      // Call payment API through API Gateway
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
+      console.log('[PaymentMethodSelector] Creating payment:', {
+        bookingId: paymentData.bookingId,
+        paymentMethod: methodId,
+        amount: paymentData.amount,
+      })
+
+      // Call payment API to create payment session
+      const response = await fetch(`${API_BASE_URL}/payment/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingId: paymentData.bookingId,
+          paymentMethod: methodId,
+          amount: paymentData.amount,
+          description: `Thanh toán đặt vé ${paymentData.bookingReference}`,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to initiate payment')
+      }
+
+      const result = await response.json()
+
+      console.log('[PaymentMethodSelector] Payment response:', result)
+
+      // Redirect to payment provider URL
+      if (result.paymentUrl) {
+        window.location.href = result.paymentUrl
+      } else if (result.payUrl) {
+        // MoMo uses payUrl
+        window.location.href = result.payUrl
+      } else {
+        console.error('No payment URL returned:', result)
+        alert('Không thể tạo link thanh toán. Vui lòng thử lại.')
+      }
+    } catch (error) {
+      console.error('Payment error:', error)
+      alert(
+        `Có lỗi xảy ra: ${error instanceof Error ? error.message : 'Vui lòng thử lại'}`
+      )
+    } finally {
+      setIsProcessing(false)
+      setSelectedMethod(null)
+    }
+  }
+
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-4">
+      <div className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+        💳 Chọn phương thức thanh toán
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {paymentData.paymentMethods?.map((method) => (
+          <button
+            key={method.id}
+            onClick={() => handlePaymentSelect(method.id)}
+            disabled={!method.available || isProcessing}
+            className={`
+              flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all
+              ${
+                !method.available || isProcessing
+                  ? 'bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 opacity-50 cursor-not-allowed'
+                  : 'bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md cursor-pointer'
+              }
+              ${selectedMethod === method.id ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20' : ''}
+            `}
+          >
+            <span className="text-2xl mb-1">{method.icon}</span>
+            <span className="text-xs font-medium text-gray-900 dark:text-white">
+              {method.name}
+            </span>
+            {selectedMethod === method.id && isProcessing && (
+              <div className="mt-1">
+                <div className="animate-spin h-3 w-3 border-2 border-blue-500 border-t-transparent rounded-full" />
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
+        Số tiền: {paymentData.amount?.toLocaleString('vi-VN')}₫
+      </div>
+    </div>
+  )
+}
+
 interface SeatSelectionComponentProps {
   data: unknown
   onSeatsSelected?: (message: string) => void
@@ -630,6 +790,8 @@ const SeatSelectionComponent: React.FC<SeatSelectionComponentProps> = ({
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   onSuggestionClick,
+  onMessageFromAction,
+  sessionId,
 }) => {
   const isBot = message.role === 'assistant'
 
@@ -742,6 +904,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   key={index}
                   action={action}
                   onSuggestionClick={onSuggestionClick}
+                  onMessageFromAction={onMessageFromAction}
+                  sessionId={sessionId}
                 />
               )
             })}
@@ -772,6 +936,8 @@ interface MessageListProps {
   isLoading: boolean
   containerRef?: React.RefObject<HTMLDivElement | null>
   onSuggestionClick?: (suggestion: string) => void
+  onMessageFromAction?: (message: ChatMessage) => void
+  sessionId?: string
 }
 
 export const TypingIndicator: React.FC = () => {
@@ -800,6 +966,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   isLoading,
   containerRef,
   onSuggestionClick,
+  onMessageFromAction,
+  sessionId,
 }) => {
   return (
     <div
@@ -821,6 +989,8 @@ export const MessageList: React.FC<MessageListProps> = ({
               key={message.id}
               message={message}
               onSuggestionClick={onSuggestionClick}
+              onMessageFromAction={onMessageFromAction}
+              sessionId={sessionId}
             />
           ))}
           {isLoading && <TypingIndicator />}

@@ -472,7 +472,7 @@ class TripRepository {
     const offset = (page - 1) * limit;
     const values = [];
     let index = 1;
-    let where_clauses = [`t.status = 'scheduled'`];
+    let where_clauses = [`t.status IN ('scheduled', 'active')`];
 
     // Build filters
     if (origin) {

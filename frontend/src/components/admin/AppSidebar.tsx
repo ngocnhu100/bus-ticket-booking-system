@@ -54,7 +54,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="px-4 py-6">
-          <div 
+          <div
             className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={() => navigate('/')}
           >

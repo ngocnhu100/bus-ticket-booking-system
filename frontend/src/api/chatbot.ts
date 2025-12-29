@@ -117,4 +117,34 @@ export const chatbotApi = {
       token,
     })
   },
+
+  /**
+   * Submit passenger information form
+   */
+  async submitPassengerInfo(
+    request: {
+      sessionId: string
+      passengers: Array<{
+        seat_code: string
+        full_name: string
+        phone: string
+        email: string
+        id_number?: string
+      }>
+    },
+    token?: string
+  ): Promise<{
+    success: boolean
+    data: {
+      text: string
+      actions?: ChatAction[]
+      suggestions?: string[]
+    }
+  }> {
+    return apiRequest('/chatbot/submit-passenger-info', {
+      method: 'POST',
+      body: request,
+      token,
+    })
+  },
 }
