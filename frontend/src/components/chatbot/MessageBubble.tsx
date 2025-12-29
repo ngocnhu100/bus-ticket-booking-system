@@ -514,7 +514,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       })
 
       // Call payment API to create payment session
-      const response = await fetch(`${API_BASE_URL}/payment/create`, {
+      const response = await fetch(`${API_BASE_URL}/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

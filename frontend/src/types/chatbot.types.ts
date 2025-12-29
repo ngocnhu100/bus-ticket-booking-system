@@ -15,8 +15,22 @@ export interface ChatMessage {
 }
 
 export interface ChatAction {
-  type: 'search_results' | 'booking_confirmation' | 'payment_link' | string
-  data: unknown
+  type:
+    | 'search_results'
+    | 'booking_confirmation'
+    | 'payment_link'
+    | 'payment_method_selector'
+    | 'passenger_info_form'
+    | 'seat_selection'
+    | string
+  data?: unknown
+  seats?: (string | { seat_code: string; price: number })[]
+  required_fields?: Array<{
+    name: string
+    type: string
+    label: string
+    required: boolean
+  }>
 }
 
 export interface ChatbotSession {
