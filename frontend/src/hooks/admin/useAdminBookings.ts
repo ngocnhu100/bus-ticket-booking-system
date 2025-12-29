@@ -14,6 +14,7 @@ interface FetchBookingsParams {
   page?: number
   limit?: number
   status?: string
+  payment_status?: string
   fromDate?: string
   toDate?: string
   sortBy?: string
@@ -42,6 +43,8 @@ export function useAdminBookings() {
         if (params.page) searchParams.append('page', params.page.toString())
         if (params.limit) searchParams.append('limit', params.limit.toString())
         if (params.status) searchParams.append('status', params.status)
+        if (params.payment_status)
+          searchParams.append('payment_status', params.payment_status)
         if (params.fromDate) searchParams.append('fromDate', params.fromDate)
         if (params.toDate) searchParams.append('toDate', params.toDate)
         if (params.sortBy) searchParams.append('sortBy', params.sortBy)
@@ -202,6 +205,12 @@ export function useAdminBookings() {
       setIsLoading(true)
       setError(null)
       try {
+        console.log('[Hook] Processing refund:', {
+          bookingId,
+          refundAmount,
+          reason,
+        })
+
         const data = await request(`/bookings/admin/${bookingId}/refund`, {
           method: 'POST',
           body: {
@@ -210,6 +219,8 @@ export function useAdminBookings() {
           },
         })
 
+        console.log('[Hook] Refund response:', data)
+
         // Update the booking in the list
         setBookings((prev) =>
           prev.map((booking) =>
@@ -217,6 +228,7 @@ export function useAdminBookings() {
               ? {
                   ...booking,
                   status: 'cancelled' as const,
+                  payment_status: 'refunded' as const,
                   refund_amount: refundAmount,
                   cancellation_reason: reason,
                   updated_at: new Date().toISOString(),
@@ -230,8 +242,11 @@ export function useAdminBookings() {
           description: data.message || 'Refund processed successfully',
         })
 
+        console.log('[Hook] Refund processed successfully')
         return data.data
       } catch (error) {
+        console.error('[Hook] Refund processing failed:', error)
+
         const message =
           error instanceof Error ? error.message : 'Failed to process refund'
         setError(message)

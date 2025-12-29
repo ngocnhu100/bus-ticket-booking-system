@@ -226,7 +226,8 @@ class BookingRepository {
                   LEFT JOIN ratings ON ratings.booking_id = bookings.booking_id
                   LEFT JOIN trips ON trips.trip_id = bookings.trip_id
                   LEFT JOIN routes ON routes.route_id = trips.route_id
-                  LEFT JOIN operators ON operators.operator_id = routes.operator_id
+                  LEFT JOIN buses ON buses.bus_id = trips.bus_id
+                  LEFT JOIN operators ON operators.operator_id = buses.operator_id
                   WHERE bookings.user_id = $1`;
     const values = [sanitizedUserId];
     let paramIndex = 2;
@@ -257,7 +258,8 @@ class BookingRepository {
                       LEFT JOIN ratings ON ratings.booking_id = bookings.booking_id 
                       LEFT JOIN trips ON trips.trip_id = bookings.trip_id
                       LEFT JOIN routes ON routes.route_id = trips.route_id
-                      LEFT JOIN operators ON operators.operator_id = routes.operator_id
+                      LEFT JOIN buses ON buses.bus_id = trips.bus_id
+                      LEFT JOIN operators ON operators.operator_id = buses.operator_id
                       WHERE bookings.user_id = $1`;
 
     const countValues = [sanitizedUserId];
@@ -488,6 +490,41 @@ class BookingRepository {
   }
 
   /**
+   * Get all bookings for a specific trip with optional status filter
+   * @param {string} tripId - Trip UUID
+   * @param {string|null} statusFilter - Optional status filter
+   * @returns {Promise<Array>} Bookings for the trip
+   */
+  async getBookingsByTripId(tripId, statusFilter = null) {
+    let query = `
+      SELECT
+        b.booking_id, b.booking_reference, b.trip_id, b.user_id,
+        b.contact_email, b.contact_phone, b.status, b.payment_status,
+        b.total_price, b.currency, b.created_at, b.updated_at,
+        b.refund_amount, b.cancellation_reason,
+        COUNT(bp.ticket_id) as passenger_count
+      FROM bookings b
+      LEFT JOIN booking_passengers bp ON b.booking_id = bp.booking_id
+      WHERE b.trip_id = $1
+    `;
+
+    const params = [tripId];
+
+    if (statusFilter) {
+      query += ` AND b.status = $2`;
+      params.push(statusFilter);
+    }
+
+    query += `
+      GROUP BY b.booking_id
+      ORDER BY b.created_at DESC
+    `;
+
+    const result = await db.query(query, params);
+    return result.rows.map(mapToBooking);
+  }
+
+  /**
    * Find upcoming confirmed bookings within a time window
    * @param {Date} startTime - Start of time window
    * @param {Date} endTime - End of time window
@@ -582,7 +619,16 @@ class BookingRepository {
    * @returns {Promise<object>} Paginated bookings
    */
   async findAllWithFilters(filters) {
-    const { page = 1, limit = 20, status, fromDate, toDate, sortBy = 'created_at', sortOrder = 'DESC' } = filters;
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      payment_status,
+      fromDate,
+      toDate,
+      sortBy = 'created_at',
+      sortOrder = 'DESC',
+    } = filters;
 
     const offset = (page - 1) * limit;
     const conditions = [];
@@ -593,6 +639,12 @@ class BookingRepository {
     if (status) {
       conditions.push(`b.status = $${paramIndex}`);
       values.push(status);
+      paramIndex++;
+    }
+
+    if (payment_status) {
+      conditions.push(`b.payment_status = $${paramIndex}`);
+      values.push(payment_status);
       paramIndex++;
     }
 
@@ -611,7 +663,13 @@ class BookingRepository {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     // Validate sortBy to prevent SQL injection
-    const validSortColumns = ['created_at', 'updated_at', 'total_price', 'status', 'payment_status'];
+    const validSortColumns = [
+      'created_at',
+      'updated_at',
+      'total_price',
+      'status',
+      'payment_status',
+    ];
     const safeSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
     const safeSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
@@ -673,19 +731,21 @@ class BookingRepository {
           currency: row.currency || 'VND',
           created_at: row.created_at,
           updated_at: row.updated_at,
-          user: row.user_email ? {
-            email: row.user_email,
-            name: row.user_name,
-          } : null,
+          user: row.user_email
+            ? {
+                email: row.user_email,
+                name: row.user_name,
+              }
+            : null,
           passengerCount: parseInt(row.passenger_count) || 0,
         };
-        
+
         console.log('[BookingRepo] After mapping:', {
           booking_id: mapped.booking_id,
           payment_status: mapped.payment_status,
           total_price: mapped.total_price,
         });
-        
+
         return mapped;
       }),
       pagination: {
@@ -704,22 +764,37 @@ class BookingRepository {
    * @returns {Promise<object>} Updated booking
    */
   async updateRefund(bookingId, refundData) {
+    console.log('[BookingRepository] updateRefund called with:', {
+      bookingId,
+      refundData,
+    });
+
     const query = `
       UPDATE bookings
-      SET 
+      SET
         refund_amount = $1,
         cancellation_reason = $2,
         status = 'cancelled',
+        payment_status = 'refunded',
         updated_at = CURRENT_TIMESTAMP
       WHERE booking_id = $3
       RETURNING *
     `;
 
-    const result = await db.query(query, [
-      refundData.refundAmount,
-      refundData.reason,
-      bookingId,
-    ]);
+    console.log('[BookingRepository] Executing refund update query:', {
+      query,
+      values: [refundData.refundAmount, refundData.reason, bookingId],
+    });
+
+    const result = await db.query(query, [refundData.refundAmount, refundData.reason, bookingId]);
+
+    console.log('[BookingRepository] Refund update result:', {
+      rowCount: result.rowCount,
+      returnedRows: result.rows.length,
+      paymentStatus: result.rows[0]?.payment_status,
+      status: result.rows[0]?.status,
+      refundAmount: result.rows[0]?.refund_amount,
+    });
 
     return result.rows[0] ? mapToBooking(result.rows[0]) : null;
   }

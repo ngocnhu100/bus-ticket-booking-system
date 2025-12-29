@@ -100,6 +100,8 @@ const AdminBookingManagement: React.FC = () => {
           page: currentPage,
           limit: BOOKINGS_PER_PAGE,
           status: statusFilter !== 'all' ? statusFilter : undefined,
+          payment_status:
+            paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
           sortBy,
@@ -110,16 +112,15 @@ const AdminBookingManagement: React.FC = () => {
           page: currentPage,
           limit: BOOKINGS_PER_PAGE,
           status: statusFilter !== 'all' ? statusFilter : undefined,
+          payment_status:
+            paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
           fromDate: fromDate || undefined,
           toDate: toDate || undefined,
           sortBy,
           sortOrder,
         })
 
-        console.log('[Component] Bookings loaded, count:', bookings.length)
-        if (bookings.length > 0) {
-          console.log('[Component] First booking:', bookings[0])
-        }
+        // Bookings will be logged by the debug useEffect below
       } catch (error) {
         console.error('Error loading bookings:', error)
         // Don't throw, just log - let the UI show empty state
@@ -130,6 +131,7 @@ const AdminBookingManagement: React.FC = () => {
   }, [
     currentPage,
     statusFilter,
+    paymentStatusFilter,
     fromDate,
     toDate,
     sortBy,
@@ -139,11 +141,12 @@ const AdminBookingManagement: React.FC = () => {
 
   // Debug: Log bookings whenever they change
   useEffect(() => {
+    const bookingCount = bookings.length
     console.log('[Component] Bookings state updated:', {
-      count: bookings.length,
-      firstBooking: bookings[0],
+      count: bookingCount,
+      hasBookings: bookingCount > 0,
     })
-  }, [bookings])
+  }, [bookings.length])
 
   const handleToggleExpand = (bookingId: string) => {
     setExpandedBookingId(expandedBookingId === bookingId ? null : bookingId)
@@ -210,18 +213,49 @@ const AdminBookingManagement: React.FC = () => {
     }
 
     try {
+      console.log('Processing refund:', {
+        bookingId: refundDialog.bookingId,
+        amount,
+        reason: refundReason,
+      })
+
       await processRefund(refundDialog.bookingId, amount, refundReason)
-      setRefundDialog({ ...refundDialog, open: false })
+
+      console.log('Refund processed successfully')
+
+      // Đóng modal và reset state ngay lập tức
+      setRefundDialog((prev) => {
+        console.log('Closing refund modal')
+        return { ...prev, open: false }
+      })
       setRefundAmount('')
       setRefundReason('')
+
+      // Refresh lại danh sách bookings để hiển thị refund amount
+      await fetchBookings({
+        page: currentPage,
+        limit: BOOKINGS_PER_PAGE,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        sortBy,
+        sortOrder,
+      })
     } catch (error) {
+      console.error('Refund processing failed:', error)
+
       const message =
         error instanceof Error ? error.message : 'Failed to process refund'
+
       setErrorModal({
         open: true,
         title: 'Refund Failed',
         message,
       })
+
+      setRefundDialog((prev) => ({ ...prev, open: false }))
+      setRefundAmount('')
+      setRefundReason('')
     }
   }
 
@@ -915,7 +949,7 @@ const AdminBookingManagement: React.FC = () => {
                   </button>
                   <button
                     onClick={handleProcessRefund}
-                    className="flex-1 px-4 py-2 bg-error text-white rounded-lg hover:bg-error/90 transition"
+                    className="flex-1 px-4 py-2 bg-destructive text-white rounded-lg hover:bg-destructive/90 transition"
                   >
                     Process Refund
                   </button>

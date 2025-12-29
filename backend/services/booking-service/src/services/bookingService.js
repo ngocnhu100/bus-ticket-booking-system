@@ -1754,7 +1754,16 @@ class BookingService {
    * @returns {Promise<object>} Paginated bookings
    */
   async getAllBookingsAdmin(filters) {
-    const { page = 1, limit = 20, status, fromDate, toDate, sortBy = 'created_at', sortOrder = 'DESC' } = filters;
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      payment_status,
+      fromDate,
+      toDate,
+      sortBy = 'created_at',
+      sortOrder = 'DESC',
+    } = filters;
 
     console.log('[BookingService] getAllBookingsAdmin with filters:', filters);
 
@@ -1762,6 +1771,7 @@ class BookingService {
       page,
       limit,
       status,
+      payment_status,
       fromDate,
       toDate,
       sortBy,
@@ -1857,12 +1867,12 @@ class BookingService {
 
     // Check payment status - access nested payment.status or top-level payment_status
     const paymentStatus = (
-      booking.payment?.status || 
-      booking.payment_status || 
-      booking.paymentStatus || 
+      booking.payment?.status ||
+      booking.payment_status ||
+      booking.paymentStatus ||
       ''
     ).toLowerCase();
-    
+
     if (paymentStatus !== 'paid') {
       console.error('[BookingService] Refund rejected - booking not paid:', {
         bookingId,
@@ -1882,7 +1892,13 @@ class BookingService {
 
     const updatedBooking = await bookingRepository.updateRefund(bookingId, refundData);
 
-    console.log('[BookingService] Refund processed for booking:', updatedBooking.booking_reference);
+    console.log('[BookingService] Booking updated with refund:', {
+      bookingId,
+      bookingReference: updatedBooking.booking_reference,
+      status: updatedBooking.status,
+      paymentStatus: updatedBooking.payment?.status || updatedBooking.payment_status,
+      refundAmount: updatedBooking.cancellation?.refund_amount || updatedBooking.refund_amount,
+    });
 
     // TODO: Integrate with payment-service to process actual refund
     // await this.initiatePaymentRefund(booking, refundAmount);
@@ -1891,7 +1907,7 @@ class BookingService {
     try {
       await this.sendRefundNotification({
         ...updatedBooking,
-        refundAmount,
+        refundAmount: refundAmount, // Ensure refundAmount is available
         reason: refundData.reason,
       });
     } catch (error) {
@@ -1915,22 +1931,108 @@ class BookingService {
    */
   async sendRefundNotification(booking) {
     try {
-      const notificationServiceUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+      const notificationServiceUrl =
+        process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
 
       await axios.post(`${notificationServiceUrl}/send-email`, {
         to: booking.contact_email,
-        template: 'refund-processed',
-        data: {
+        type: 'refund',
+        refundData: {
           bookingReference: booking.booking_reference,
-          refundAmount: booking.refundAmount,
-          reason: booking.reason,
-          currency: booking.currency || 'VND',
+          refundAmount: booking.refundAmount || booking.cancellation?.refund_amount || 0,
+          reason: booking.reason || booking.cancellation_reason,
+          currency: booking.currency || booking.pricing?.currency || 'VND',
         },
       });
 
       console.log('[BookingService] Sent refund notification email');
     } catch (error) {
       console.error('Error sending refund notification:', error.message);
+    }
+  }
+
+  /**
+   * Process bulk refund for all confirmed bookings of a trip
+   * @param {string} tripId - Trip ID
+   * @param {string} reason - Reason for refund
+   * @returns {Promise<Object>} Refund results
+   */
+  async processBulkRefundForTrip(tripId, reason = 'Trip cancelled by admin') {
+    console.log(`[BookingService] Processing bulk refund for trip ${tripId}`);
+
+    try {
+      // Get all confirmed bookings for this trip
+      const bookings = await bookingRepository.getBookingsByTripId(tripId, 'confirmed');
+
+      if (bookings.length === 0) {
+        console.log(`[BookingService] No confirmed bookings found for trip ${tripId}`);
+        return {
+          success: true,
+          message: 'No confirmed bookings to refund',
+          refundedBookings: [],
+          totalRefunded: 0,
+        };
+      }
+
+      console.log(`[BookingService] Found ${bookings.length} confirmed bookings to refund`);
+
+      const refundResults = [];
+      let totalRefunded = 0;
+
+      // Process refund for each booking
+      for (const booking of bookings) {
+        try {
+          console.log(`[BookingService] Processing refund for booking ${booking.booking_id}`);
+
+          // Calculate refund amount (full refund for admin-initiated trip cancellation)
+          const refundAmount = booking.pricing?.total || booking.total_price;
+          console.log(`[BookingService] Booking pricing.total: ${booking.pricing?.total}, booking.total_price: ${booking.total_price}, calculated refundAmount: ${refundAmount}`);
+
+          // Process refund
+          await this.processRefundAdmin(booking.booking_id, refundAmount, reason);
+
+          refundResults.push({
+            bookingId: booking.booking_id,
+            bookingReference: booking.booking_reference,
+            refundAmount,
+            status: 'success',
+          });
+
+          totalRefunded += refundAmount;
+        } catch (error) {
+          console.error(
+            `[BookingService] Failed to refund booking ${booking.booking_id}:`,
+            error.message
+          );
+
+          refundResults.push({
+            bookingId: booking.booking_id,
+            bookingReference: booking.booking_reference,
+            refundAmount: booking.total_price,
+            status: 'failed',
+            error: error.message,
+          });
+        }
+      }
+
+      const successCount = refundResults.filter((r) => r.status === 'success').length;
+      const failedCount = refundResults.filter((r) => r.status === 'failed').length;
+
+      console.log(
+        `[BookingService] Bulk refund completed: ${successCount} successful, ${failedCount} failed`
+      );
+
+      return {
+        success: true,
+        message: `Processed refunds for ${successCount} bookings (${failedCount} failed)`,
+        refundedBookings: refundResults,
+        totalRefunded,
+        successCount,
+        failedCount,
+      };
+    } catch (error) {
+      console.error('[BookingService] Error in bulk refund processing:', error);
+      throw new Error(`Failed to process bulk refund: ${error.message}`);
     }
   }
 }

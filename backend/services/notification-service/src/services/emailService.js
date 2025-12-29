@@ -4,6 +4,7 @@ const { generateTicketEmailTemplate } = require('../templates/ticketEmailTemplat
 const { generateBookingConfirmationTemplate } = require('../templates/bookingConfirmationTemplate');
 const { generateTripReminderTemplate } = require('../templates/tripReminderEmailTemplate');
 const { generateTripUpdateTemplate } = require('../templates/tripUpdateEmailTemplate');
+const { generateRefundEmailTemplate } = require('../templates/refundEmailTemplate');
 
 // Only set API key if it's provided
 if (process.env.SENDGRID_API_KEY) {
@@ -528,6 +529,63 @@ class EmailService {
       console.error('⚠️ Error sending trip update email:', error);
       console.error('⚠️ SendGrid response:', error.response?.body || error.message);
       throw new Error('Failed to send trip update email');
+    }
+  }
+
+  async sendRefundEmail(email, refundData) {
+    if (!refundData || typeof refundData !== 'object') {
+      throw new Error('Invalid refund data provided');
+    }
+
+    const { bookingReference, refundAmount, reason, currency = 'VND' } = refundData;
+
+    if (!bookingReference) {
+      throw new Error('Booking reference is required for refund email');
+    }
+
+    // Convert refundAmount to number and validate
+    const numericRefundAmount =
+      typeof refundAmount === 'string' ? parseFloat(refundAmount) : refundAmount;
+    if (isNaN(numericRefundAmount) || numericRefundAmount < 0) {
+      throw new Error('Valid refund amount is required for refund email');
+    }
+
+    const subject = `Refund Processed for Booking ${bookingReference}`;
+
+    const htmlContent = generateRefundEmailTemplate({
+      bookingReference,
+      refundAmount: numericRefundAmount,
+      reason,
+      currency,
+    });
+
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(`📧 [DEV MODE] Refund email would be sent to ${email}`);
+      console.log(`📧 [DEV MODE] Subject: ${subject}`);
+      console.log(`📧 [DEV MODE] Refund Amount: ${refundAmount} ${currency}`);
+      return { success: true, mode: 'development' };
+    }
+
+    const msg = {
+      personalizations: [
+        {
+          to: [{ email: email }],
+        },
+      ],
+      from: { email: DEFAULT_EMAIL_FROM },
+      subject: subject,
+      content: [{ type: 'text/html', value: htmlContent }],
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(`📧 Refund email sent to ${email} for booking ${bookingReference}`);
+      return { success: true };
+    } catch (error) {
+      console.error('⚠️ Error sending refund email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send refund email');
     }
   }
 }

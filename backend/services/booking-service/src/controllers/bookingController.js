@@ -589,6 +589,7 @@ class BookingController {
         page: parseInt(req.query.page) || 1,
         limit: parseInt(req.query.limit) || 20,
         status: req.query.status, // pending, confirmed, cancelled, completed
+        payment_status: req.query.payment_status, // unpaid, paid, refunded
         fromDate: req.query.fromDate,
         toDate: req.query.toDate,
         sortBy: req.query.sortBy || 'created_at',
@@ -950,18 +951,21 @@ class BookingController {
       const { id } = req.params;
       const { refundAmount, reason } = req.body;
 
-      if (!refundAmount || refundAmount <= 0) {
+      // Parse refundAmount to ensure it's a number
+      const numericRefundAmount = parseFloat(refundAmount);
+
+      if (!numericRefundAmount || numericRefundAmount <= 0) {
         return res.status(422).json({
           success: false,
           error: {
             code: 'VAL_001',
-            message: 'Invalid refund amount',
+            message: 'Invalid refund amount - must be a positive number',
           },
           timestamp: new Date().toISOString(),
         });
       }
 
-      const result = await bookingService.processRefundAdmin(id, refundAmount, reason);
+      const result = await bookingService.processRefundAdmin(id, numericRefundAmount, reason);
 
       return res.json({
         success: true,

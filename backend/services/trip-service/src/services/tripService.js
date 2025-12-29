@@ -320,7 +320,7 @@ class TripService {
           const updateData = {
             bookingReference: booking.booking_reference,
             updateType: 'cancellation',
-            reason: 'Trip cancelled by operator',
+            reason: 'Trip cancelled by admin',
             originalDepartureTime: oldTrip.schedule.departure_time,
             newDepartureTime: null,
             originalArrivalTime: oldTrip.schedule.arrival_time,
@@ -337,7 +337,7 @@ class TripService {
             busModel: newTrip.bus.model,
             alternatives: alternatives, // Add alternative trips
             nextSteps: [
-              'Contact customer support for refund',
+              'Check your email for refund details',
               'Look for alternative trips',
               'Check refund policy',
             ],

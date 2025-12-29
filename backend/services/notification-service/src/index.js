@@ -208,6 +208,22 @@ app.post('/send-email', async (req, res) => {
         break;
       }
 
+      case 'refund': {
+        const { refundData } = req.body;
+        if (!refundData) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'VAL_001',
+              message: 'refundData required for refund emails',
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+        await emailService.sendRefundEmail(to, refundData);
+        break;
+      }
+
       default:
         // Generic email sending
         {
