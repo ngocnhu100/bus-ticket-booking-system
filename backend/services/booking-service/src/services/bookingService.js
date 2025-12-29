@@ -1073,16 +1073,10 @@ class BookingService {
           total: parseFloat(booking.pricing?.total) || 0,
           paymentMethod: paymentData?.paymentMethod || 'Unknown',
         },
-        // Prefer direct links stored on the booking (set by ticket generation).
-        // When constructing fallbacks, prefer `API_URL` so other services can reach the URL inside Docker networks.
-        eTicketUrl:
-          (booking.e_ticket && booking.e_ticket.ticket_url) ||
-          booking.ticket_url ||
-          `${process.env.API_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/bookings/${booking.booking_reference}/ticket`,
+        // Use ticket URLs from the booking record (set by ticket generation)
+        eTicketUrl: (booking.e_ticket && booking.e_ticket.ticket_url) || booking.ticket_url || null,
         qrCodeUrl:
-          (booking.e_ticket && booking.e_ticket.qr_code_url) ||
-          booking.qr_code_url ||
-          `${process.env.API_URL || 'http://localhost:3000'}/api/bookings/${booking.booking_reference}/qr`,
+          (booking.e_ticket && booking.e_ticket.qr_code_url) || booking.qr_code_url || null,
         bookingDetailsUrl: null,
         cancellationPolicy: (() => {
           const p = tripDetails.policies || {};
@@ -1247,10 +1241,11 @@ class BookingService {
         process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
       await axios.post(`${notificationServiceUrl}/send-email`, {
         to: booking.contact_email,
-        template: 'booking-cancellation',
+        type: 'booking-cancellation',
         data: {
           bookingReference: booking.booking_reference,
           refundAmount: booking.cancellation?.refund_amount || 0,
+          reason: booking.cancellation_reason || booking.cancellation?.reason || 'Booking cancelled by admin',
         },
       });
     } catch (error) {
@@ -1816,34 +1811,6 @@ class BookingService {
   }
 
   /**
-   * Update booking status (Admin only)
-   * @param {string} bookingId - Booking UUID
-   * @param {string} newStatus - New status
-   * @returns {Promise<object>} Updated booking
-   */
-  async updateBookingStatusAdmin(bookingId, newStatus) {
-    console.log('[BookingService] updateBookingStatusAdmin:', bookingId, newStatus);
-
-    const booking = await bookingRepository.findById(bookingId);
-
-    if (!booking) {
-      throw new Error('Booking not found');
-    }
-
-    // Validate status transition
-    // Prevent changing from completed or certain cancelled states
-    if (booking.status === 'completed') {
-      throw new Error('Cannot update status of completed booking');
-    }
-
-    const updatedBooking = await bookingRepository.updateStatus(bookingId, newStatus);
-
-    console.log('[BookingService] Booking status updated:', updatedBooking.booking_reference);
-
-    return updatedBooking;
-  }
-
-  /**
    * Process refund for a booking (Admin only)
    * @param {string} bookingId - Booking UUID
    * @param {number} refundAmount - Refund amount
@@ -1952,6 +1919,147 @@ class BookingService {
   }
 
   /**
+   * Admin: Update booking status with ticket generation and email
+   * @param {string} bookingId - Booking UUID
+   * @param {string} status - New status (confirmed, cancelled, completed)
+   * @returns {Promise<object>} Updated booking
+   */
+  async updateBookingStatusAdmin(bookingId, status) {
+    console.log(`[BookingService] Admin updating booking ${bookingId} status to ${status}`);
+
+    // Get current booking
+    const booking = await bookingRepository.findById(bookingId);
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    // Validate status transition
+    const validStatuses = ['confirmed', 'cancelled', 'completed'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+
+    // Prevent invalid transitions
+    if (booking.status === 'completed') {
+      throw new Error('Cannot update status of completed booking');
+    }
+
+    if (booking.status === 'cancelled' && status !== 'completed') {
+      throw new Error('Cannot update status of cancelled booking');
+    }
+
+    // Update booking status
+    const updatedBooking = await bookingRepository.updateStatus(bookingId, status);
+
+    // If confirming booking, generate tickets and send email
+    if (status === 'confirmed') {
+      console.log(`[BookingService] Generating tickets for confirmed booking ${bookingId}`);
+
+      try {
+        // Generate tickets (PDF + QR)
+        await ticketService.processTicketGeneration(bookingId);
+        console.log(`[BookingService] Tickets generated for booking ${bookingId}`);
+      } catch (error) {
+        console.error(`[BookingService] Failed to generate tickets for ${bookingId}:`, error);
+        // Continue - ticket generation failure shouldn't block status update
+      }
+
+      // Clear seat locks (since booking is now confirmed)
+      try {
+        const passengers = await passengerRepository.findByBookingId(bookingId);
+        const seatCodes = passengers.map((p) => p.seat_code);
+        if (seatCodes.length > 0) {
+          await this.releaseLocksForCancelledBooking(booking.trip_id, seatCodes, null);
+          console.log(`[BookingService] Released seat locks for booking ${bookingId}`);
+        }
+      } catch (error) {
+        console.error(`[BookingService] Failed to release seat locks for ${bookingId}:`, error);
+        // Non-critical
+      }
+
+      // Send confirmation email
+      try {
+        // Refresh booking to include ticket URLs
+        const refreshedBooking = await bookingRepository.findById(bookingId);
+        await this.sendBookingConfirmationEmail(refreshedBooking, {
+          paymentMethod: 'admin_confirmed',
+        });
+        console.log(`[BookingService] Sent confirmation email for booking ${bookingId}`);
+      } catch (error) {
+        console.error(
+          `[BookingService] Failed to send confirmation email for ${bookingId}:`,
+          error
+        );
+        // Non-critical
+      }
+    }
+
+    // If cancelling booking, process refund and send notification
+    if (status === 'cancelled') {
+      console.log(`[BookingService] Processing cancellation for booking ${bookingId}`);
+
+      // Check if booking was paid and process refund
+      const paymentStatus = (
+        booking.payment?.status ||
+        booking.payment_status ||
+        booking.paymentStatus ||
+        ''
+      ).toLowerCase();
+
+      let refundResult = null;
+      if (paymentStatus === 'paid') {
+        try {
+          console.log(`[BookingService] Processing refund for cancelled booking ${bookingId}`);
+          refundResult = await this.processRefundAdmin(
+            bookingId,
+            parseFloat(booking.total_price),
+            'Booking cancelled by admin'
+          );
+          console.log(`[BookingService] Refund processed successfully for booking ${bookingId}`);
+        } catch (error) {
+          console.error(`[BookingService] Failed to process refund for ${bookingId}:`, error);
+          // For cancelled bookings, refund failure should be communicated to admin
+          throw new Error(`Booking cancelled but refund failed: ${error.message}`);
+        }
+      } else {
+        console.log(
+          `[BookingService] No refund needed for booking ${bookingId} - payment status: ${paymentStatus}`
+        );
+      }
+
+      // Release seat locks (since booking is cancelled)
+      try {
+        const passengers = await passengerRepository.findByBookingId(bookingId);
+        const seatCodes = passengers.map((p) => p.seat_code);
+        if (seatCodes.length > 0) {
+          await this.releaseLocksForCancelledBooking(booking.trip_id, seatCodes, null);
+          console.log(`[BookingService] Released seat locks for cancelled booking ${bookingId}`);
+        }
+      } catch (error) {
+        console.error(`[BookingService] Failed to release seat locks for ${bookingId}:`, error);
+        // Non-critical
+      }
+
+      // Send cancellation notification
+      try {
+        // Refresh booking to include refund info
+        const refreshedBooking = await bookingRepository.findById(bookingId);
+        await this.sendCancellationNotification(refreshedBooking);
+        console.log(`[BookingService] Sent cancellation notification for booking ${bookingId}`);
+      } catch (error) {
+        console.error(
+          `[BookingService] Failed to send cancellation notification for ${bookingId}:`,
+          error
+        );
+        // Non-critical
+      }
+    }
+
+    console.log(`[BookingService] Admin status update completed for booking ${bookingId}`);
+    return updatedBooking;
+  }
+
+  /**
    * Process bulk refund for all confirmed bookings of a trip
    * @param {string} tripId - Trip ID
    * @param {string} reason - Reason for refund
@@ -1986,7 +2094,9 @@ class BookingService {
 
           // Calculate refund amount (full refund for admin-initiated trip cancellation)
           const refundAmount = booking.pricing?.total || booking.total_price;
-          console.log(`[BookingService] Booking pricing.total: ${booking.pricing?.total}, booking.total_price: ${booking.total_price}, calculated refundAmount: ${refundAmount}`);
+          console.log(
+            `[BookingService] Booking pricing.total: ${booking.pricing?.total}, booking.total_price: ${booking.total_price}, calculated refundAmount: ${refundAmount}`
+          );
 
           // Process refund
           await this.processRefundAdmin(booking.booking_id, refundAmount, reason);

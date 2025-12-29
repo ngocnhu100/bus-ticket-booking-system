@@ -224,6 +224,26 @@ app.post('/send-email', async (req, res) => {
         break;
       }
 
+      case 'booking-cancellation': {
+        console.log('📧 Processing booking-cancellation email:', req.body);
+        const { data } = req.body;
+        if (!data) {
+          console.log('📧 Missing data for booking-cancellation');
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'VAL_001',
+              message: 'data required for booking cancellation emails',
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+        console.log('📧 Calling sendBookingCancellationEmail with data:', data);
+        await emailService.sendBookingCancellationEmail(to, data);
+        console.log('📧 Booking cancellation email sent successfully');
+        break;
+      }
+
       default:
         // Generic email sending
         {

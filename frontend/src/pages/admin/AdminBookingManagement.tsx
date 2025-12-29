@@ -10,6 +10,7 @@ import {
   Calendar,
   User,
   Users,
+  CheckCircle,
 } from 'lucide-react'
 import { useAdminBookings } from '@/hooks/admin/useAdminBookings'
 import type { BookingAdminData } from '@/types/trip.types'
@@ -22,6 +23,7 @@ import {
 } from '@/components/admin/table'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ErrorModal } from '@/components/ui/error-modal'
+import { SuccessModal } from '@/components/ui/success-modal'
 import { CustomDropdown } from '@/components/ui/custom-dropdown'
 import { AdminLoadingSpinner } from '@/components/admin/AdminLoadingSpinner'
 import { AdminEmptyState } from '@/components/admin/AdminEmptyState'
@@ -81,6 +83,11 @@ const AdminBookingManagement: React.FC = () => {
   const [errorModal, setErrorModal] = useState({
     open: false,
     title: 'Error',
+    message: '',
+  })
+  const [successModal, setSuccessModal] = useState({
+    open: false,
+    title: 'Success',
     message: '',
   })
   const [refundDialog, setRefundDialog] = useState({
@@ -166,6 +173,32 @@ const AdminBookingManagement: React.FC = () => {
         setConfirmDialog((prev) => ({ ...prev, open: false }))
         try {
           await updateBookingStatus(bookingId, newStatus)
+
+          // Show success message
+          let successMessage = `Booking ${bookingReference} status updated to ${newStatus} successfully.`
+          if (newStatus === 'cancelled') {
+            successMessage +=
+              ' Refund has been processed automatically if the booking was paid.'
+          }
+
+          setSuccessModal({
+            open: true,
+            title: 'Status Updated',
+            message: successMessage,
+          })
+
+          // Refresh bookings to show updated status and payment_status
+          await fetchBookings({
+            page: currentPage,
+            limit: BOOKINGS_PER_PAGE,
+            status: statusFilter !== 'all' ? statusFilter : undefined,
+            payment_status:
+              paymentStatusFilter !== 'all' ? paymentStatusFilter : undefined,
+            fromDate: fromDate || undefined,
+            toDate: toDate || undefined,
+            sortBy,
+            sortOrder,
+          })
         } catch (error) {
           const message =
             error instanceof Error
@@ -606,6 +639,25 @@ const AdminBookingManagement: React.FC = () => {
 
                       <AdminTableCell>
                         <div className="flex items-center gap-2">
+                          {/* Only allow Confirm for bookings with status 'pending' */}
+                          {booking.status === 'pending' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleUpdateStatus(
+                                  booking.booking_id,
+                                  booking.booking_reference,
+                                  booking.status,
+                                  'confirmed'
+                                )
+                              }}
+                              className="p-1.5 rounded-lg hover:bg-success/10 transition"
+                              title="Confirm Booking"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                          )}
+
                           {/* Chỉ cho phép Cancel với bookings đang confirmed */}
                           {booking.status === 'confirmed' && (
                             <button
@@ -965,6 +1017,14 @@ const AdminBookingManagement: React.FC = () => {
           title={errorModal.title}
           message={errorModal.message}
           onClose={() => setErrorModal({ ...errorModal, open: false })}
+        />
+
+        {/* Success Modal */}
+        <SuccessModal
+          open={successModal.open}
+          title={successModal.title}
+          message={successModal.message}
+          onClose={() => setSuccessModal({ ...successModal, open: false })}
         />
       </div>
     </DashboardLayout>

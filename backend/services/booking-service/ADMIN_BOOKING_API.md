@@ -27,6 +27,7 @@ Authorization: Bearer <ADMIN_JWT_TOKEN>
 | page | integer | No | 1 | Page number |
 | limit | integer | No | 20 | Results per page |
 | status | string | No | - | Filter by status: `pending`, `confirmed`, `cancelled`, `completed` |
+| payment_status | string | No | - | Filter by payment status: `unpaid`, `paid`, `refunded` |
 | fromDate | ISO8601 | No | - | Filter bookings created after this date |
 | toDate | ISO8601 | No | - | Filter bookings created before this date |
 | sortBy | string | No | created_at | Sort column: `created_at`, `updated_at`, `total_price`, `status`, `payment_status` |
@@ -179,6 +180,8 @@ curl -X GET "http://localhost:3000/bookings/admin/<booking_id>" \
 ```
 
 **Valid statuses:** `confirmed`, `cancelled`, `completed`
+
+**Note:** When updating status to `confirmed`, the booking will be confirmed and tickets will be generated and sent to the customer via email, but the payment_status remains unchanged (typically 'unpaid' for manual confirmations).
 
 #### Example Request
 ```bash
@@ -346,6 +349,11 @@ curl -X POST "http://localhost:3000/bookings/admin/<booking_id>/refund" \
 GET /bookings/admin?status=confirmed&page=1&limit=20
 ```
 
+### Filter by Payment Status
+```bash
+GET /bookings/admin?payment_status=paid&page=1&limit=20
+```
+
 ### Filter by Date Range
 ```bash
 GET /bookings/admin?fromDate=2025-12-01T00:00:00.000Z&toDate=2025-12-31T23:59:59.999Z
@@ -353,7 +361,7 @@ GET /bookings/admin?fromDate=2025-12-01T00:00:00.000Z&toDate=2025-12-31T23:59:59
 
 ### Combined Filters
 ```bash
-GET /bookings/admin?status=confirmed&fromDate=2025-12-01&toDate=2025-12-31&sortBy=total_price&sortOrder=DESC
+GET /bookings/admin?status=confirmed&payment_status=paid&fromDate=2025-12-01&toDate=2025-12-31&sortBy=total_price&sortOrder=DESC
 ```
 
 ### Sort by Total Price
@@ -368,10 +376,17 @@ GET /bookings/admin?sortBy=total_price&sortOrder=DESC&limit=10
 ### Status Update Rules
 - Cannot update status of `completed` bookings
 - Valid transitions:
-  - `pending` → `confirmed` ✅
+  - `pending` → `confirmed` ✅ (triggers ticket generation and email confirmation, payment_status unchanged)
   - `pending` → `cancelled` ✅
   - `confirmed` → `completed` ✅
   - `confirmed` → `cancelled` ✅
+
+### Payment Status Values
+- `unpaid`: Payment not yet processed (default for new bookings)
+- `paid`: Payment successfully completed (either by customer or admin confirmation)
+- `refunded`: Refund has been processed
+
+**Note:** Admin manual confirmation sets status to 'confirmed' but keeps payment_status as 'unpaid' unless actual payment was processed.
 
 ### Refund Processing
 1. **Validation**

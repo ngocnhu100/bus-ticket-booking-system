@@ -5,6 +5,7 @@ const { generateBookingConfirmationTemplate } = require('../templates/bookingCon
 const { generateTripReminderTemplate } = require('../templates/tripReminderEmailTemplate');
 const { generateTripUpdateTemplate } = require('../templates/tripUpdateEmailTemplate');
 const { generateRefundEmailTemplate } = require('../templates/refundEmailTemplate');
+const { generateBookingCancellationTemplate } = require('../templates/bookingCancellationTemplate');
 
 // Only set API key if it's provided
 if (process.env.SENDGRID_API_KEY) {
@@ -588,6 +589,60 @@ class EmailService {
       throw new Error('Failed to send refund email');
     }
   }
-}
 
+  async sendBookingCancellationEmail(email, cancellationData) {
+    if (!cancellationData || typeof cancellationData !== 'object') {
+      throw new Error('Invalid cancellation data provided');
+    }
+
+    const { bookingReference, refundAmount } = cancellationData;
+
+    if (!bookingReference) {
+      throw new Error('Booking reference is required for cancellation email');
+    }
+
+    // Convert refundAmount to number
+    const numericRefundAmount =
+      typeof refundAmount === 'string' ? parseFloat(refundAmount) : refundAmount;
+    if (isNaN(numericRefundAmount)) {
+      throw new Error('Valid refund amount is required for cancellation email');
+    }
+
+    const subject = `Booking Cancelled - ${bookingReference}`;
+
+    const htmlContent = generateBookingCancellationTemplate({
+      bookingReference,
+      refundAmount: numericRefundAmount,
+    });
+
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(`📧 [DEV MODE] Booking cancellation email would be sent to ${email}`);
+      console.log(`📧 [DEV MODE] Subject: ${subject}`);
+      console.log(`📧 [DEV MODE] Refund Amount: ${refundAmount} VND`);
+      return { success: true, mode: 'development' };
+    }
+
+    const msg = {
+      personalizations: [
+        {
+          to: [{ email: email }],
+        },
+      ],
+      from: { email: DEFAULT_EMAIL_FROM },
+      subject: subject,
+      content: [{ type: 'text/html', value: htmlContent }],
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(`📧 Booking cancellation email sent to ${email} for booking ${bookingReference}`);
+      return { success: true };
+    } catch (error) {
+      console.error('⚠️ Error sending booking cancellation email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send booking cancellation email');
+    }
+  }
+}
 module.exports = new EmailService();
