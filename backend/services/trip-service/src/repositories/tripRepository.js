@@ -471,6 +471,15 @@ class TripRepository {
       where_clauses.push(`DATE(t.departure_time) = $${index++}`);
       values.push(date);
     }
+    if (passengers !== undefined && passengers > 0) {
+      where_clauses.push(`(b.seat_capacity - COALESCE((
+        SELECT COUNT(*) 
+        FROM bookings bk 
+        JOIN booking_passengers bp ON bk.booking_id = bp.booking_id 
+        WHERE bk.trip_id = t.trip_id AND bk.status IN ('confirmed', 'pending')
+      ), 0)) >= $${index++}`);
+      values.push(passengers);
+    }
     if (minPrice !== undefined && minPrice > 0) {
       where_clauses.push(`t.base_price >= $${index++}`);
       values.push(minPrice);

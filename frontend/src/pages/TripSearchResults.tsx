@@ -139,7 +139,10 @@ export function TripSearchResults() {
     amenities: searchParams.getAll('amenity'),
     seatLocations: searchParams.getAll('seatLocation'),
     minRating: parseFloat(searchParams.get('minRating') || '0'),
-    minSeatsAvailable: parseInt(searchParams.get('minSeats') || '1'),
+    minSeatsAvailable: Math.max(
+      parseInt(passengers),
+      parseInt(searchParams.get('minSeats') || '1')
+    ),
   }
 
   // Parse pagination params from URL
@@ -742,7 +745,8 @@ export function TripSearchResults() {
                   {destination}
                 </p>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  {date} • {passengers} passenger{passengers !== '1' ? 's' : ''}
+                  {date} • {passengers} passenger
+                  {parseInt(passengers) !== 1 ? 's' : ''}
                 </p>
               </div>
             </div>
@@ -1092,31 +1096,35 @@ export function TripSearchResults() {
                         </div>
 
                         {/* Flexible search options */}
-                        {alternatives.flexibleSearch && (
-                          <div className="space-y-2">
-                            <h4 className="font-medium text-sm text-muted-foreground">
-                              Flexible Search
-                            </h4>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full justify-start text-left"
-                              onClick={() => {
-                                const newParams = new URLSearchParams({
-                                  from: origin,
-                                  to: destination,
-                                  date: alternatives.flexibleSearch.date,
-                                  passengers,
-                                })
-                                navigate(
-                                  `/trip-search-results?${newParams.toString()}`
-                                )
-                              }}
-                            >
-                              {alternatives.flexibleSearch.description}
-                            </Button>
-                          </div>
-                        )}
+                        {alternatives.flexibleSearch &&
+                          (() => {
+                            const flexibleSearch = alternatives.flexibleSearch!
+                            return (
+                              <div className="space-y-2">
+                                <h4 className="font-medium text-sm text-muted-foreground">
+                                  Flexible Search
+                                </h4>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="w-full justify-start text-left"
+                                  onClick={() => {
+                                    const newParams = new URLSearchParams({
+                                      from: origin,
+                                      to: destination,
+                                      date: flexibleSearch.date,
+                                      passengers,
+                                    })
+                                    navigate(
+                                      `/trip-search-results?${newParams.toString()}`
+                                    )
+                                  }}
+                                >
+                                  {flexibleSearch.description}
+                                </Button>
+                              </div>
+                            )
+                          })()}
 
                         {/* Reset search */}
                         <div className="space-y-2">
