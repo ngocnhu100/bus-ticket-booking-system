@@ -44,6 +44,14 @@ const createBookingSchema = Joi.object({
             'string.pattern.base': 'Document ID must be 9-12 digits',
           }),
 
+        email: Joi.string()
+          .email()
+          .optional()
+          .allow(null, '')
+          .messages({
+            'string.email': 'Invalid email format',
+          }),
+
         seatCode: Joi.string()
           .pattern(/^((VIP\d{1,2}[A-Z])|([A-Z]\d{1,2}|\d{1,2}[A-Z]))$/)
           .required()

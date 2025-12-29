@@ -365,6 +365,44 @@ app.use('/analytics', authenticate, authorize(['admin']), async (req, res) => {
   }
 });
 
+// Payment service routes
+app.use('/payment', async (req, res) => {
+  try {
+    const paymentServiceUrl = process.env.PAYMENT_SERVICE_URL || 'http://localhost:3005';
+    const queryString = Object.keys(req.query).length
+      ? '?' + new URLSearchParams(req.query).toString()
+      : '';
+    console.log(
+      `💳 Proxying ${req.method} ${req.originalUrl} to ${paymentServiceUrl}/api/payment${req.path}${queryString}`
+    );
+    const response = await axios({
+      method: req.method,
+      url: `${paymentServiceUrl}/api/payment${req.path}${queryString}`,
+      data: req.body,
+      headers: {
+        authorization: req.headers.authorization,
+        'content-type': 'application/json',
+      },
+      timeout: 30000,
+    });
+    console.log(`✅ Payment service responded with status ${response.status}`);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error(`❌ Payment service error:`, error.message);
+    if (error.response) {
+      console.log(`❌ Payment service responded with error status ${error.response.status}`);
+      res.status(error.response.status).json(error.response.data);
+    } else {
+      console.log(`❌ Payment service unavailable or timeout`);
+      res.status(500).json({
+        success: false,
+        error: { code: 'GATEWAY_006', message: 'Payment service unavailable' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+});
+
 // Chatbot service routes (Supports both guest and authenticated users)
 app.use('/chatbot', async (req, res) => {
   try {

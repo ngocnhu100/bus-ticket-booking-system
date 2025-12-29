@@ -124,8 +124,9 @@ const formatTripForChat = (trip) => {
  * Format multiple trips for chatbot response
  */
 const formatTripsForChat = (trips, limit = 5, searchDate = null) => {
-  if (!trips || trips.length === 0) {
-    return 'No trips found matching your criteria.';
+  if (!trips || !Array.isArray(trips) || trips.length === 0) {
+    console.warn('[formatTripsForChat] Invalid trips data:', typeof trips);
+    return [];
   }
 
   const limitedTrips = trips.slice(0, limit);

@@ -25,6 +25,7 @@ app.get('/health', chatbotController.healthCheck);
 // Note: API Gateway adds /chatbot prefix, so routes here don't include it
 app.post('/query', optionalAuthenticate, chatbotController.query);
 app.post('/book', optionalAuthenticate, chatbotController.book);
+app.post('/submit-passenger-info', optionalAuthenticate, chatbotController.submitPassengerInfo);
 app.get('/sessions/:sessionId/history', optionalAuthenticate, chatbotController.getHistory);
 app.post('/sessions/:sessionId/reset', optionalAuthenticate, chatbotController.resetConversation);
 app.post('/feedback', optionalAuthenticate, chatbotController.submitFeedback);

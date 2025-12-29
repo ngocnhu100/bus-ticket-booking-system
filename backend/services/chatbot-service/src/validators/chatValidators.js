@@ -72,10 +72,35 @@ const feedbackSchema = Joi.object({
   comment: Joi.string().optional().max(500),
 });
 
+/**
+ * Validation schema for passenger info form submission
+ */
+const passengerInfoFormSchema = Joi.object({
+  sessionId: Joi.string().required(),
+  passengers: Joi.array()
+    .items(
+      Joi.object({
+        seat_code: Joi.string().required(),
+        full_name: Joi.string().required().min(2).max(100),
+        phone: Joi.string()
+          .required()
+          .pattern(/^(\+84|84|0)[0-9]{9,10}$/),
+        email: Joi.string().email().required(),
+        id_number: Joi.string()
+          .optional()
+          .allow('')
+          .pattern(/^[0-9]{9,12}$/),
+      })
+    )
+    .min(1)
+    .required(),
+});
+
 module.exports = {
   passengerSchema,
   chatQuerySchema,
   chatBookingSchema,
   sessionIdSchema,
   feedbackSchema,
+  passengerInfoFormSchema,
 };

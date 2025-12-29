@@ -73,8 +73,8 @@ class ChatbotService {
         vi: 'Bạn muốn đặt ghế nào?',
       },
       which_seats_suggestions: {
-        en: ['Book seat A1', 'Book seats A1, A2', 'Show seat map'],
-        vi: ['Đặt ghế A1', 'Đặt ghế A1, A2', 'Hiển thị sơ đồ ghế'],
+        en: ['Show seat map'],
+        vi: ['Xem sơ đồ ghế'],
       },
       specify_seats: {
         en: 'Please specify which seat(s) you would like to book (e.g., A1, A2).',
@@ -463,7 +463,24 @@ class ChatbotService {
         },
       });
 
-      if (!searchResult.success || !searchResult.data || searchResult.data.length === 0) {
+      // Extract trips array from response - handle different response formats
+      let trips = [];
+      if (searchResult.success && searchResult.data) {
+        if (Array.isArray(searchResult.data)) {
+          trips = searchResult.data;
+        } else if (searchResult.data.trips && Array.isArray(searchResult.data.trips)) {
+          trips = searchResult.data.trips;
+        } else if (searchResult.data.data && Array.isArray(searchResult.data.data)) {
+          trips = searchResult.data.data;
+        }
+      }
+      
+      console.log('[ChatbotService] Extracted trips:', {
+        format: Array.isArray(searchResult.data) ? 'array' : typeof searchResult.data,
+        count: trips.length
+      });
+
+      if (trips.length === 0) {
         const dateStr = extracted.date
           ? lang === 'vi'
             ? ` vào ${extracted.date}`
@@ -485,10 +502,11 @@ class ChatbotService {
         };
       }
 
-      const trips = searchResult.data;
       const formattedTrips = formatTripsForChat(trips, 5, extracted.date);
+      console.log('[ChatbotService] Formatted trips count:', formattedTrips.length);
 
       // Save search context for future "show all" requests
+      // Store raw trips to preserve all data including pickup_points and dropoff_points
       await conversationRepository.saveBookingContext(sessionId, {
         searchParams,
         searchResults: trips.slice(0, 5),
@@ -586,6 +604,39 @@ class ChatbotService {
         };
       }
 
+      // Check if user wants to see the seat map
+      const lowerMessage = message.toLowerCase();
+      const showSeatMapKeywords = [
+        'show seat map',
+        'xem sơ đồ ghế',
+        'hiển thị sơ đồ ghế',
+        'seat map',
+        'sơ đồ ghế',
+        'show map',
+        'xem sơ đồ',
+      ];
+      
+      if (showSeatMapKeywords.some(keyword => lowerMessage.includes(keyword))) {
+        console.log('[ChatbotService] User requested seat map');
+        const tripId = bookingContext.selectedTrip.tripId || bookingContext.selectedTrip.trip_id;
+        const seatsResponse = await tripServiceClient.getAvailableSeats(tripId);
+        
+        return {
+          text:
+            lang === 'vi'
+              ? 'Dưới đây là sơ đồ ghế của chuyến xe. Vui lòng chọn ghế bằng cách nhập mã ghế (ví dụ: A1, B2):'
+              : 'Here is the seat map for this trip. Please select seats by entering seat codes (e.g., A1, B2):',
+          actions: [
+            {
+              type: 'seat_selection',
+              data: seatsResponse?.data?.seat_map?.seats || [],
+            },
+          ],
+          suggestions:
+            lang === 'vi' ? ['Xem sơ đồ ghế'] : ['Show seat map'],
+        };
+      }
+
       // Extract seat codes using regex - much faster than AI
       // Matches patterns like: A1, VIP2C, 2C, ABC12, etc.
       // Pattern: optional letters + 1-2 digits + optional letters
@@ -608,12 +659,12 @@ class ChatbotService {
         return {
           text:
             lang === 'vi'
-              ? 'Tôi không hiểu ghế nào bạn muốn chọn. Vui lòng cung cấp mã ghế (ví dụ: A1, B2).'
-              : 'I could not find any seat codes in your message. Please provide seat codes (e.g., A1, B2).',
+              ? 'Tôi không hiểu ghế nào bạn muốn chọn. Vui lòng cung cấp mã ghế (ví dụ: A1, B2) hoặc xem sơ đồ ghế.'
+              : 'I could not find any seat codes in your message. Please provide seat codes (e.g., A1, B2) or view the seat map.',
           suggestions:
             lang === 'vi'
-              ? ['A1, A2', 'B1, B2, B3', 'Xem sơ đồ ghế']
-              : ['A1, A2', 'B1, B2, B3', 'Show seat map'],
+              ? ['Xem sơ đồ ghế']
+              : ['Show seat map'],
         };
       }
 
@@ -624,19 +675,91 @@ class ChatbotService {
 
       console.log('[ChatbotService] Seats selected and saved:', validSeats);
 
-      // Return confirmation
+      // Get trip details to calculate total price
+      const tripId = bookingContext.selectedTrip.tripId || bookingContext.selectedTrip.trip_id;
+      
+      // Extract base price from different possible locations in trip object
+      let basePrice = 
+        bookingContext.selectedTrip.price || 
+        bookingContext.selectedTrip.base_price || 
+        bookingContext.selectedTrip.pricing?.base_price || 
+        0;
+      
+      console.log('[ChatbotService] Base price extracted:', {
+        basePrice,
+        tripData: {
+          price: bookingContext.selectedTrip.price,
+          base_price: bookingContext.selectedTrip.base_price,
+          pricing: bookingContext.selectedTrip.pricing,
+        }
+      });
+      
+      // Calculate total price
+      const totalPrice = basePrice * validSeats.length;
+
+      // Generate passenger info form for each seat
+      const seatsForForm = validSeats.map(seatCode => ({
+        seat_code: seatCode,
+        price: basePrice
+      }));
+
+      const passengerFields = [
+        {
+          name: 'full_name',
+          type: 'text',
+          label: lang === 'vi' ? 'Họ và tên' : 'Full Name',
+          placeholder: lang === 'vi' ? 'Nguyễn Văn A' : 'John Doe',
+          required: true,
+          validation: 'min:2,max:100'
+        },
+        {
+          name: 'phone',
+          type: 'tel',
+          label: lang === 'vi' ? 'Số điện thoại' : 'Phone Number',
+          placeholder: '0909123456',
+          required: true,
+          validation: 'phone:VN'
+        },
+        {
+          name: 'email',
+          type: 'email',
+          label: 'Email',
+          placeholder: 'example@email.com',
+          required: true,
+          validation: 'email'
+        },
+        {
+          name: 'id_number',
+          type: 'text',
+          label: lang === 'vi' ? 'CMND/CCCD' : 'ID Number',
+          placeholder: '001234567890',
+          required: false,
+          validation: 'digits:9,12'
+        }
+      ];
+
+      // Return confirmation with passenger info form
       const seatsStr = validSeats.join(', ');
       return {
         text:
           lang === 'vi'
-            ? `Ghế đã chọn: ${seatsStr}. Tiếp theo, chúng tôi sẽ xác nhận chi tiết chuyến.`
-            : `Seats selected: ${seatsStr}. Next, we'll confirm your trip details.`,
+            ? `Bạn đã chọn ${validSeats.length} ghế: ${seatsStr} (${totalPrice.toLocaleString('vi-VN')}₫). Vui lòng điền thông tin hành khách:`
+            : `You selected ${validSeats.length} seat(s): ${seatsStr} (${totalPrice.toLocaleString()}₫). Please provide passenger information:`,
+        actions: [
+          {
+            type: 'passenger_info_form',
+            seats: seatsForForm,
+            required_fields: passengerFields,
+            total_price: totalPrice
+          }
+        ],
         entities: {
           selectedSeats: validSeats,
-          tripId: bookingContext.selectedTrip.tripId || bookingContext.selectedTrip.trip_id,
+          tripId: tripId,
+          totalPrice: totalPrice
         },
         suggestions:
-          lang === 'vi' ? ['Tiếp tục', 'Xác nhận đặt vé'] : ['Continue', 'Confirm booking'],
+          lang === 'vi' ? ['Hủy đặt vé'] : ['Cancel booking'],
       };
     } catch (error) {
       console.error('[ChatbotService] Error handling seat selection:', error);
@@ -671,6 +794,128 @@ class ChatbotService {
       authToken,
     });
     try {
+      // Check if user wants to view booking details (after booking created)
+      const isViewBookingDetailsIntent = 
+        message.toLowerCase().includes('xem chi tiết đặt vé') ||
+        message.toLowerCase().includes('view booking details') ||
+        message.toLowerCase().includes('xem chi tiết') ||
+        message.toLowerCase().includes('chi tiết đặt vé');
+      
+      if (isViewBookingDetailsIntent) {
+        console.log('[ChatbotService] User wants to view booking details');
+        const bookingContext = await conversationRepository.getBookingContext(sessionId);
+        
+        // First check if there's a completed booking
+        if (bookingContext?.bookingConfirmation) {
+          const confirmation = bookingContext.bookingConfirmation;
+          console.log('[ChatbotService] Showing booking confirmation details:', confirmation.bookingReference);
+          
+          return {
+            text: lang === 'vi'
+              ? `📋 **Chi tiết đặt vé**\n\nMã đặt vé: ${confirmation.bookingReference}\nTrạng thái: Chờ thanh toán\nSố hành khách: ${confirmation.passengerCount}\nVui lòng hoàn tất thanh toán để xác nhận vé.`
+              : `📋 **Booking Details**\n\nReference: ${confirmation.bookingReference}\nStatus: Pending Payment\nPassengers: ${confirmation.passengerCount}\nPlease complete payment to confirm your booking.`,
+            actions: [
+              {
+                type: 'payment_link',
+                data: {
+                  url: confirmation.paymentInfo?.payment_url || `http://localhost:5173/booking/${confirmation.bookingId}/review`,
+                  bookingReference: confirmation.bookingReference,
+                  bookingId: confirmation.bookingId,
+                },
+              },
+            ],
+            suggestions: [
+              lang === 'vi' ? 'Thanh toán ngay' : 'Pay now',
+              lang === 'vi' ? 'Tìm chuyến khác' : 'Search another trip',
+            ],
+          };
+        }
+        
+        // Otherwise show booking in progress details
+        if (!bookingContext || !bookingContext.selectedTrip) {
+          return {
+            text: lang === 'vi' 
+              ? 'Không tìm thấy thông tin đặt vé. Vui lòng tìm chuyến và chọn ghế trước.'
+              : 'No booking information found. Please search for trips and select seats first.',
+            suggestions: lang === 'vi' 
+              ? ['Tìm chuyến đi'] 
+              : ['Search trips'],
+          };
+        }
+      }
+      
+      // Check if user wants to review/check booking information (before booking)
+      const isReviewIntent = 
+        message.toLowerCase().includes('xem lại') ||
+        message.toLowerCase().includes('review') ||
+        message.toLowerCase().includes('check') ||
+        message.toLowerCase().includes('kiểm tra');
+      
+      if (isReviewIntent && !isViewBookingDetailsIntent) {
+        console.log('[ChatbotService] User wants to review booking information');
+        const bookingContext = await conversationRepository.getBookingContext(sessionId);
+        
+        if (!bookingContext || !bookingContext.selectedTrip) {
+          return {
+            text: lang === 'vi' 
+              ? 'Không tìm thấy thông tin đặt vé. Vui lòng tìm chuyến và chọn ghế trước.'
+              : 'No booking information found. Please search for trips and select seats first.',
+            suggestions: lang === 'vi' 
+              ? ['Tìm chuyến đi'] 
+              : ['Search trips'],
+          };
+        }
+        
+        // Build comprehensive review
+        const tripDetails = bookingContext.selectedTrip;
+        const basePrice = tripDetails.base_price || tripDetails.pricing?.base_price || tripDetails.price || 0;
+        const origin = tripDetails.origin_name || tripDetails.origin || bookingContext.lastSearch?.origin || 'N/A';
+        const destination = tripDetails.destination_name || tripDetails.destination || bookingContext.lastSearch?.destination || 'N/A';
+        const pickupName = bookingContext.selectedPickupPoint?.name || bookingContext.selectedPickupPoint || 'Chưa chọn';
+        const dropoffName = bookingContext.selectedDropoffPoint?.name || bookingContext.selectedDropoffPoint || 'Chưa chọn';
+        const pickupTime = bookingContext.selectedPickupPoint?.time || tripDetails.departure_time || tripDetails.schedule?.departure_time;
+        const dropoffTime = bookingContext.selectedDropoffPoint?.time || tripDetails.arrival_time || tripDetails.schedule?.arrival_time;
+        
+        const reviewText = lang === 'vi'
+          ? `📋 **Thông tin chuyến đi và đặt vé:**\n\n` +
+            `**Chuyến đi:** ${origin} - ${destination}\n` +
+            `**Ngày:** ${bookingContext.lastSearch?.date || new Date().toLocaleDateString('vi-VN')}\n` +
+            `**Phương tiện:** ${tripDetails.bus_type || tripDetails.bus?.bus_type || 'Khách'}\n` +
+            `**Thời gian lên đường:** ${new Date(pickupTime).toLocaleTimeString('vi-VN')} (${origin})\n` +
+            `**Thời gian đến:** ${new Date(dropoffTime).toLocaleTimeString('vi-VN')} (${destination})\n` +
+            `**Trạm đón:** ${pickupName}\n` +
+            `**Trạm đến:** ${dropoffName}\n` +
+            `**Ghế:** ${bookingContext.selectedSeats?.join(', ') || 'Chưa chọn'}\n` +
+            `**Giá vé:** ${basePrice.toLocaleString('vi-VN')}₫\n\n` +
+            (bookingContext.passengerInfo ? 
+              `**Hành khách:**\n${bookingContext.passengerInfo.map((p, i) => 
+                `${i + 1}. ${p.full_name} - ${p.phone} - ${p.email}`
+              ).join('\n')}\n\n` : '') +
+            `**Xác nhận đặt vé?**`
+          : `📋 **Trip and Booking Information:**\n\n` +
+            `**Route:** ${origin} - ${destination}\n` +
+            `**Date:** ${bookingContext.lastSearch?.date || new Date().toLocaleDateString('en-US')}\n` +
+            `**Vehicle:** ${tripDetails.bus_type || tripDetails.bus?.bus_type || 'Bus'}\n` +
+            `**Departure:** ${new Date(pickupTime).toLocaleTimeString('en-US')} (${origin})\n` +
+            `**Arrival:** ${new Date(dropoffTime).toLocaleTimeString('en-US')} (${destination})\n` +
+            `**Pickup:** ${pickupName}\n` +
+            `**Drop-off:** ${dropoffName}\n` +
+            `**Seats:** ${bookingContext.selectedSeats?.join(', ') || 'Not selected'}\n` +
+            `**Price:** ${basePrice.toLocaleString('en-US')}₫\n\n` +
+            (bookingContext.passengerInfo ? 
+              `**Passengers:**\n${bookingContext.passengerInfo.map((p, i) => 
+                `${i + 1}. ${p.full_name} - ${p.phone} - ${p.email}`
+              ).join('\n')}\n\n` : '') +
+            `**Confirm booking?**`;
+        
+        return {
+          text: reviewText,
+          suggestions: lang === 'vi' 
+            ? ['Xác nhận đặt vé', 'Sửa thông tin', 'Hủy'] 
+            : ['Confirm booking', 'Edit info', 'Cancel'],
+        };
+      }
+      
       // Check if user wants to select different seat after a booking error
       if (
         message.toLowerCase().includes('different seat') ||
@@ -901,17 +1146,20 @@ class ChatbotService {
         console.log('[ChatbotService] Payment intent detected with booking confirmation');
         const confirmation = bookingContext.bookingConfirmation;
 
+        // Construct payment URL that goes to booking review/payment page
+        const paymentUrl = confirmation.paymentInfo?.payment_url || `http://localhost:5173/booking/${confirmation.bookingId}/review`;
+
         // Return payment link
         return {
           text:
             lang === 'vi'
-              ? `Cảm ơn bạn! Bạn có thể thanh toán cho đặt vé ${confirmation.bookingReference}. Vui lòng nhấp nút bên dưới để hoàn tất thanh toán trong vòng 10 phút.`
-              : `Thank you! You can now complete payment for booking ${confirmation.bookingReference}. Please click the button below to finish payment within 10 minutes.`,
+              ? `Cảm ơn bạn! Vui lòng truy cập trang thanh toán để hoàn tất đặt vé ${confirmation.bookingReference}. Thông tin hành khách và ghế của bạn đã được lưu.`
+              : `Thank you! Please visit the payment page to complete your booking ${confirmation.bookingReference}. Your passenger information and seats have been saved.`,
           actions: [
             {
               type: 'payment_link',
               data: {
-                url: confirmation.paymentInfo?.payment_url || '#',
+                url: paymentUrl,
                 bookingReference: confirmation.bookingReference,
                 bookingId: confirmation.bookingId,
               },
@@ -1813,31 +2061,42 @@ Return ONLY the text response, no JSON, no explanations.`;
           passengerInfoCount: passengerInfoArray.length,
           passengerInfoArray: passengerInfoArray.map((p, i) => ({
             index: i,
-            fullName: p.fullName || 'N/A',
+            fullName: p.full_name || p.fullName || 'N/A',
             phone: p.phone || 'N/A',
             email: p.email || 'N/A',
           })),
         });
 
+        // Transform passenger info from snake_case to camelCase for validation
+        const transformedPassengers = passengerInfoArray.map(p => ({
+          fullName: p.full_name || p.fullName,
+          documentId: p.id_number || p.documentId || '',
+          phone: p.phone,
+          email: p.email || null,
+        }));
+
         // CRITICAL: Validate that ALL passengers pass schema validation before booking
-        const completePassengersCount = passengerInfoArray.filter((p) => {
-          const { error } = passengerSchema.validate(p);
-          return !error; // Valid if no validation errors
+        const completePassengersCount = transformedPassengers.filter((p) => {
+          // Check required fields manually for more lenient validation
+          // documentId is optional if not provided
+          return p.fullName && p.phone && /^(\+84|84|0)[0-9]{9,10}$/.test(p.phone);
         }).length;
+        
         if (completePassengersCount < passengerCount) {
           const missingPassengers = passengerCount - completePassengersCount;
           console.warn(
-            `[ChatbotService] Cannot create booking - missing ${missingPassengers} passenger(s) info`
+            `[ChatbotService] Cannot create booking - missing ${missingPassengers} passenger(s) info`,
+            { transformedPassengers, completePassengersCount, passengerCount }
           );
           return {
             text:
               lang === 'vi'
-                ? `Thông tin hành khách chưa đầy đủ. Cần cung cấp thêm ${missingPassengers} hành khách (Tên đầy đủ, Số CMND/Passport, Số điện thoại).`
-                : `Incomplete passenger information. Need to provide ${missingPassengers} more passenger(s) (Full name, Document ID, Phone number).`,
+                ? `Thông tin hành khách chưa đầy đủ. Cần cung cấp thêm ${missingPassengers} hành khách (Tên đầy đủ, Số điện thoại).`
+                : `Incomplete passenger information. Need to provide ${missingPassengers} more passenger(s) (Full name, Phone number).`,
             suggestions:
               lang === 'vi'
-                ? ['Hành khách: Nguyễn Văn B, 32323411213, 0987654321']
-                : ['Passenger: John Doe, 123456789, 0987654321'],
+                ? ['Hành khách: Nguyễn Văn B, 0987654321']
+                : ['Passenger: John Doe, 0987654321'],
           };
         }
 
@@ -1853,23 +2112,32 @@ Return ONLY the text response, no JSON, no explanations.`;
           passengerInfo: passengerInfoArray,
         });
 
+        // Transform passenger data to expected format (camelCase)
+        const transformedPassengersForBooking = passengerInfoArray.map(p => ({
+          fullName: p.full_name || p.fullName,
+          phone: p.phone,
+          email: p.email || null,
+          documentId: p.id_number || p.documentId || null,
+          seatCode: p.seat_code || p.seatCode || null,
+        }));
+
         // Create the booking
         const bookingResult = await this.createBooking(
           sessionId,
           tripId,
           seats,
-          passengerInfoArray,
+          transformedPassengersForBooking,
           updatedContext.contactInfo, // Pass contactInfo (for guest checkout)
           authToken // Pass authToken (for authenticated users)
         );
 
         console.log('[ChatbotService] Booking created successfully:', bookingResult);
 
-        // Return success message with booking details
+        // Return success message with payment method selector
         const successMsg =
           lang === 'vi'
-            ? `Đặt vé thành công! Số tham chiếu đặt vé của bạn là ${bookingResult.bookingReference}. Vui lòng hoàn tất thanh toán trong vòng 10 phút.`
-            : `Booking created successfully! Your booking reference is ${bookingResult.bookingReference}. Please complete payment within 10 minutes.`;
+            ? `Đặt vé thành công! Số tham chiếu đặt vé của bạn là ${bookingResult.bookingReference}. Vui lòng chọn phương thức thanh toán:`
+            : `Booking created successfully! Your booking reference is ${bookingResult.bookingReference}. Please select a payment method:`;
 
         return {
           text: successMsg,
@@ -1885,9 +2153,22 @@ Return ONLY the text response, no JSON, no explanations.`;
                 paymentInfo: bookingResult.paymentInfo,
               },
             },
+            {
+              type: 'payment_method_selector',
+              data: {
+                bookingId: bookingResult.bookingId,
+                bookingReference: bookingResult.bookingReference,
+                amount: bookingResult.pricing?.total || 0,
+                paymentMethods: [
+                  { id: 'momo', name: 'MoMo', icon: '💳', available: true },
+                  { id: 'zalopay', name: 'ZaloPay', icon: '💰', available: true },
+                  { id: 'payos', name: 'PayOS', icon: '🏦', available: true },
+                  { id: 'vnpay', name: 'VNPay', icon: '💵', available: true },
+                ],
+              },
+            },
           ],
           suggestions: [
-            lang === 'vi' ? 'Thanh toán ngay' : 'Pay now',
             lang === 'vi' ? 'Xem chi tiết đặt vé' : 'View booking details',
           ],
         };
@@ -2259,6 +2540,171 @@ Return ONLY the text response, no JSON, no explanations.`;
       return { success: true, message: this.responses.feedback_success[lang] };
     } catch (error) {
       console.error('[ChatbotService] Error saving feedback:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process passenger information form submission
+   */
+  async processPassengerInfo(sessionId, passengers, userId, authToken) {
+    console.log('[ChatbotService] Processing passenger info for session:', sessionId);
+    console.log('[ChatbotService] Number of passengers:', passengers.length);
+
+    try {
+      // Get current booking context
+      const bookingContext = await conversationRepository.getBookingContext(sessionId);
+      if (!bookingContext || !bookingContext.selectedTrip || !bookingContext.selectedSeats) {
+        throw new Error('No booking context found. Please start from trip search.');
+      }
+
+      // Detect language (check first passenger's name for Vietnamese characters)
+      const lang = this.detectLanguage(passengers[0].full_name);
+
+      // Validate that number of passengers matches number of seats
+      if (passengers.length !== bookingContext.selectedSeats.length) {
+        throw new Error(
+          lang === 'vi'
+            ? `Số lượng hành khách (${passengers.length}) không khớp với số ghế đã chọn (${bookingContext.selectedSeats.length})`
+            : `Number of passengers (${passengers.length}) does not match selected seats (${bookingContext.selectedSeats.length})`
+        );
+      }
+
+      // Map passengers to seats
+      const passengersWithSeats = passengers.map((passenger, index) => ({
+        ...passenger,
+        seat_code: bookingContext.selectedSeats[index],
+      }));
+
+      // Save passenger info to context
+      const updatedContext = {
+        ...bookingContext,
+        passengerInfo: passengersWithSeats,
+        contactInfo: {
+          email: passengers[0].email,
+          phone: passengers[0].phone,
+        },
+      };
+      await conversationRepository.saveBookingContext(sessionId, updatedContext);
+
+      // Generate booking summary
+      const tripDetails = bookingContext.selectedTrip;
+      
+      // Extract price from various possible locations
+      const basePrice = tripDetails.base_price || 
+                       tripDetails.pricing?.base_price || 
+                       tripDetails.price || 
+                       0;
+      const totalPrice = basePrice * passengers.length;
+
+      // Extract route information
+      const origin = tripDetails.origin_name || 
+                    tripDetails.origin || 
+                    tripDetails.route?.origin_name ||
+                    bookingContext.lastSearch?.origin ||
+                    'N/A';
+      const destination = tripDetails.destination_name || 
+                         tripDetails.destination || 
+                         tripDetails.route?.destination_name ||
+                         bookingContext.lastSearch?.destination ||
+                         'N/A';
+      
+      // Extract time information
+      const departureTime = tripDetails.departure_time || 
+                           tripDetails.schedule?.departure_time ||
+                           'N/A';
+      const arrivalTime = tripDetails.arrival_time || 
+                         tripDetails.schedule?.arrival_time ||
+                         'N/A';
+      
+      // Extract operator name
+      const operatorName = tripDetails.operator_name || 
+                          tripDetails.operator?.name ||
+                          'N/A';
+
+      const summary = {
+        trip: {
+          route: `${origin} → ${destination}`,
+          departure_time: departureTime,
+          arrival_time: arrivalTime,
+          operator: operatorName,
+        },
+        seats: bookingContext.selectedSeats.join(', '),
+        pickup_point: bookingContext.selectedPickupPoint?.name || bookingContext.selectedPickupPoint || 'Chưa chọn',
+        dropoff_point: bookingContext.selectedDropoffPoint?.name || bookingContext.selectedDropoffPoint || 'Chưa chọn',
+        passengers: passengersWithSeats.map((p) => ({
+          name: p.full_name,
+          seat: p.seat_code,
+          phone: p.phone,
+          email: p.email,
+          id_number: p.id_number || 'N/A',
+        })),
+        pricing: {
+          base_fare: basePrice,
+          quantity: passengers.length,
+          total: totalPrice,
+          currency: 'VND',
+        },
+      };
+
+      // Check if pickup and dropoff are already selected
+      const needsPickupDropoff = !bookingContext.selectedPickupPoint || !bookingContext.selectedDropoffPoint;
+      
+      const responseText = needsPickupDropoff
+        ? (lang === 'vi'
+          ? `✅ Đã nhận thông tin hành khách!\n\n` +
+            `📋 **Tóm tắt đặt vé:**\n` +
+            `🚌 Tuyến: ${summary.trip.route}\n` +
+            `⏰ Khởi hành: ${new Date(summary.trip.departure_time).toLocaleString('vi-VN')}\n` +
+            `💺 Ghế: ${summary.seats}\n` +
+            `👥 Số hành khách: ${passengers.length}\n` +
+            `💰 Tổng tiền: ${totalPrice.toLocaleString('vi-VN')} VND\n\n` +
+            `Vui lòng chọn điểm đón và điểm trả để hoàn tất đặt vé.`
+          : `✅ Passenger information received!\n\n` +
+            `📋 **Booking Summary:**\n` +
+            `🚌 Route: ${summary.trip.route}\n` +
+            `⏰ Departure: ${new Date(summary.trip.departure_time).toLocaleString('en-US')}\n` +
+            `💺 Seats: ${summary.seats}\n` +
+            `👥 Passengers: ${passengers.length}\n` +
+            `💰 Total: ${totalPrice.toLocaleString('en-US')} VND\n\n` +
+            `Please select pickup and drop-off points to complete booking.`)
+        : (lang === 'vi'
+          ? `✅ Đã nhận thông tin hành khách!\n\n` +
+            `📋 **Tóm tắt đặt vé:**\n` +
+            `🚌 Tuyến: ${summary.trip.route}\n` +
+            `⏰ Khởi hành: ${new Date(summary.trip.departure_time).toLocaleString('vi-VN')}\n` +
+            `📍 Điểm đón: ${summary.pickup_point}\n` +
+            `📍 Điểm trả: ${summary.dropoff_point}\n` +
+            `💺 Ghế: ${summary.seats}\n` +
+            `👥 Số hành khách: ${passengers.length}\n` +
+            `💰 Tổng tiền: ${totalPrice.toLocaleString('vi-VN')} VND\n\n` +
+            `Xác nhận đặt vé?`
+          : `✅ Passenger information received!\n\n` +
+            `📋 **Booking Summary:**\n` +
+            `🚌 Route: ${summary.trip.route}\n` +
+            `⏰ Departure: ${new Date(summary.trip.departure_time).toLocaleString('en-US')}\n` +
+            `📍 Pickup: ${summary.pickup_point}\n` +
+            `📍 Drop-off: ${summary.dropoff_point}\n` +
+            `💺 Seats: ${summary.seats}\n` +
+            `👥 Passengers: ${passengers.length}\n` +
+            `💰 Total: ${totalPrice.toLocaleString('en-US')} VND\n\n` +
+            `Confirm booking?`);
+
+      // Return booking summary with next step
+      return {
+        text: responseText,
+        actions: [
+          {
+            type: 'booking_summary',
+            data: summary,
+          },
+        ],
+        suggestions: needsPickupDropoff
+          ? (lang === 'vi' ? ['Chọn điểm đón', 'Chọn điểm trả', 'Xem lại thông tin'] : ['Select pickup', 'Select drop-off', 'Review info'])
+          : (lang === 'vi' ? ['Xác nhận đặt vé', 'Sửa thông tin', 'Hủy'] : ['Confirm booking', 'Edit info', 'Cancel']),
+      };
+    } catch (error) {
+      console.error('[ChatbotService] Error processing passenger info:', error);
       throw error;
     }
   }
