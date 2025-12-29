@@ -12,7 +12,7 @@ class BookingRepository {
       serviceFee,
       totalPrice,
       paymentMethod,
-      lockedUntil
+      lockedUntil,
     } = bookingData;
 
     const query = `
@@ -34,7 +34,7 @@ class BookingRepository {
       serviceFee,
       totalPrice,
       paymentMethod || 'cash',
-      lockedUntil
+      lockedUntil,
     ];
 
     const result = await pool.query(query, values);
@@ -57,7 +57,7 @@ class BookingRepository {
         passenger.idNumber || null,
         passenger.phone || null,
         passenger.seatNumber,
-        passenger.price || 0
+        passenger.price || 0,
       ];
       const result = await pool.query(query, values);
       passengerRecords.push(result.rows[0]);
@@ -146,7 +146,7 @@ class BookingRepository {
     `;
 
     const result = await pool.query(query, [tripId, seatNumbers]);
-    return result.rows.map(row => row.seat_code);
+    return result.rows.map((row) => row.seat_code);
   }
 
   async checkReferenceExists(bookingReference) {
@@ -217,8 +217,8 @@ class BookingRepository {
       LEFT JOIN booking_passengers bp ON b.booking_id = bp.booking_id
       LEFT JOIN trips t ON b.trip_id = t.trip_id
       LEFT JOIN routes r ON t.route_id = r.route_id
-      LEFT JOIN operators o ON r.operator_id = o.operator_id
       LEFT JOIN buses bus ON t.bus_id = bus.bus_id
+      LEFT JOIN operators o ON bus.operator_id = o.operator_id
       LEFT JOIN bus_models bm ON bus.bus_model_id = bm.bus_model_id
       WHERE b.booking_reference = $1
       GROUP BY b.booking_id, t.trip_id, r.route_id, o.operator_id, bus.bus_id, bm.bus_model_id
@@ -230,7 +230,7 @@ class BookingRepository {
 
   async updateTicketInfo(bookingId, ticketData) {
     const { ticketUrl, qrCode } = ticketData;
-    
+
     const query = `
       UPDATE bookings
       SET 
@@ -274,6 +274,35 @@ class BookingRepository {
 
     const result = await pool.query(query, [bookingId]);
     return result.rows[0];
+  }
+
+  async getBookingsByTripId(tripId, statusFilter = null) {
+    let query = `
+      SELECT 
+        b.booking_id, b.booking_reference, b.trip_id, b.user_id,
+        b.contact_email, b.contact_phone, b.status, b.payment_status,
+        b.total_price, b.currency, b.created_at, b.updated_at,
+        b.refund_amount, b.cancellation_reason,
+        COUNT(bp.passenger_id) as passenger_count
+      FROM bookings b
+      LEFT JOIN booking_passengers bp ON b.booking_id = bp.booking_id
+      WHERE b.trip_id = $1
+    `;
+
+    const params = [tripId];
+
+    if (statusFilter) {
+      query += ` AND b.status = $2`;
+      params.push(statusFilter);
+    }
+
+    query += `
+      GROUP BY b.booking_id
+      ORDER BY b.created_at DESC
+    `;
+
+    const result = await pool.query(query, params);
+    return result.rows;
   }
 }
 

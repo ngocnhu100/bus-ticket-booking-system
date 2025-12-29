@@ -9,47 +9,48 @@ const {
 } = require('../validators/bookingValidators');
 
 class BookingController {
-    /**
-     * Idempotent internal confirm-payment endpoint for payment-service webhook
-     * POST /internal/:id/confirm-payment
-     */
-    async internalConfirmPayment(req, res) {
-      try {
-        const { id } = req.params;
-        // Confirm booking and trigger ticket generation (idempotent)
-        const confirmedBooking = await bookingService.confirmBooking(id);
-        if (!confirmedBooking) {
-          return res.status(404).json({
-            success: false,
-            error: { code: 'BOOKING_003', message: 'Booking not found' },
-            timestamp: new Date().toISOString()
-          });
-        }
-        // If already confirmed, just return success
-        if (confirmedBooking.status === 'confirmed' || confirmedBooking.payment_status === 'paid') {
-          return res.json({
-            success: true,
-            message: 'Booking already confirmed',
-            timestamp: new Date().toISOString()
-          });
-        }
-        // Get updated booking with ticket info (may not be available immediately)
-        const bookingWithTicket = await bookingService.getBookingById(id);
-        res.json({
-          success: true,
-          data: bookingWithTicket,
-          message: 'Booking confirmed successfully. Ticket is being generated and will be emailed to you shortly.',
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error('⚠️ Internal confirm booking error:', error);
-        return res.status(500).json({
+  /**
+   * Idempotent internal confirm-payment endpoint for payment-service webhook
+   * POST /internal/:id/confirm-payment
+   */
+  async internalConfirmPayment(req, res) {
+    try {
+      const { id } = req.params;
+      // Confirm booking and trigger ticket generation (idempotent)
+      const confirmedBooking = await bookingService.confirmBooking(id);
+      if (!confirmedBooking) {
+        return res.status(404).json({
           success: false,
-          error: { code: 'SYS_001', message: 'Internal server error' },
-          timestamp: new Date().toISOString()
+          error: { code: 'BOOKING_003', message: 'Booking not found' },
+          timestamp: new Date().toISOString(),
         });
       }
+      // If already confirmed, just return success
+      if (confirmedBooking.status === 'confirmed' || confirmedBooking.payment_status === 'paid') {
+        return res.json({
+          success: true,
+          message: 'Booking already confirmed',
+          timestamp: new Date().toISOString(),
+        });
+      }
+      // Get updated booking with ticket info (may not be available immediately)
+      const bookingWithTicket = await bookingService.getBookingById(id);
+      res.json({
+        success: true,
+        data: bookingWithTicket,
+        message:
+          'Booking confirmed successfully. Ticket is being generated and will be emailed to you shortly.',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('⚠️ Internal confirm booking error:', error);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'SYS_001', message: 'Internal server error' },
+        timestamp: new Date().toISOString(),
+      });
     }
+  }
   /**
    * Create a new booking
    * POST /bookings
@@ -412,9 +413,10 @@ class BookingController {
         paymentUrl: result.paymentUrl,
         qrCode: result.qrCode,
         data: result,
-        message: result.paymentUrl || result.qrCode
-          ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
-          : 'Payment confirmed successfully',
+        message:
+          result.paymentUrl || result.qrCode
+            ? 'Thanh toán đã được khởi tạo. Vui lòng quét mã QR hoặc nhấn vào link để thanh toán.'
+            : 'Payment confirmed successfully',
       });
     } catch (err) {
       console.error('Error confirming payment:', err);
@@ -526,7 +528,8 @@ class BookingController {
       return res.json({
         success: true,
         data: result,
-        message: 'Booking cancelled successfully. Refund will be processed within 3-5 business days.',
+        message:
+          'Booking cancelled successfully. Refund will be processed within 3-5 business days.',
         timestamp: new Date().toISOString(),
       });
     } catch (err) {
@@ -996,6 +999,60 @@ class BookingController {
         error: {
           code: 'SYS_001',
           message: 'Failed to process refund',
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Process bulk refund for all confirmed bookings of a trip (Admin only)
+   * POST /admin/trips/:tripId/bulk-refund
+   * Body: { reason: string }
+   */
+  async processBulkRefundForTrip(req, res) {
+    try {
+      const { tripId } = req.params;
+      const { reason } = req.body;
+
+      if (!tripId) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Trip ID is required',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const result = await bookingService.processBulkRefundForTrip(tripId, reason);
+
+      return res.json({
+        success: true,
+        data: result,
+        message: 'Bulk refund processed successfully',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error processing bulk refund:', err);
+
+      if (err.message.includes('not found')) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            code: 'TRIP_001',
+            message: 'Trip not found or no bookings to refund',
+          },
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'SYS_001',
+          message: 'Failed to process bulk refund',
         },
         timestamp: new Date().toISOString(),
       });
