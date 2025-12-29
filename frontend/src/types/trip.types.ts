@@ -25,7 +25,6 @@ export interface RouteAdminData {
 export interface BusAdminData {
   operator_id?: string
   operator_name?: string
-  operator_name?: string
   bus_id?: string
   name: string
   model: string
@@ -260,15 +259,45 @@ export interface Trip {
 }
 
 // ============================================================================
-// CONSTANTS
+// ALTERNATIVE TRIP SUGGESTIONS
 // ============================================================================
 
-export const WEEKDAYS = [
-  'MON',
-  'TUE',
-  'WED',
-  'THU',
-  'FRI',
-  'SAT',
-  'SUN',
-] as const
+/**
+ * AlternativeDate - Alternative date suggestion for same route
+ * Matches API: GET /trips/alternatives response.alternativeDates[]
+ */
+export interface AlternativeDate {
+  date: string // YYYY-MM-DD format
+  dayName: string // e.g., "Mon", "Tue"
+  monthDay: string // e.g., "Dec 30"
+  daysAhead: number // Days from original date
+  tripCount: number // Number of available trips
+}
+
+/**
+ * AlternativeDestination - Alternative destination from origin
+ * Matches API: GET /trips/alternatives response.alternativeDestinations[]
+ */
+export interface AlternativeDestination {
+  destination: string
+  tripCount: number // Number of available trips
+}
+
+/**
+ * FlexibleSearch - Flexible search option
+ * Matches API: GET /trips/alternatives response.flexibleSearch
+ */
+export interface FlexibleSearch {
+  date: string // YYYY-MM-DD format
+  description: string // e.g., "Search next 7 days"
+}
+
+/**
+ * AlternativeTrips - Complete alternative trip suggestions
+ * Matches API: GET /trips/alternatives response
+ */
+export interface AlternativeTrips {
+  alternativeDates: AlternativeDate[]
+  alternativeDestinations: AlternativeDestination[]
+  flexibleSearch: FlexibleSearch | null
+}

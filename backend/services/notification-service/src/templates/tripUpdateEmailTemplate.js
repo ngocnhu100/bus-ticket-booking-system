@@ -9,8 +9,8 @@
  * - contactPhone: Support phone for contact purposes
  */
 
-// Timezone configuration - adjust this value for different regions
-const TIMEZONE_OFFSET_HOURS = 7; // Vietnam timezone (+7 UTC)
+// Timezone configuration - centralized timezone management
+const TIMEZONE_CONFIG = require('../config/timezone');
 
 function generateTripUpdateTemplate(data) {
   const {
@@ -78,7 +78,9 @@ function generateTripUpdateTemplate(data) {
       const date = new Date(timeStr);
 
       // Convert to configured timezone
-      const localTime = new Date(date.getTime() + TIMEZONE_OFFSET_HOURS * 60 * 60 * 1000);
+      const localTime = new Date(
+        date.getTime() + TIMEZONE_CONFIG.DEFAULT_TIMEZONE * 60 * 60 * 1000
+      );
 
       return localTime.toLocaleString('en-US', {
         month: 'short',

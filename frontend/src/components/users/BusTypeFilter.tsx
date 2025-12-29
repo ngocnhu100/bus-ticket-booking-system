@@ -1,16 +1,11 @@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { busTypes } from '@/constants/filterConstants'
 
 interface BusTypeFilterProps {
   selectedTypes: string[]
   onChange: (types: string[]) => void
 }
-
-const busTypes = [
-  { value: 'standard', label: 'Standard', description: 'Regular seating' },
-  { value: 'limousine', label: 'Limousine', description: 'Luxury seating' },
-  { value: 'sleeper', label: 'Sleeper', description: 'Bed-style seating' },
-]
 
 export const BusTypeFilter = ({
   selectedTypes,

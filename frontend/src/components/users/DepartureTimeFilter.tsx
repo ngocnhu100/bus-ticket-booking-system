@@ -1,17 +1,11 @@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { timeSlots } from '@/constants/filterConstants'
 
 interface DepartureTimeFilterProps {
   selectedTimes: string[]
   onChange: (times: string[]) => void
 }
-
-const timeSlots = [
-  { value: 'morning', label: 'Morning', time: '06:00 - 12:00' },
-  { value: 'afternoon', label: 'Afternoon', time: '12:00 - 18:00' },
-  { value: 'evening', label: 'Evening', time: '18:00 - 24:00' },
-  { value: 'night', label: 'Night', time: '00:00 - 06:00' },
-]
 
 export const DepartureTimeFilter = ({
   selectedTimes,

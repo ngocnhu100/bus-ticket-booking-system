@@ -70,57 +70,50 @@ const update_trip_schema = Joi.object({
 });
 
 const search_trip_schema = Joi.object({
-  origin: Joi.string().optional(),
-  destination: Joi.string().optional(),
-  date: Joi.string()
-    .regex(/^\d{2}-\d{2}-\d{4}$|^\d{4}-\d{2}-\d{2}$/)
-    .custom((value, helpers) => {
-      const parts = value.split('-');
-      let day, month, year;
+  // Basic search params
+  origin: Joi.string().trim().min(1).max(100),
+  destination: Joi.string().trim().min(1).max(100),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD format
+  passengers: Joi.number().integer().min(1).max(50),
 
-      if (parts[0].length === 4) {
-        // YYYY-MM-DD format
-        year = parseInt(parts[0], 10);
-        month = parseInt(parts[1], 10);
-        day = parseInt(parts[2], 10);
-      } else {
-        // DD-MM-YYYY or MM-DD-YYYY format
-        const first = parseInt(parts[0], 10);
-        const second = parseInt(parts[1], 10);
-        year = parseInt(parts[2], 10);
-
-        if (first > 12) {
-          // Assume DD-MM-YYYY
-          day = first;
-          month = second;
-        } else {
-          // Assume MM-DD-YYYY
-          month = first;
-          day = second;
-        }
+  // Filter params
+  departureTime: Joi.custom((value, helpers) => {
+    let arr;
+    if (Array.isArray(value)) {
+      arr = value;
+    } else if (typeof value === 'string') {
+      arr = value.split(',').map((s) => s.trim());
+    } else {
+      return helpers.error('any.invalid');
+    }
+    // Validate each item
+    for (const item of arr) {
+      if (!['morning', 'afternoon', 'evening', 'night'].includes(item)) {
+        return helpers.error('any.invalid');
       }
+    }
+    return arr;
+  }),
+  minPrice: Joi.number().min(0),
+  maxPrice: Joi.number().min(0),
+  operator: Joi.alternatives().try(Joi.string().trim(), Joi.array().items(Joi.string().trim())),
+  busType: Joi.alternatives().try(
+    Joi.string().valid('standard', 'limousine', 'sleeper'),
+    Joi.array().items(Joi.string().valid('standard', 'limousine', 'sleeper'))
+  ),
+  amenity: Joi.alternatives().try(Joi.string().trim(), Joi.array().items(Joi.string().trim())),
+  seatLocation: Joi.alternatives().try(
+    Joi.string().valid('window', 'aisle'),
+    Joi.string().regex(/^(window|aisle)(,(window|aisle))*$/),
+    Joi.array().items(Joi.string().valid('window', 'aisle'))
+  ),
+  minRating: Joi.number().min(0).max(5),
+  minSeats: Joi.number().integer().min(0),
 
-      // Validate the date
-      const date = new Date(year, month - 1, day);
-      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-        return helpers.error('date.invalid');
-      }
-
-      // Return the date in YYYY-MM-DD format
-      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    })
-    .optional(),
-  passengers: Joi.number().integer().min(1).default(1),
-  price_min: Joi.number().min(0).optional(),
-  price_max: Joi.number().min(0).optional(),
-  departure_start: Joi.date().iso().optional(),
-  departure_end: Joi.date().iso().optional(),
-  bus_type: Joi.string().valid('standard', 'limousine', 'sleeper').optional(),
-  limit: Joi.number().integer().min(1).max(100).default(20),
+  // Sort and pagination
+  sort: Joi.string().default('default'),
   page: Joi.number().integer().min(1).default(1),
-  sort: Joi.string()
-    .valid('base_price ASC', 'base_price DESC', 'departure_time ASC', 'departure_time DESC')
-    .default('departure_time ASC'),
+  limit: Joi.number().integer().min(1).max(100).default(10),
 });
 
 module.exports = {

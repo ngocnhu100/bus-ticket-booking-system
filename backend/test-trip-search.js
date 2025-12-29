@@ -4,12 +4,12 @@ const http = require('http');
 function testTripSearch() {
   const options = {
     hostname: 'localhost',
-    port: 8080,
-    path: '/trips/search?origin=Ho%20Chi%20Minh%20City&destination=Hanoi&date=2024-01-20',
+    port: 3000,
+    path: '/trips/search?origin=Ho%20Chi%20Minh%20City&destination=Hanoi&date=2026-01-15',
     method: 'GET',
     headers: {
-      'Content-Type': 'application/json'
-    }
+      'Content-Type': 'application/json',
+    },
   };
 
   const req = http.request(options, (res) => {

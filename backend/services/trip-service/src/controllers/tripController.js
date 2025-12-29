@@ -180,23 +180,26 @@ class TripController {
 
   async search(req, res) {
     try {
+      console.log('[TripController.search] req.query:', JSON.stringify(req.query, null, 2));
       const { error, value } = searchTripSchema.validate(req.query);
       if (error) {
+        console.error('[TripController.search] Validation error:', error.details[0]);
         return res.status(422).json({
           success: false,
           error: { code: 'VAL_001', message: error.details[0].message },
         });
       }
 
-      const trips = await tripService.searchTrips(value);
+      const result = await tripService.searchTrips(value);
 
       res.json({
         success: true,
-        data: trips,
-        meta: {
-          limit: value.limit,
-          page: value.page,
-          count: trips.length,
+        data: {
+          trips: result.trips,
+          totalCount: result.totalCount,
+          page: result.page,
+          totalPages: result.totalPages,
+          limit: result.limit,
         },
       });
     } catch (err) {
@@ -512,6 +515,100 @@ class TripController {
       res.status(500).json({
         success: false,
         error: { code: 'SYS_ERROR', message: 'Failed to cancel trip' },
+      });
+    }
+  }
+
+  // ========== ALTERNATIVE TRIP SUGGESTIONS ==========
+
+  /**
+   * Get alternative trip suggestions when no trips found
+   * GET /alternatives?origin=...&destination=...&date=...
+   */
+  async getAlternatives(req, res) {
+    try {
+      const { origin, destination, date } = req.query;
+
+      if (!origin || !date) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'MISSING_PARAMS', message: 'Origin and date are required' },
+        });
+      }
+
+      const alternatives = await tripService.getAlternativeTrips(origin, destination, date);
+
+      console.log('[TripController] Alternatives response:', JSON.stringify(alternatives, null, 2));
+
+      res.json({
+        success: true,
+        data: alternatives,
+      });
+    } catch (err) {
+      console.error('[TripController] Error getting alternatives:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to get alternative suggestions' },
+      });
+    }
+  }
+
+  /**
+   * Get alternative dates for same route
+   * GET /alternatives/dates?origin=...&destination=...&date=...
+   */
+  async getAlternativeDates(req, res) {
+    try {
+      const { origin, destination, date } = req.query;
+
+      if (!origin || !destination || !date) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'MISSING_PARAMS', message: 'Origin, destination, and date are required' },
+        });
+      }
+
+      const alternativeDates = await tripService.getAlternativeDates(origin, destination, date);
+
+      res.json({
+        success: true,
+        data: alternativeDates,
+      });
+    } catch (err) {
+      console.error('[TripController] Error getting alternative dates:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to get alternative dates' },
+      });
+    }
+  }
+
+  /**
+   * Get alternative destinations from origin
+   * GET /alternatives/destinations?origin=...&exclude=...
+   */
+  async getAlternativeDestinations(req, res) {
+    try {
+      const { origin, exclude } = req.query;
+
+      if (!origin) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'MISSING_PARAMS', message: 'Origin is required' },
+        });
+      }
+
+      const alternativeDestinations = await tripService.getAlternativeDestinations(origin, exclude);
+
+      res.json({
+        success: true,
+        data: alternativeDestinations,
+      });
+    } catch (err) {
+      console.error('[TripController] Error getting alternative destinations:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Failed to get alternative destinations' },
       });
     }
   }

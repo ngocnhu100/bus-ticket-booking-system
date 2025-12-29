@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import {
-  seatAvailabilityOptions,
   timeSlots,
   busTypes,
   amenities,
+  seatLocations,
 } from '@/constants/filterConstants'
 
 export interface Filters {
@@ -29,13 +29,6 @@ interface FilterPanelProps {
   operatorRatings: Record<string, number>
   resultsCount: number
 }
-
-const seatLocations = [
-  { id: 'window', label: 'Window Side' },
-  { id: 'aisle', label: 'Aisle Side' },
-  { id: 'front', label: 'Front Area' },
-  { id: 'back', label: 'Back Area' },
-]
 
 interface CollapsibleSectionProps {
   title: string
@@ -227,7 +220,7 @@ export function FilterPanel({
     filters.amenities.length > 0 ||
     filters.seatLocations.length > 0 ||
     filters.minRating > 0 ||
-    filters.minSeatsAvailable > 0
+    filters.minSeatsAvailable > 1
 
   // Count active filters in each section
   const getDepartureTimeCount = () => filters.departureTimeSlots.length
@@ -236,7 +229,7 @@ export function FilterPanel({
   const getOperatorsCount = () => filters.operators.length
   const getBusTypesCount = () => filters.busTypes.length
   const getAmenitiesCount = () => filters.amenities.length
-  const getSeatAvailabilityCount = () => (filters.minSeatsAvailable > 0 ? 1 : 0)
+  const getSeatAvailabilityCount = () => (filters.minSeatsAvailable > 1 ? 1 : 0)
   const getSeatLocationCount = () => filters.seatLocations.length
   const getRatingFilterCount = () => (filters.minRating > 0 ? 1 : 0)
 
@@ -328,25 +321,12 @@ export function FilterPanel({
             activeCount={getOperatorsCount()}
           >
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {/* All operators option */}
-              <RadioButton
-                id="operator-all"
-                name="operator"
-                label="All operators"
-                checked={filters.operators.length === 0}
-                onChange={(checked) => {
-                  if (checked) {
-                    onFiltersChange({ ...filters, operators: [] })
-                  }
-                }}
-              />
               {availableOperators.map((operator) => {
                 const isSelected = filters.operators.includes(operator)
                 return (
-                  <RadioButton
+                  <Checkbox
                     key={operator}
                     id={operator}
-                    name="operator"
                     label={
                       <div className="flex items-center justify-between w-full">
                         <span>{operator}</span>
@@ -354,8 +334,10 @@ export function FilterPanel({
                     }
                     checked={isSelected}
                     onChange={(checked) => {
-                      // Radio button behavior: only one operator can be selected
-                      const newOperators = checked ? [operator] : []
+                      // Checkbox behavior: multiple operators can be selected
+                      const newOperators = checked
+                        ? [...filters.operators, operator]
+                        : filters.operators.filter((o) => o !== operator)
                       onFiltersChange({ ...filters, operators: newOperators })
                     }}
                   />
@@ -415,22 +397,45 @@ export function FilterPanel({
           defaultOpen={false}
           activeCount={getSeatAvailabilityCount()}
         >
-          <div className="space-y-2">
-            {seatAvailabilityOptions.map((option) => (
-              <RadioButton
-                key={option.value}
-                id={`seats-${option.value}`}
-                name="seats"
-                label={option.label}
-                checked={filters.minSeatsAvailable === option.value}
-                onChange={(checked) => {
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const newValue = Math.max(1, filters.minSeatsAvailable - 1)
+                  onFiltersChange({ ...filters, minSeatsAvailable: newValue })
+                }}
+                className="w-8 h-8 rounded border border-input bg-background hover:bg-accent flex items-center justify-center text-sm font-medium"
+                disabled={filters.minSeatsAvailable <= 1}
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min="1"
+                value={filters.minSeatsAvailable}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 1
                   onFiltersChange({
                     ...filters,
-                    minSeatsAvailable: checked ? option.value : 0,
+                    minSeatsAvailable: Math.max(1, value),
                   })
                 }}
+                className="w-20 px-2 py-1 text-center border border-input bg-background rounded text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="1"
               />
-            ))}
+              <button
+                onClick={() => {
+                  const newValue = filters.minSeatsAvailable + 1
+                  onFiltersChange({ ...filters, minSeatsAvailable: newValue })
+                }}
+                className="w-8 h-8 rounded border border-input bg-background hover:bg-accent flex items-center justify-center text-sm font-medium"
+              >
+                +
+              </button>
+              <span className="text-sm text-muted-foreground ml-2">
+                seats available
+              </span>
+            </div>
           </div>
         </CollapsibleSection>
 

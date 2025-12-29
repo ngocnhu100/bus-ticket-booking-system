@@ -378,6 +378,144 @@ class TripService {
       throw error;
     }
   }
+
+  // ========== ALTERNATIVE TRIP SUGGESTIONS ==========
+
+  /**
+   * Get comprehensive alternative trip suggestions
+   */
+  async getAlternativeTrips(origin, destination, date) {
+    const alternatives = {
+      alternativeDates: [],
+      alternativeDestinations: [],
+      flexibleSearch: null,
+    };
+
+    try {
+      // Get alternative dates for same route
+      if (destination) {
+        alternatives.alternativeDates = await this.getAlternativeDates(origin, destination, date);
+      }
+
+      // Get alternative destinations from origin
+      alternatives.alternativeDestinations = await this.getAlternativeDestinations(
+        origin,
+        destination
+      );
+
+      // Get flexible search option (next 7 days)
+      const flexibleDate = new Date(date);
+      flexibleDate.setDate(flexibleDate.getDate() + 3); // Middle of 7-day range
+      alternatives.flexibleSearch = {
+        date: flexibleDate.toISOString().split('T')[0],
+        description: 'Search next 7 days',
+      };
+
+      return alternatives;
+    } catch (error) {
+      console.error('Error getting alternative trips:', error);
+      // Return empty alternatives on error
+      return alternatives;
+    }
+  }
+
+  /**
+   * Get alternative dates for the same route (next 3 days)
+   */
+  async getAlternativeDates(origin, destination, date) {
+    const alternativeDates = [];
+    const baseDate = new Date(date);
+
+    // Check next 3 days for available trips
+    for (let i = 1; i <= 3; i++) {
+      const checkDate = new Date(baseDate);
+      checkDate.setDate(baseDate.getDate() + i);
+
+      try {
+        // Check if there are trips available for this date
+        const trips = await tripRepository.search({
+          origin,
+          destination,
+          date: checkDate.toISOString().split('T')[0],
+          limit: 1, // Just check if any trips exist
+        });
+
+        if (trips.trips && trips.trips.length > 0) {
+          alternativeDates.push({
+            date: checkDate.toISOString().split('T')[0],
+            dayName: checkDate.toLocaleDateString('en-US', { weekday: 'short' }),
+            monthDay: checkDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            daysAhead: i,
+            tripCount: trips.totalCount,
+          });
+        }
+      } catch (error) {
+        console.error(
+          `Error checking trips for date ${checkDate.toISOString().split('T')[0]}:`,
+          error
+        );
+      }
+    }
+
+    return alternativeDates;
+  }
+
+  /**
+   * Get alternative destinations from origin city
+   */
+  async getAlternativeDestinations(origin, excludeDestination = null) {
+    // Popular destinations from major cities in Vietnam
+    const destinationMap = {
+      'Ho Chi Minh City': ['Da Nang', 'Nha Trang', 'Can Tho', 'Vung Tau', 'Da Lat'],
+      Hanoi: ['Hai Phong', 'Halong', 'Ninh Binh', 'Sa Pa', 'Quang Ninh'],
+      'Da Nang': ['Hoi An', 'Hue', 'Quang Nam', 'Tam Ky', 'Nha Trang'],
+      'Nha Trang': ['Da Lat', 'Phan Rang', 'Cam Ranh', 'Da Nang', 'Ho Chi Minh City'],
+      'Can Tho': ['Chau Doc', 'Long Xuyen', 'Rach Gia', 'Soc Trang', 'Ho Chi Minh City'],
+      'Hai Phong': ['Hanoi', 'Halong', 'Quang Ninh', 'Nam Dinh', 'Thai Binh'],
+      'Da Lat': ['Nha Trang', 'Ho Chi Minh City', 'Phan Thiet', 'Bao Loc', 'Duc Trong'],
+    };
+
+    // Find matching origin (case-insensitive partial match)
+    const originKey = Object.keys(destinationMap).find((key) =>
+      origin.toLowerCase().includes(key.toLowerCase().replace(' City', ''))
+    );
+
+    let destinations = [];
+    if (originKey) {
+      destinations = destinationMap[originKey];
+    } else {
+      // Default destinations for unknown origins
+      destinations = ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Nha Trang', 'Can Tho'];
+    }
+
+    // Filter out the excluded destination and limit to 3
+    const filteredDestinations = destinations
+      .filter((dest) => dest !== excludeDestination)
+      .slice(0, 3);
+
+    // Check which destinations have actual trips available
+    const availableDestinations = [];
+    for (const dest of filteredDestinations) {
+      try {
+        const trips = await tripRepository.search({
+          origin,
+          destination: dest,
+          limit: 1,
+        });
+
+        if (trips.trips && trips.trips.length > 0) {
+          availableDestinations.push({
+            destination: dest,
+            tripCount: trips.totalCount,
+          });
+        }
+      } catch (error) {
+        console.error(`Error checking trips to ${dest}:`, error);
+      }
+    }
+
+    return availableDestinations;
+  }
 }
 
 module.exports = new TripService();

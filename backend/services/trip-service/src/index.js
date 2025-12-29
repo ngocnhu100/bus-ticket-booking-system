@@ -21,6 +21,8 @@ const { isRedisAvailable } = require('./redis');
 const app = express();
 const PORT = process.env.PORT || 3002;
 
+app.set('query parser', 'extended');
+
 app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
@@ -71,6 +73,11 @@ app.get('/routes', routeController.getAll);
 app.get('/bus-models', busModelController.getAll);
 app.get('/buses', authenticate, authorize(['admin']), busController.getAll);
 app.get('/popular-routes', routeController.getPopularRoutes);
+
+// --- Alternative trip suggestions ---
+app.get('/alternatives', tripController.getAlternatives);
+app.get('/alternatives/dates', tripController.getAlternativeDates);
+app.get('/alternatives/destinations', tripController.getAlternativeDestinations);
 
 // --- Dynamic trip route ---
 app.get('/:id/seats', tripController.getSeats);
@@ -217,6 +224,17 @@ app.post('/ratings/:ratingId/votes', authenticate, ratingController.voteHelpful)
 app.use((err, req, res, next) => {
   console.error('Trip Service Error:', err);
   res.status(500).json({ error: 'Internal Trip Service Error', details: err.message });
+});
+
+// Global error handlers to prevent crashes
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });
 
 if (process.env.NODE_ENV !== 'test') {

@@ -1,5 +1,6 @@
 // repositories/tripRepository.js
 const pool = require('../database');
+const TIMEZONE_CONFIG = require('../config/timezone');
 
 class TripRepository {
   // Helper để tạo câu SELECT đầy đủ các trường theo interface Trip
@@ -28,7 +29,8 @@ class TripRepository {
         (
           SELECT COUNT(*) 
           FROM bookings bk 
-          WHERE bk.trip_id = t.trip_id AND bk.status = 'confirmed'
+          JOIN booking_passengers bp ON bk.booking_id = bp.booking_id 
+          WHERE bk.trip_id = t.trip_id AND bk.status IN ('confirmed', 'pending')
         ) as booked_seats
         
       FROM trips t
@@ -296,7 +298,7 @@ class TripRepository {
         JOIN buses b ON t.bus_id = b.bus_id
         JOIN operators o ON b.operator_id = o.operator_id
         JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-        LEFT JOIN (SELECT trip_id, COUNT(*) as booking_count FROM bookings WHERE status = 'confirmed' GROUP BY trip_id) bk ON t.trip_id = bk.trip_id`;
+      LEFT JOIN (SELECT bk.trip_id, COUNT(*) as booking_count FROM bookings bk JOIN booking_passengers bp ON bk.booking_id = bp.booking_id WHERE bk.status IN ('confirmed', 'pending') GROUP BY bk.trip_id) bk ON t.trip_id = bk.trip_id`;
 
       let query = `SELECT
         t.trip_id, t.departure_time, t.arrival_time, t.base_price, t.status, t.policies::jsonb AS policies, t.created_at,
@@ -310,7 +312,7 @@ class TripRepository {
       JOIN buses b ON t.bus_id = b.bus_id
       JOIN operators o ON b.operator_id = o.operator_id
       JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-      LEFT JOIN (SELECT trip_id, COUNT(*) as booking_count FROM bookings WHERE status = 'confirmed' GROUP BY trip_id) bk ON t.trip_id = bk.trip_id`;
+      LEFT JOIN (SELECT bk.trip_id, COUNT(*) as booking_count FROM bookings bk JOIN booking_passengers bp ON bk.booking_id = bp.booking_id WHERE bk.status IN ('confirmed', 'pending') GROUP BY bk.trip_id) bk ON t.trip_id = bk.trip_id`;
 
       const values = [];
       let index = 1;
@@ -436,14 +438,19 @@ class TripRepository {
       origin,
       destination,
       date,
-      price_min,
-      price_max,
-      departure_start,
-      departure_end,
-      bus_type,
-      limit = 20,
+      passengers,
+      departureTime,
+      minPrice,
+      maxPrice,
+      operator,
+      busType,
+      amenity,
+      seatLocation,
+      minRating,
+      minSeats,
+      sort = 'default',
+      limit = 10,
       page = 1,
-      sort,
     } = filters;
 
     const offset = (page - 1) * limit;
@@ -464,36 +471,146 @@ class TripRepository {
       where_clauses.push(`DATE(t.departure_time) = $${index++}`);
       values.push(date);
     }
-    if (price_min) {
+    if (minPrice !== undefined && minPrice > 0) {
       where_clauses.push(`t.base_price >= $${index++}`);
-      values.push(price_min);
+      values.push(minPrice);
     }
-    if (price_max) {
+    if (maxPrice !== undefined && maxPrice < 5000000) {
       where_clauses.push(`t.base_price <= $${index++}`);
-      values.push(price_max);
+      values.push(maxPrice);
     }
-    if (departure_start) {
-      where_clauses.push(`t.departure_time >= $${index++}`);
-      values.push(departure_start);
+    if (departureTime) {
+      const timeSlots = Array.isArray(departureTime) ? departureTime : [departureTime];
+      const timeConditions = [];
+      timeSlots.forEach((slot) => {
+        switch (slot) {
+          case 'morning':
+            timeConditions.push(
+              `EXTRACT(HOUR FROM t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') BETWEEN 6 AND 11`
+            );
+            break;
+          case 'afternoon':
+            timeConditions.push(
+              `EXTRACT(HOUR FROM t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') BETWEEN 12 AND 17`
+            );
+            break;
+          case 'evening':
+            timeConditions.push(
+              `EXTRACT(HOUR FROM t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') BETWEEN 18 AND 23`
+            );
+            break;
+          case 'night':
+            timeConditions.push(
+              `EXTRACT(HOUR FROM t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') BETWEEN 0 AND 5`
+            );
+            break;
+        }
+      });
+      if (timeConditions.length > 0) {
+        where_clauses.push(`(${timeConditions.join(' OR ')})`);
+      }
     }
-    if (departure_end) {
-      where_clauses.push(`t.departure_time <= $${index++}`);
-      values.push(departure_end);
+    if (operator) {
+      const operators = Array.isArray(operator) ? operator : [operator];
+      where_clauses.push(`o.name = ANY($${index++})`);
+      values.push(operators);
     }
-    if (bus_type) {
-      where_clauses.push(`b.type = $${index++}`);
-      values.push(bus_type);
+    if (busType) {
+      const busTypes = Array.isArray(busType) ? busType : [busType];
+      where_clauses.push(`b.type = ANY($${index++})`);
+      values.push(busTypes);
+    }
+    if (amenity) {
+      let amenities;
+      if (Array.isArray(amenity)) {
+        amenities = amenity;
+      } else if (typeof amenity === 'string') {
+        amenities = amenity.split(',').map((s) => s.trim());
+      } else {
+        amenities = [amenity];
+      }
+      // Check if bus amenities JSONB array contains ANY of the requested amenities
+      const amenityConditions = amenities.map((_, i) => `b.amenities ? $${index + i}`).join(' OR ');
+      where_clauses.push(`(${amenityConditions})`);
+      amenities.forEach((amenity) => values.push(amenity));
+      index += amenities.length;
+    }
+    if (seatLocation) {
+      let locations;
+      if (Array.isArray(seatLocation)) {
+        locations = seatLocation;
+      } else if (typeof seatLocation === 'string') {
+        locations = seatLocation.split(',').map((s) => s.trim());
+      } else {
+        locations = [seatLocation];
+      }
+      // Check if bus has available seats in the requested positions for this trip
+      where_clauses.push(`EXISTS (
+        SELECT 1 FROM seats s 
+        WHERE s.bus_id = b.bus_id 
+        AND s.position = ANY($${index++}) 
+        AND s.is_active = true
+        AND NOT EXISTS (
+          SELECT 1 FROM booking_passengers bp 
+          JOIN bookings bk ON bp.booking_id = bk.booking_id 
+          WHERE bp.seat_code = s.seat_code 
+          AND bk.trip_id = t.trip_id 
+          AND bk.status IN ('confirmed', 'pending')
+        )
+      )`);
+      values.push(locations);
+    }
+    if (minRating !== undefined && minRating > 0) {
+      where_clauses.push(`COALESCE((
+        SELECT AVG(rating.overall_rating) 
+        FROM ratings rating 
+        WHERE rating.operator_id = o.operator_id AND rating.is_approved = true
+      ), 0) >= $${index++}`);
+      values.push(minRating);
+    }
+    if (minSeats !== undefined && minSeats > 0) {
+      // Filter trips that have at least 'minSeats' seats available
+      where_clauses.push(`(b.seat_capacity - COALESCE((
+        SELECT COUNT(*) 
+        FROM bookings bk 
+        JOIN booking_passengers bp ON bk.booking_id = bp.booking_id 
+        WHERE bk.trip_id = t.trip_id AND bk.status IN ('confirmed', 'pending')
+      ), 0)) >= $${index++}`);
+      values.push(minSeats);
     }
 
     // Sort mapping
     const sort_mapping = {
-      'departure_time ASC': 't.departure_time ASC',
-      'departure_time DESC': 't.departure_time DESC',
-      'base_price ASC': 't.base_price ASC',
-      'base_price DESC': 't.base_price DESC',
+      default: 't.departure_time ASC',
+      price_asc: 't.base_price ASC',
+      price_desc: 't.base_price DESC',
+      time_asc: 't.departure_time ASC',
+      time_desc: 't.departure_time DESC',
+      departure_asc: 't.departure_time ASC',
+      departure_desc: 't.departure_time DESC',
+      duration_asc: '(t.arrival_time - t.departure_time) ASC',
+      duration_desc: '(t.arrival_time - t.departure_time) DESC',
+      rating_desc: 'o.rating DESC',
     };
-    const order_by = sort_mapping[sort] || 't.departure_time ASC';
+    // Normalize sort parameter (convert hyphens to underscores and remove :number suffix)
+    const normalizedSort = (sort || 'default').replace(/-/g, '_').replace(/:\d+$/, '');
+    const order_by = sort_mapping[normalizedSort] || 't.departure_time ASC';
 
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM trips t
+      JOIN routes r ON t.route_id = r.route_id
+      JOIN buses b ON t.bus_id = b.bus_id
+      JOIN operators o ON b.operator_id = o.operator_id
+      WHERE ${where_clauses.join(' AND ')}
+    `;
+
+    const countResult = await pool.query(countQuery, values);
+    const totalCount = parseInt(countResult.rows[0].total);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Get paginated results
     const query = `
       ${this._getSelectClause()}
       WHERE ${where_clauses.join(' AND ')}
@@ -505,7 +622,15 @@ class TripRepository {
     const result = await pool.query(query, values);
 
     // Map tất cả rows (parallel)
-    return Promise.all(result.rows.map((row) => this._mapRowToTrip(row)));
+    const trips = await Promise.all(result.rows.map((row) => this._mapRowToTrip(row)));
+
+    return {
+      trips,
+      totalCount,
+      page,
+      totalPages,
+      limit,
+    };
   }
 
   async softDelete(id) {

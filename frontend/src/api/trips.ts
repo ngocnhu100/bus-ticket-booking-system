@@ -9,7 +9,7 @@ export interface TripSearchParams {
   departureTime?: string[]
   minPrice?: number
   maxPrice?: number
-  operatorId?: string
+  operator?: string[]
   amenities?: string[]
   page?: number
   limit?: number
@@ -350,8 +350,8 @@ export async function searchTrips(
     queryParams.append('maxPrice', params.maxPrice.toString())
   }
 
-  if (params.operatorId) {
-    queryParams.append('operatorId', params.operatorId)
+  if (params.operator && params.operator.length > 0) {
+    params.operator.forEach((op) => queryParams.append('operator', op))
   }
 
   if (params.amenities && params.amenities.length > 0) {
