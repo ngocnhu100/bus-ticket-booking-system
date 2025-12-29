@@ -244,7 +244,21 @@ class BusController {
   // PUT /buses/:id/deactivate - Deactivate bus (set status to maintenance)
   async deactivate(req, res) {
     try {
-      const bus = await busRepository.deactivate(req.params.id);
+      const busId = req.params.id;
+
+      // Check if bus has any active trips using repository method
+      const activeTripsCount = await busRepository.hasActiveTrips(busId);
+      if (activeTripsCount > 0) {
+        return res.status(409).json({
+          success: false,
+          error: {
+            code: 'BUS_HAS_ACTIVE_TRIPS',
+            message: `Cannot deactivate bus. It has ${activeTripsCount} active trip(s). Please wait until all trips are completed.`,
+          },
+        });
+      }
+
+      const bus = await busRepository.deactivate(busId);
       if (!bus) {
         return res.status(404).json({
           success: false,

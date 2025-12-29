@@ -23,7 +23,7 @@ class TripRepository {
         
         -- Bus info
         b.bus_id, b.plate_number, b.type as bus_type, bm.name as bus_model,
-        b.seat_capacity, b.amenities::jsonb AS amenities,
+        b.seat_capacity, b.amenities::jsonb AS amenities, b.image_url,
         
         -- Availability (subquery for booked seats)
         (
@@ -153,6 +153,23 @@ class TripRepository {
     const arr_time = new Date(row.arrival_time);
     const duration = Math.round((arr_time - dep_time) / 60000);
 
+    // Parse bus images
+    let image_urls = [];
+    if (row.image_url) {
+      if (Array.isArray(row.image_url)) {
+        image_urls = row.image_url.filter((url) => url);
+      } else if (typeof row.image_url === 'string') {
+        try {
+          const parsed = JSON.parse(row.image_url);
+          image_urls = Array.isArray(parsed)
+            ? parsed.filter((url) => url)
+            : [row.image_url];
+        } catch {
+          image_urls = [row.image_url];
+        }
+      }
+    }
+
     return {
       trip_id: row.trip_id,
       route: {
@@ -175,6 +192,7 @@ class TripRepository {
         seat_capacity: total_seats,
         bus_type: row.bus_type,
         amenities: row.amenities || [],
+        image_urls: image_urls,
       },
       schedule: {
         departure_time: row.departure_time.toISOString(),

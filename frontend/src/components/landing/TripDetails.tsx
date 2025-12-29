@@ -309,8 +309,35 @@ export function TripDetails({ trip }: TripDetailsProps) {
 
         {/* Bus Information Tab */}
         <TabsContent value="bus" className="space-y-6">
+          {/* Bus Images */}
+          {trip.bus.image_urls && trip.bus.image_urls.length > 0 && (
+            <div>
+              <h4 className="font-medium text-foreground mb-3">Bus Images</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {trip.bus.image_urls.map((imageUrl, index) => (
+                  <div
+                    key={index}
+                    className="rounded-lg overflow-hidden border border-border aspect-video bg-muted"
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`Bus image ${index + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                      onError={(e) => {
+                        e.currentTarget.src =
+                          'https://via.placeholder.com/400x300?text=Bus+Image'
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bus Information */}
           {(trip.bus.model || trip.bus.seat_capacity || trip.bus.bus_type) && (
             <div>
+              <h4 className="font-medium text-foreground mb-3">Bus Details</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {trip.bus.model && (
                   <div className="p-4 bg-muted/30 rounded-lg border border-muted">

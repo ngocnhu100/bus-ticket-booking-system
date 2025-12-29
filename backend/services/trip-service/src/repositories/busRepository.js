@@ -245,6 +245,17 @@ class BusRepository {
     return result.rows[0] || null;
   }
 
+  // Check if bus has any active trips
+  async hasActiveTrips(busId) {
+    const query = `
+      SELECT COUNT(*) as active_trip_count 
+      FROM trips 
+      WHERE bus_id = $1 AND status IN ('scheduled', 'in_progress')
+    `;
+    const result = await pool.query(query, [busId]);
+    return parseInt(result.rows[0]?.active_trip_count || 0);
+  }
+
   // Deactivate bus (PUT /buses/:id/deactivate)
   async deactivate(id) {
     const query = `
