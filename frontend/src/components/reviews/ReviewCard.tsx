@@ -131,7 +131,7 @@ export function ReviewCard({
         {/* Actions */}
         {(review.canEdit || review.canDelete) && (
           <div className="flex gap-2 shrink-0">
-            {review.canEdit && (
+            {review.canEdit && onEdit && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -142,7 +142,7 @@ export function ReviewCard({
                 Edit
               </Button>
             )}
-            {review.canDelete && (
+            {review.canDelete && onDelete && (
               <Button
                 variant="ghost"
                 size="sm"

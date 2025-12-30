@@ -51,11 +51,17 @@ export function EditReviewForm({
     // }
 
     try {
+      console.log('EditReviewForm submit data:', {
+        reviewId,
+        reviewText: reviewText.trim(),
+        removedPhotos,
+        newPhotos,
+      })
       await onSubmit({
         reviewId,
         reviewText: reviewText.trim(),
-        removedPhotos: removedPhotos.length > 0 ? removedPhotos : undefined,
-        newPhotos: newPhotos.length > 0 ? newPhotos : undefined,
+        removedPhotos,
+        newPhotos,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update review')

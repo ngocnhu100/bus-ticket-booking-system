@@ -30,7 +30,71 @@ console.log('[Upload Routes] Using api_secret:', cloudinaryConfig.api_secret ? '
 
 cloudinary.config(cloudinaryConfig);
 
+console.log('[Upload Routes] After config - cloudinary.config():', {
+  cloud_name: cloudinary.config().cloud_name,
+  api_key: cloudinary.config().api_key ? 'SET' : 'NOT SET',
+  api_secret: cloudinary.config().api_secret ? 'SET' : 'NOT SET',
+});
+
 console.log('[Upload Routes] Cloudinary config applied');
+
+// Helper function to delete image from Cloudinary
+const deleteCloudinaryImage = async (publicId) => {
+  console.log('[BE Delete Helper] Starting deletion for:', publicId);
+  console.log('[BE Delete Helper] Cloudinary config check:', {
+    configured: !!cloudinary.config().cloud_name,
+    cloud_name: cloudinary.config().cloud_name,
+    api_key: cloudinary.config().api_key ? 'SET' : 'NOT SET',
+  });
+
+  try {
+    // First, try to check if image exists
+    let imageExists = false;
+    try {
+      console.log('[BE Delete Helper] Checking if image exists...');
+      const resourceResult = await cloudinary.api.resource(publicId, {
+        resource_type: 'image',
+      });
+      console.log('[BE Delete Helper] Image exists, resource info:', {
+        public_id: resourceResult.public_id,
+        format: resourceResult.format,
+        bytes: resourceResult.bytes,
+      });
+      imageExists = true;
+    } catch (checkError) {
+      console.log('[BE Delete Helper] Image check failed:', checkError.message);
+      if (checkError.error && checkError.error.message) {
+        console.log('[BE Delete Helper] Check error details:', checkError.error.message);
+      }
+    }
+
+    // Delete from Cloudinary
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: 'image',
+    });
+
+    console.log('[BE Delete Helper] Cloudinary destroy result:', JSON.stringify(result, null, 2));
+
+    return {
+      success: result.result === 'ok' || result.result === 'not found',
+      result: result.result,
+      existed: imageExists,
+      message:
+        result.result === 'ok'
+          ? 'Image deleted successfully'
+          : result.result === 'not found'
+            ? 'Image not found (already deleted or never existed)'
+            : 'Image deletion skipped (permission denied)',
+    };
+  } catch (error) {
+    console.error('[BE Delete Helper] Error deleting image:', error);
+    return {
+      success: false,
+      result: 'error',
+      error: error.message,
+    };
+  }
+};
 
 console.log('[Upload Routes] Cloudinary config applied');
 
@@ -138,35 +202,75 @@ router.post(
   }
 );
 
-/**
- * DELETE /trips/upload/image?publicId=...
- * Delete image from Cloudinary
- */
 router.delete('/image', async (req, res) => {
   try {
     const publicId = req.query.publicId;
+    const fullUrl = req.query.url; // Add URL parameter for debugging
 
-    if (!publicId) {
+    if (!publicId && !fullUrl) {
       return res.status(400).json({
         success: false,
-        error: { code: 'MISSING_PUBLIC_ID', message: 'Public ID is required' },
+        error: { code: 'MISSING_IDENTIFIER', message: 'Public ID or URL is required' },
       });
     }
 
-    console.log('[BE Delete] Deleting image with public_id:', publicId);
+    let actualPublicId = publicId;
 
-    // Delete from Cloudinary
-    const result = await cloudinary.uploader.destroy(publicId, {
-      resource_type: 'image',
+    // If URL provided, extract public_id from it
+    if (fullUrl) {
+      console.log('[BE Delete] Extracting public_id from URL:', fullUrl);
+      const urlMatch = fullUrl.match(/\/v\d+\/(.+)\.[a-z]+$/i);
+      if (urlMatch) {
+        actualPublicId = urlMatch[1];
+        console.log('[BE Delete] Extracted public_id:', actualPublicId);
+      } else {
+        console.log('[BE Delete] Could not extract public_id from URL');
+      }
+    }
+
+    if (!actualPublicId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'INVALID_PUBLIC_ID', message: 'Could not determine public ID' },
+      });
+    }
+
+    console.log('[BE Delete] Deleting image with public_id:', actualPublicId);
+    console.log('[BE Delete] Full Cloudinary config:', {
+      cloud_name: cloudinaryConfig.cloud_name,
+      api_key: cloudinaryConfig.api_key ? 'SET' : 'NOT SET',
     });
 
-    if (result.result === 'ok') {
+    // First, try to check if image exists
+    try {
+      console.log('[BE Delete] Checking if image exists...');
+      const resourceResult = await cloudinary.api.resource(actualPublicId, {
+        resource_type: 'image',
+      });
+      console.log('[BE Delete] Image exists, resource info:', {
+        public_id: resourceResult.public_id,
+        format: resourceResult.format,
+        bytes: resourceResult.bytes,
+        url: resourceResult.url,
+      });
+    } catch (checkError) {
+      console.log('[BE Delete] Image check failed:', checkError.message);
+      if (checkError.error && checkError.error.message) {
+        console.log('[BE Delete] Check error details:', checkError.error.message);
+      }
+    }
+
+    // Delete from Cloudinary
+    const deleteResult = await deleteCloudinaryImage(actualPublicId);
+
+    if (deleteResult.success) {
       res.json({
         success: true,
-        message: 'Image deleted successfully',
+        message: deleteResult.message,
+        existed: deleteResult.existed,
       });
     } else {
-      console.error('Cloudinary delete error:', result);
+      console.error('Cloudinary delete error:', deleteResult);
       res.status(500).json({
         success: false,
         error: {
@@ -187,4 +291,7 @@ router.delete('/image', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {
+  router,
+  deleteCloudinaryImage,
+};

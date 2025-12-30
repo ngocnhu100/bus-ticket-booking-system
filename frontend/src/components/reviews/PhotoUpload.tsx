@@ -34,6 +34,17 @@ export function PhotoUpload({
         console.warn('File too large:', file.name)
         return false
       }
+      // Check for duplicates (same name, size, and lastModified)
+      const isDuplicate = photos.some(
+        (existingFile) =>
+          existingFile.name === file.name &&
+          existingFile.size === file.size &&
+          existingFile.lastModified === file.lastModified
+      )
+      if (isDuplicate) {
+        console.warn('Duplicate file detected:', file.name)
+        return false
+      }
       return true
     })
 

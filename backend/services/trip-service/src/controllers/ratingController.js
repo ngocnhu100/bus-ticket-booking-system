@@ -1,4 +1,5 @@
 const db = require('../database');
+const { deleteCloudinaryImage } = require('../routes/uploadRoutes');
 
 /**
  * Submit a rating for a completed booking
@@ -89,6 +90,14 @@ const submitRating = async (req, res) => {
         console.error('❌ [RATING] Photos has invalid type:', typeof photos);
         return res.status(400).json({ error: 'Invalid photos format' });
       }
+
+      // Remove duplicates and trim whitespace
+      parsedPhotos = parsedPhotos
+        .filter((photo) => photo && typeof photo === 'string')
+        .map((photo) => photo.trim())
+        .filter((photo, index, arr) => arr.indexOf(photo) === index); // Remove duplicates
+
+      console.log('🔍 [RATING] Photos after deduplication:', parsedPhotos);
     }
 
     // Check if booking exists and belongs to user
@@ -436,6 +445,15 @@ const updateReview = async (req, res) => {
     // eslint-disable-next-line no-unused-vars
     const { review, photos, removedPhotos, newPhotos } = req.body;
 
+    console.log('🔄 [UPDATE_REVIEW] Starting update for ratingId:', ratingId);
+    console.log('🔄 [UPDATE_REVIEW] Request body:', JSON.stringify(req.body, null, 2));
+    console.log('🔄 [UPDATE_REVIEW] Extracted:', {
+      review,
+      photos,
+      removedPhotos,
+      newPhotos,
+    });
+
     // Validate review text if provided
     if (review && review.length > 500) {
       return res.status(400).json({ error: 'Review text must be 500 characters or less' });
@@ -496,17 +514,51 @@ const updateReview = async (req, res) => {
       currentPhotos = [];
     }
 
+    console.log('🔄 [UPDATE_REVIEW] Current photos from DB:', currentPhotos);
+
     // Remove deleted photos from current photos
     if (removedPhotos && Array.isArray(removedPhotos)) {
       const trimmedRemoved = removedPhotos.map((url) => url.trim());
       currentPhotos = currentPhotos.filter((photo) => !trimmedRemoved.includes(photo));
+
+      // Delete removed photos from Cloudinary
+      for (const photoUrl of trimmedRemoved) {
+        try {
+          const publicIdMatch = photoUrl.match(/\/v\d+\/(.+)\.[a-z]+$/i);
+          if (publicIdMatch) {
+            const publicId = publicIdMatch[1];
+            console.log('🗑️ [UPDATE_REVIEW] Deleting removed photo:', publicId);
+            const deleteResult = await deleteCloudinaryImage(publicId);
+            if (!deleteResult.success) {
+              console.warn('⚠️ [UPDATE_REVIEW] Failed to delete photo:', publicId, deleteResult);
+            }
+          } else {
+            // Try treating the photoUrl as a direct public_id
+            console.log('🗑️ [UPDATE_REVIEW] Treating as direct public_id:', photoUrl);
+            const deleteResult = await deleteCloudinaryImage(photoUrl);
+            if (!deleteResult.success) {
+              console.warn('⚠️ [UPDATE_REVIEW] Failed to delete photo:', photoUrl, deleteResult);
+            }
+          }
+        } catch (photoError) {
+          console.warn('⚠️ [UPDATE_REVIEW] Failed to delete removed photo:', photoUrl, photoError);
+          // Don't fail the whole update if photo deletion fails
+        }
+      }
     }
+
+    console.log('🔄 [UPDATE_REVIEW] Photos after removal:', currentPhotos);
 
     // Add new photos (assuming they are already uploaded URLs)
     if (photos && Array.isArray(photos)) {
       const trimmedPhotos = photos.map((url) => url.trim());
       currentPhotos = [...currentPhotos, ...trimmedPhotos];
     }
+
+    console.log('🔄 [UPDATE_REVIEW] Photos after adding new ones:', currentPhotos);
+
+    console.log('🔄 [UPDATE_REVIEW] Final photos to save:', currentPhotos);
+    console.log('🔄 [UPDATE_REVIEW] JSON to save:', JSON.stringify(currentPhotos));
 
     // Update review
     const result = await db.query(
@@ -540,9 +592,9 @@ const deleteReview = async (req, res) => {
 
     const { ratingId } = req.params;
 
-    // Verify ownership
+    // Get the rating to access photos before deletion
     const ratingResult = await db.query(
-      'SELECT rating_id FROM ratings WHERE rating_id = $1 AND user_id = $2',
+      'SELECT photos FROM ratings WHERE rating_id = $1 AND user_id = $2',
       [ratingId, userId]
     );
 
@@ -552,6 +604,59 @@ const deleteReview = async (req, res) => {
         .json({ error: 'Rating not found or you do not have permission to delete it' });
     }
 
+    const rating = ratingResult.rows[0];
+
+    // Delete associated photos from Cloudinary
+    if (rating.photos) {
+      try {
+        // Parse photos - handle various formats
+        let photosToDelete = [];
+        if (Array.isArray(rating.photos)) {
+          photosToDelete = rating.photos;
+        } else if (typeof rating.photos === 'string') {
+          if (rating.photos.startsWith('[') && rating.photos.endsWith(']')) {
+            photosToDelete = JSON.parse(rating.photos);
+          } else {
+            photosToDelete = [rating.photos];
+          }
+        }
+
+        // Filter and trim URLs
+        photosToDelete = photosToDelete
+          .filter((photo) => photo && typeof photo === 'string')
+          .map((photo) => photo.trim());
+
+        // Delete each photo from Cloudinary
+        for (const photoUrl of photosToDelete) {
+          try {
+            // Extract public_id from Cloudinary URL
+            const publicIdMatch = photoUrl.match(/\/v\d+\/(.+)\.[a-z]+$/i);
+            if (publicIdMatch) {
+              const publicId = publicIdMatch[1];
+              console.log('🗑️ [DELETE_REVIEW] Deleting photo:', publicId);
+              const deleteResult = await deleteCloudinaryImage(publicId);
+              if (!deleteResult.success) {
+                console.warn('⚠️ [DELETE_REVIEW] Failed to delete photo:', publicId, deleteResult);
+              }
+            } else {
+              // Try treating as direct public_id
+              console.log('🗑️ [DELETE_REVIEW] Treating as direct public_id:', photoUrl);
+              const deleteResult = await deleteCloudinaryImage(photoUrl);
+              if (!deleteResult.success) {
+                console.warn('⚠️ [DELETE_REVIEW] Failed to delete photo:', photoUrl, deleteResult);
+              }
+            }
+          } catch (photoError) {
+            console.warn('⚠️ [DELETE_REVIEW] Failed to delete photo:', photoUrl, photoError);
+            // Don't fail the whole deletion if photo deletion fails
+          }
+        }
+      } catch (parseError) {
+        console.warn('⚠️ [DELETE_REVIEW] Failed to parse photos for deletion:', parseError);
+      }
+    }
+
+    // Delete the rating from database
     await db.query('DELETE FROM ratings WHERE rating_id = $1', [ratingId]);
 
     res.json({ message: 'Review deleted successfully' });

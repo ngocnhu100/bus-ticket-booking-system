@@ -253,8 +253,7 @@ export function SubmitRatingForm({
               <p className="font-medium mb-1">Review Editing Policy</p>
               <p>
                 You can edit your review text and photos within 24 hours after
-                submission. Ratings cannot be changed once submitted to ensure
-                authenticity.
+                submission. Ratings cannot be changed once submitted.
               </p>
             </div>
           </div>

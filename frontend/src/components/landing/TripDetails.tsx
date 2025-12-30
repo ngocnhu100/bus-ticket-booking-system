@@ -34,6 +34,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { EditReviewForm } from '@/components/reviews/EditReviewForm'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface TripDetailsProps {
   trip: Trip
@@ -56,7 +57,9 @@ export function TripDetails({ trip }: TripDetailsProps) {
   const [operatorStats, setOperatorStats] =
     useState<OperatorRatingStats | null>(null)
   const [editingReview, setEditingReview] = useState<ReviewData | null>(null)
+  const [reviewsRefreshTrigger, setReviewsRefreshTrigger] = useState(0)
   const [editLoading, setEditLoading] = useState(false)
+  const [deleteReviewId, setDeleteReviewId] = useState<string | null>(null)
 
   // Fetch operator stats when component mounts
   useEffect(() => {
@@ -148,6 +151,7 @@ export function TripDetails({ trip }: TripDetailsProps) {
     reviewsSortBy,
     reviewsRatingFilter,
     reviewsLimit,
+    reviewsRefreshTrigger,
   ])
 
   // Handle review edit
@@ -179,6 +183,7 @@ export function TripDetails({ trip }: TripDetailsProps) {
 
       // Refresh reviews
       setReviewsPage(1)
+      setReviewsRefreshTrigger((prev) => prev + 1)
       setEditingReview(null)
 
       // Show success message or toast
@@ -193,24 +198,26 @@ export function TripDetails({ trip }: TripDetailsProps) {
 
   // Handle review delete
   const handleDeleteReview = async (reviewId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to delete this review? This action cannot be undone.'
-      )
-    ) {
-      return
-    }
+    setDeleteReviewId(reviewId)
+  }
+
+  // Handle confirmed delete
+  const handleConfirmDelete = async () => {
+    if (!deleteReviewId) return
 
     try {
-      await deleteReview(reviewId)
+      await deleteReview(deleteReviewId)
 
       // Refresh reviews
       setReviewsPage(1)
+      setReviewsRefreshTrigger((prev) => prev + 1)
 
       console.log('Review deleted successfully')
     } catch (error) {
       console.error('Failed to delete review:', error)
       throw error
+    } finally {
+      setDeleteReviewId(null)
     }
   }
 
@@ -654,6 +661,17 @@ export function TripDetails({ trip }: TripDetailsProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Review Confirmation Dialog */}
+      <ConfirmDialog
+        open={!!deleteReviewId}
+        onClose={() => setDeleteReviewId(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Review"
+        message="Are you sure you want to delete this review? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
 
       {/* Booking Button */}
       <div className="pt-4 mt-6 border-t border-border">

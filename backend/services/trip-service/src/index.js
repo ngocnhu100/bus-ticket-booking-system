@@ -60,7 +60,7 @@ console.log('✅ Trip status update cron job started (runs every minute)');
 app.get('/health', (req, res) => res.json({ status: 'healthy' }));
 
 // --- Upload routes (must be before other routes) ---
-app.use('/upload', uploadRoutes);
+app.use('/upload', uploadRoutes.router);
 
 // --- Public routes ---
 app.get('/search', tripController.search);
@@ -209,13 +209,13 @@ app.get('/ratings/booking/:bookingId', authenticate, ratingController.getBooking
 app.get('/:tripId/ratings', ratingController.getTripRatings);
 
 // Get reviews for a trip with pagination (public)
-app.get('/:tripId/reviews', ratingController.getTripReviews);
+app.get('/:tripId/reviews', optionalAuthenticate, ratingController.getTripReviews);
 
 // Get rating stats for an operator (public)
 app.get('/operators/:operatorId/ratings', ratingController.getOperatorRatings);
 
 // Get reviews for an operator with pagination (public)
-app.get('/operators/:operatorId/reviews', ratingController.getOperatorReviews);
+app.get('/operators/:operatorId/reviews', optionalAuthenticate, ratingController.getOperatorReviews);
 
 // Update a review (within 24 hours)
 app.patch('/ratings/:ratingId', authenticate, ratingController.updateReview);

@@ -632,8 +632,10 @@ export async function updateReview(
     const updateData: {
       review?: string
       photos?: string[]
+      removedPhotos?: string[]
     } = {}
     if (data.review !== undefined) updateData.review = data.review
+    if (data.removedPhotos) updateData.removedPhotos = data.removedPhotos
     if (data.photos || uploadedPhotoUrls.length > 0) {
       const existingPhotos = (data.photos || []).map((url) => url.trim())
       updateData.photos = [...existingPhotos, ...uploadedPhotoUrls]
