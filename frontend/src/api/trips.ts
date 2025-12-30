@@ -1,4 +1,4 @@
-import { request as apiRequest } from '@/api/auth'
+import { request as apiRequest, requestFormData } from '@/api/auth'
 
 export interface TripSearchParams {
   origin: string
@@ -181,19 +181,45 @@ export async function submitRating(
   ratingData: RatingSubmission
 ): Promise<RatingResponse> {
   try {
-    // Convert File objects to base64 strings for API
-    let photosBase64: string[] | undefined
+    console.log(
+      '🚀 [SUBMIT_RATING] Starting rating submission with photos:',
+      ratingData.photos?.length || 0
+    )
+
+    // Handle photo uploads first if there are new photos
+    const uploadedPhotoUrls: string[] = []
     if (ratingData.photos && ratingData.photos.length > 0) {
-      photosBase64 = await Promise.all(
-        ratingData.photos.map((file) => {
-          return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => resolve(reader.result as string)
-            reader.onerror = reject
-            reader.readAsDataURL(file)
-          })
-        })
+      console.log(
+        '📸 [SUBMIT_RATING] Uploading',
+        ratingData.photos.length,
+        'photos'
       )
+      for (const photo of ratingData.photos) {
+        console.log(
+          '📸 [SUBMIT_RATING] Uploading photo:',
+          photo.name,
+          photo.size
+        )
+        const formData = new FormData()
+        formData.append('file', photo)
+
+        const uploadResponse = await requestFormData('/trips/upload/image', {
+          method: 'POST',
+          body: formData,
+        })
+
+        console.log(
+          '✅ [SUBMIT_RATING] Photo uploaded:',
+          uploadResponse.data.url
+        )
+        uploadedPhotoUrls.push(uploadResponse.data.url.trim())
+      }
+      console.log(
+        '📸 [SUBMIT_RATING] All photos uploaded:',
+        uploadedPhotoUrls.length
+      )
+    } else {
+      console.log('📸 [SUBMIT_RATING] No photos to upload')
     }
 
     const apiData: RatingAPIRequest = {
@@ -201,8 +227,14 @@ export async function submitRating(
       tripId: ratingData.tripId,
       ratings: ratingData.ratings,
       review: ratingData.review,
-      photos: photosBase64,
+      photos: uploadedPhotoUrls, // Always send photos array, even if empty
     }
+
+    console.log('📤 [SUBMIT_RATING] Sending to API:', {
+      ...apiData,
+      photos: apiData.photos?.length,
+      photosContent: apiData.photos,
+    })
 
     const response = await apiRequest('/trips/ratings', {
       method: 'POST',
@@ -555,4 +587,128 @@ export async function transferGuestLocks(
     method: 'POST',
     body: { guestSessionId, maxSeats },
   })
+}
+
+/**
+ * Update a review
+ * Requires authentication
+ */
+export async function updateReview(
+  ratingId: string,
+  data: {
+    review?: string
+    photos?: string[]
+    removedPhotos?: string[]
+    newPhotos?: File[]
+  }
+): Promise<{
+  success: boolean
+  message: string
+  rating?: {
+    rating_id: string
+    review_text?: string
+    photos?: string[]
+    updated_at: string
+  }
+}> {
+  try {
+    // Handle photo uploads first if there are new photos
+    const uploadedPhotoUrls: string[] = []
+    if (data.newPhotos && data.newPhotos.length > 0) {
+      for (const photo of data.newPhotos) {
+        const formData = new FormData()
+        formData.append('file', photo)
+
+        const uploadResponse = await requestFormData('/trips/upload/image', {
+          method: 'POST',
+          body: formData,
+        })
+
+        uploadedPhotoUrls.push(uploadResponse.data.url.trim())
+      }
+    }
+
+    // Prepare update data
+    const updateData: {
+      review?: string
+      photos?: string[]
+    } = {}
+    if (data.review !== undefined) updateData.review = data.review
+    if (data.photos || uploadedPhotoUrls.length > 0) {
+      const existingPhotos = (data.photos || []).map((url) => url.trim())
+      updateData.photos = [...existingPhotos, ...uploadedPhotoUrls]
+    }
+
+    const response = await apiRequest(`/trips/ratings/${ratingId}`, {
+      method: 'PATCH',
+      body: updateData,
+    })
+
+    // Delete removed photos
+    if (data.removedPhotos && data.removedPhotos.length > 0) {
+      for (const photoUrl of data.removedPhotos) {
+        const trimmedUrl = photoUrl.trim()
+        // Extract public_id from Cloudinary URL
+        const publicIdMatch = trimmedUrl.match(/\/v\d+\/(.+)\.[a-z]+$/i)
+        if (publicIdMatch) {
+          const publicId = publicIdMatch[1]
+          try {
+            await apiRequest(
+              `/trips/upload/image?publicId=${encodeURIComponent(publicId)}`,
+              {
+                method: 'DELETE',
+              }
+            )
+          } catch (deleteError) {
+            console.warn('Failed to delete photo:', photoUrl, deleteError)
+            // Don't fail the whole update if photo deletion fails
+          }
+        }
+      }
+    }
+
+    return response
+  } catch (error) {
+    console.error('Failed to update review:', error)
+    throw error
+  }
+}
+
+/**
+ * Delete a review
+ * Requires authentication
+ */
+export async function deleteReview(ratingId: string): Promise<{
+  success: boolean
+  message: string
+}> {
+  try {
+    const response = await apiRequest(`/trips/ratings/${ratingId}`, {
+      method: 'DELETE',
+    })
+    return response
+  } catch (error) {
+    console.error('Failed to delete review:', error)
+    throw error
+  }
+}
+
+/**
+ * Get review for a specific booking
+ * Requires authentication
+ */
+export async function getBookingReview(bookingId: string): Promise<{
+  success: boolean
+  data: ReviewData | null
+  message?: string
+}> {
+  try {
+    const response = await apiRequest(`/trips/ratings/booking/${bookingId}`, {
+      method: 'GET',
+    })
+    return response
+  } catch (error) {
+    console.error('Failed to get booking review:', error)
+    throw error
+  }
 }

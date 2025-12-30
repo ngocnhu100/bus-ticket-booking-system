@@ -202,6 +202,9 @@ app.post('/ratings', authenticate, ratingController.submitRating);
 // Check if a booking has a rating
 app.get('/ratings/check/:bookingId', ratingController.checkBookingRating);
 
+// Get review for a specific booking (authenticated)
+app.get('/ratings/booking/:bookingId', authenticate, ratingController.getBookingReview);
+
 // Get rating stats for a trip (public)
 app.get('/:tripId/ratings', ratingController.getTripRatings);
 

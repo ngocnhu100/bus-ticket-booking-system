@@ -2,19 +2,28 @@ import { useState, useEffect, useCallback } from 'react'
 import { DashboardLayout } from '../../components/users/DashboardLayout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   SubmitRatingForm,
   type RatingSubmission,
   type RatingFormState,
+  EditReviewForm,
+  type EditReviewData,
 } from '@/components/reviews'
 import { useAuth } from '@/context/AuthContext'
-import { ArrowRight, Mail, Phone } from 'lucide-react'
+import { ArrowRight, Mail, Phone, Edit, Trash2, Star } from 'lucide-react'
 import {
   getUserBookings,
   type Booking,
   type BookingFilters,
 } from '@/api/bookings'
-import { submitRating } from '@/api/trips'
+import {
+  submitRating,
+  getBookingReview,
+  updateReview,
+  deleteReview,
+} from '@/api/trips'
+import type { ReviewData } from '@/components/reviews/ReviewCard'
 import '@/styles/admin.css'
 
 /**
@@ -39,6 +48,29 @@ const History = () => {
   >({})
   const [isSubmittingRating, setIsSubmittingRating] = useState(false)
   const [ratingError, setRatingError] = useState<string | null>(null)
+
+  // Review management state
+  const [bookingReviews, setBookingReviews] = useState<
+    Record<string, ReviewData>
+  >({})
+  const [editingReview, setEditingReview] = useState<ReviewData | null>(null)
+  const [isUpdatingReview, setIsUpdatingReview] = useState(false)
+  const [updateReviewError, setUpdateReviewError] = useState<string | null>(
+    null
+  )
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -69,6 +101,38 @@ const History = () => {
         setBookings(response.data)
         setTotalPages(response.pagination.totalPages)
         setTotalBookings(response.pagination.total)
+
+        // Load reviews for bookings that have ratings
+        const bookingsWithRatings = response.data.filter((b) => b.hasRating)
+        if (bookingsWithRatings.length > 0) {
+          const reviewPromises = bookingsWithRatings.map(async (booking) => {
+            try {
+              const reviewResponse = await getBookingReview(booking.booking_id)
+              if (reviewResponse.success && reviewResponse.data) {
+                return {
+                  bookingId: booking.booking_id,
+                  review: reviewResponse.data,
+                }
+              }
+            } catch (error) {
+              console.warn(
+                'Failed to load review for booking:',
+                booking.booking_id,
+                error
+              )
+            }
+            return null
+          })
+
+          const reviewResults = await Promise.all(reviewPromises)
+          const newReviews: Record<string, ReviewData> = {}
+          reviewResults.forEach((result) => {
+            if (result) {
+              newReviews[result.bookingId] = result.review
+            }
+          })
+          setBookingReviews(newReviews)
+        }
       }
     } catch (err) {
       console.error('Error fetching bookings:', err)
@@ -212,8 +276,7 @@ const History = () => {
         tripId: ratingData.tripId,
         ratings: ratingData.ratings,
         review: ratingData.review,
-        // TODO: Handle photos conversion to base64
-        // photos: ratingData.photos ? await convertFilesToBase64(ratingData.photos) : undefined,
+        photos: ratingData.photos,
       }
 
       // Call API to submit rating
@@ -250,6 +313,78 @@ const History = () => {
     } finally {
       setIsSubmittingRating(false)
     }
+  }
+
+  // Handle review edit
+  const handleEditReview = (review: ReviewData) => {
+    setEditingReview(review)
+  }
+
+  // Handle review update
+  const handleUpdateReview = async (data: EditReviewData) => {
+    setIsUpdatingReview(true)
+    setUpdateReviewError(null)
+
+    try {
+      await updateReview(data.reviewId, {
+        review: data.reviewText,
+        removedPhotos: data.removedPhotos,
+        newPhotos: data.newPhotos,
+      })
+
+      // Refresh reviews to show updated data
+      await fetchBookings()
+
+      setEditingReview(null)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to update review'
+      setUpdateReviewError(message)
+      throw error
+    } finally {
+      setIsUpdatingReview(false)
+    }
+  }
+
+  // Handle review delete
+  const handleDeleteReview = (reviewId: string, bookingId: string) => {
+    setConfirmDialog({
+      open: true,
+      title: 'Delete Review',
+      message:
+        'Are you sure you want to delete this review? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await deleteReview(reviewId)
+
+          // Remove review from state
+          setBookingReviews((prev) => {
+            const newReviews = { ...prev }
+            delete newReviews[reviewId]
+            return newReviews
+          })
+
+          // Update booking to mark as not rated
+          setBookings((prevBookings) =>
+            prevBookings.map((booking) =>
+              booking.booking_id === bookingId
+                ? { ...booking, hasRating: false }
+                : booking
+            )
+          )
+        } catch (error) {
+          console.error('Failed to delete review:', error)
+          alert('Failed to delete review. Please try again.')
+        } finally {
+          setConfirmDialog({
+            open: false,
+            title: '',
+            message: '',
+            onConfirm: () => {},
+          })
+        }
+      },
+    })
   }
 
   return (
@@ -456,6 +591,70 @@ const History = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Show existing review if available */}
+                  {booking.hasRating && bookingReviews[booking.booking_id] && (
+                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`w-4 h-4 ${
+                                    i <
+                                    bookingReviews[booking.booking_id].rating
+                                      ? 'fill-yellow-400 text-yellow-400'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(
+                                bookingReviews[booking.booking_id].createdAt
+                              )}
+                            </span>
+                          </div>
+                          {bookingReviews[booking.booking_id].reviewText && (
+                            <p className="text-sm text-foreground mb-2">
+                              {bookingReviews[booking.booking_id].reviewText}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          {bookingReviews[booking.booking_id].canEdit && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleEditReview(
+                                  bookingReviews[booking.booking_id]
+                                )
+                              }
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {bookingReviews[booking.booking_id].canDelete && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleDeleteReview(
+                                  bookingReviews[booking.booking_id].id,
+                                  booking.booking_id
+                                )
+                              }
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </Card>
 
                 {ratingError && (
@@ -740,7 +939,114 @@ const History = () => {
             </Card>
           </div>
         )}
+
+        {/* Edit Review Modal */}
+        {editingReview && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setEditingReview(null)
+              }
+            }}
+          >
+            <Card
+              className="max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold">Edit Review</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingReview(null)}
+                  >
+                    ✕
+                  </Button>
+                </div>
+
+                {/* Review Info */}
+                <div className="mb-6">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < editingReview.rating
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-muted-foreground">
+                        {editingReview.route || 'Trip Review'}
+                      </span>
+                    </div>
+
+                    {/* Category Ratings */}
+                    {editingReview.categoryRatings &&
+                      Object.keys(editingReview.categoryRatings).length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs mt-3">
+                          {Object.entries(editingReview.categoryRatings).map(
+                            ([category, rating]) => (
+                              <div
+                                key={category}
+                                className="flex items-center justify-between p-2 bg-muted/40 dark:bg-muted/20 rounded text-muted-foreground"
+                              >
+                                <span className="capitalize text-xs font-medium">
+                                  {category.replace(/_/g, ' ')}
+                                </span>
+                                <span className="font-semibold text-foreground">
+                                  {rating}
+                                </span>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      )}
+                  </div>
+                </div>
+
+                {/* Edit Form */}
+                <EditReviewForm
+                  reviewId={editingReview.id}
+                  initialText={editingReview.reviewText || ''}
+                  initialPhotos={editingReview.photos || []}
+                  onSubmit={handleUpdateReview}
+                  onCancel={() => setEditingReview(null)}
+                  isLoading={isUpdatingReview}
+                />
+
+                {updateReviewError && (
+                  <div className="mt-4 flex gap-3 p-3 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+                    <p className="text-sm font-medium">{updateReviewError}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onClose={() =>
+          setConfirmDialog({
+            open: false,
+            title: '',
+            message: '',
+            onConfirm: () => {},
+          })
+        }
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+      />
     </DashboardLayout>
   )
 }

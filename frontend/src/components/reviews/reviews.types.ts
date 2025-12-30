@@ -22,12 +22,14 @@ export interface RatingSubmission {
   tripId: string
   ratings: Record<string, number>
   review?: string
+  photos?: File[]
   submittedAt: Date
 }
 
 export interface RatingFormState {
   ratings?: Record<string, number>
   review?: string
+  photos?: File[]
 }
 
 export interface SubmitRatingFormProps {
@@ -46,8 +48,8 @@ export interface ReviewData {
   categoryRatings: Record<string, number>
   reviewText?: string
   photos?: string[]
-  createdAt: Date
-  updatedAt?: Date
+  createdAt: Date | string
+  updatedAt?: Date | string
   isVerifiedBooking: boolean
   helpfulCount?: number
   userHelpful?: boolean
@@ -73,6 +75,8 @@ export interface ReviewsListProps {
   onSortChange?: (sort: string) => void
   ratingFilter?: number | null
   onRatingFilterChange?: (rating: number | null) => void
+  onEditReview?: (review: ReviewData) => void
+  onDeleteReview?: (reviewId: string) => Promise<void>
 }
 
 export interface RatingDistribution {

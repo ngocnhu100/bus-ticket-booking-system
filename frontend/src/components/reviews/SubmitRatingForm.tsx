@@ -3,12 +3,13 @@ import { AlertCircle, CheckCircle, PartyPopper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StarRating } from './StarRating'
+import { PhotoUpload } from './PhotoUpload'
 import type { RatingSubmission, RatingFormState } from './reviews.types'
 
 interface SubmitRatingFormProps {
-  bookingId?: string
+  bookingId: string
   bookingReference: string
-  tripReference?: string
+  tripReference: string
   onSubmit: (ratingData: RatingSubmission) => Promise<void>
   onCancel?: () => void
   isLoading?: boolean
@@ -42,6 +43,7 @@ export function SubmitRatingForm({
       RATING_CATEGORIES.reduce((acc, cat) => ({ ...acc, [cat.id]: 0 }), {})
   )
   const [reviewText, setReviewText] = useState(initialValues?.review || '')
+  const [photos, setPhotos] = useState<File[]>(initialValues?.photos || [])
   const [error, setError] = useState<string | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [preview, setPreview] = useState(false)
@@ -50,12 +52,12 @@ export function SubmitRatingForm({
   useEffect(() => {
     try {
       if (onStateChange) {
-        onStateChange({ ratings, review: reviewText })
+        onStateChange({ ratings, review: reviewText, photos })
       }
     } catch {
       console.error('Error in onStateChange callback')
     }
-  }, [ratings, reviewText, onStateChange])
+  }, [ratings, reviewText, photos, onStateChange])
 
   const handleRatingChange = (categoryId: string, value: number) => {
     setRatings((prev) => ({ ...prev, [categoryId]: value }))
@@ -128,6 +130,7 @@ export function SubmitRatingForm({
       tripId: tripReference,
       ratings,
       review: reviewText.trim() || undefined,
+      photos: photos.length > 0 ? photos : undefined,
       submittedAt: new Date(),
     }
 
@@ -176,6 +179,31 @@ export function SubmitRatingForm({
             </div>
           )}
 
+          {/* Photos Preview */}
+          {photos.length > 0 && (
+            <div className="space-y-2 text-left">
+              <h4 className="font-semibold text-foreground">
+                Photos ({photos.length})
+              </h4>
+              <div className="bg-card/50 rounded-lg p-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {photos.map((photo, index) => (
+                    <div
+                      key={index}
+                      className="aspect-square rounded-lg overflow-hidden border border-border/50"
+                    >
+                      <img
+                        src={URL.createObjectURL(photo)}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 pt-4">
             <Button
@@ -216,6 +244,22 @@ export function SubmitRatingForm({
       {/* Rating Categories */}
       <div className="space-y-4">
         <h3 className="font-semibold text-foreground">Rate Your Experience</h3>
+
+        {/* Edit Policy Notice */}
+        <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <div className="flex gap-2">
+            <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <p className="font-medium mb-1">Review Editing Policy</p>
+              <p>
+                You can edit your review text and photos within 24 hours after
+                submission. Ratings cannot be changed once submitted to ensure
+                authenticity.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-card/50 rounded-lg p-4 space-y-4">
           {RATING_CATEGORIES.map((category) => (
             <div
@@ -270,6 +314,14 @@ export function SubmitRatingForm({
           other travelers.
         </p>
       </div>
+
+      {/* Photo Upload */}
+      <PhotoUpload
+        photos={photos}
+        onPhotosChange={setPhotos}
+        maxPhotos={5}
+        disabled={isLoading}
+      />
 
       {/* Actions */}
       <div className="flex gap-3 pt-4">

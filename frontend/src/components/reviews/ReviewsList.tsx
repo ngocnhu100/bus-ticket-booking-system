@@ -34,6 +34,8 @@ interface ReviewsListProps {
   onPageChange?: (page: number) => void
   limit?: number
   onLimitChange?: (limit: number) => void
+  onEditReview?: (review: ReviewData) => void
+  onDeleteReview?: (reviewId: string) => Promise<void>
 }
 
 export function ReviewsList({
@@ -51,6 +53,8 @@ export function ReviewsList({
   onPageChange,
   limit = 10,
   onLimitChange,
+  onEditReview,
+  onDeleteReview,
 }: ReviewsListProps) {
   console.log('ReviewsList received:', { reviews, sortBy, ratingFilter })
 
@@ -482,6 +486,10 @@ export function ReviewsList({
               onHelpful={async (helpful) => {
                 console.log('Helpful vote:', helpful)
               }}
+              onEdit={onEditReview ? () => onEditReview(review) : undefined}
+              onDelete={
+                onDeleteReview ? () => onDeleteReview(review.id) : undefined
+              }
             />
           ))
         ) : (

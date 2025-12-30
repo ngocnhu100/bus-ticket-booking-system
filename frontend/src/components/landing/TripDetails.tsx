@@ -19,9 +19,21 @@ import { useNavigate } from 'react-router-dom'
 import type { Trip } from '@/types/trip.types'
 import { ReviewsList } from '@/components/reviews/ReviewsList'
 import { useState, useEffect } from 'react'
-import { getOperatorReviews, getOperatorRatings } from '@/api/trips'
+import {
+  getOperatorReviews,
+  getOperatorRatings,
+  updateReview,
+  deleteReview,
+} from '@/api/trips'
 import type { ReviewData } from '@/components/reviews/ReviewCard'
 import type { OperatorRatingStats } from '@/api/trips'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { EditReviewForm } from '@/components/reviews/EditReviewForm'
 
 interface TripDetailsProps {
   trip: Trip
@@ -43,6 +55,8 @@ export function TripDetails({ trip }: TripDetailsProps) {
   const [totalPages, setTotalPages] = useState(1)
   const [operatorStats, setOperatorStats] =
     useState<OperatorRatingStats | null>(null)
+  const [editingReview, setEditingReview] = useState<ReviewData | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   // Fetch operator stats when component mounts
   useEffect(() => {
@@ -135,6 +149,70 @@ export function TripDetails({ trip }: TripDetailsProps) {
     reviewsRatingFilter,
     reviewsLimit,
   ])
+
+  // Handle review edit
+  const handleEditReview = (review: ReviewData) => {
+    setEditingReview(review)
+  }
+
+  // Handle review update
+  const handleUpdateReview = async (data: {
+    reviewId: string
+    reviewText: string
+    removedPhotos?: string[]
+    newPhotos?: File[]
+  }) => {
+    setEditLoading(true)
+    try {
+      // Calculate remaining photos after removal
+      const currentPhotos = editingReview?.photos || []
+      const remainingPhotos = currentPhotos.filter(
+        (photo) => !data.removedPhotos?.includes(photo)
+      )
+
+      await updateReview(data.reviewId, {
+        review: data.reviewText,
+        photos: remainingPhotos,
+        removedPhotos: data.removedPhotos,
+        newPhotos: data.newPhotos,
+      })
+
+      // Refresh reviews
+      setReviewsPage(1)
+      setEditingReview(null)
+
+      // Show success message or toast
+      console.log('Review updated successfully')
+    } catch (error) {
+      console.error('Failed to update review:', error)
+      throw error
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
+  // Handle review delete
+  const handleDeleteReview = async (reviewId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to delete this review? This action cannot be undone.'
+      )
+    ) {
+      return
+    }
+
+    try {
+      await deleteReview(reviewId)
+
+      // Refresh reviews
+      setReviewsPage(1)
+
+      console.log('Review deleted successfully')
+    } catch (error) {
+      console.error('Failed to delete review:', error)
+      throw error
+    }
+  }
 
   // Helper function to format time
   const formatTime = (timeString: string) => {
@@ -549,9 +627,33 @@ export function TripDetails({ trip }: TripDetailsProps) {
               setReviewsLimit(limit)
               setReviewsPage(1) // Reset to first page when limit changes
             }}
+            onEditReview={handleEditReview}
+            onDeleteReview={handleDeleteReview}
           />
         </TabsContent>
       </Tabs>
+
+      {/* Edit Review Dialog */}
+      <Dialog
+        open={!!editingReview}
+        onOpenChange={() => setEditingReview(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Review</DialogTitle>
+          </DialogHeader>
+          {editingReview && (
+            <EditReviewForm
+              reviewId={editingReview.id}
+              initialText={editingReview.reviewText || ''}
+              initialPhotos={editingReview.photos || []}
+              onSubmit={handleUpdateReview}
+              onCancel={() => setEditingReview(null)}
+              isLoading={editLoading}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Booking Button */}
       <div className="pt-4 mt-6 border-t border-border">

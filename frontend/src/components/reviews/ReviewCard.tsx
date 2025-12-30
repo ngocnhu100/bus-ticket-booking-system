@@ -13,8 +13,8 @@ export interface ReviewData {
   categoryRatings: Record<string, number>
   reviewText?: string
   photos?: string[]
-  createdAt: Date
-  updatedAt?: Date
+  createdAt: Date | string
+  updatedAt?: Date | string
   helpfulCount?: number
   userHelpful?: boolean
   isAuthor?: boolean
@@ -41,9 +41,10 @@ export function ReviewCard({
 }: ReviewCardProps) {
   const avgRating = review.rating?.toFixed(1) || '0'
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     try {
-      return format(new Date(date), 'MMM d, yyyy')
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      return format(dateObj, 'MMM d, yyyy')
     } catch {
       return String(date)
     }
@@ -136,6 +137,7 @@ export function ReviewCard({
                 size="sm"
                 onClick={onEdit}
                 disabled={isLoading}
+                title="Edit review text and photos (available for 24 hours after submission)"
               >
                 Edit
               </Button>

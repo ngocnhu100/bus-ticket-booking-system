@@ -21,7 +21,15 @@ const submitRating = async (req, res) => {
     }
 
     const { bookingId, tripId, ratings, review, photos } = req.body;
-    console.log('🔍 [RATING] Extracted fields:', { bookingId, tripId, ratings, review, photos });
+    console.log('🔍 [RATING] Extracted fields:', {
+      bookingId,
+      tripId,
+      ratings,
+      review,
+      photos: photos,
+      photosType: typeof photos,
+      photosLength: photos?.length,
+    });
 
     // Validate required fields
     if (!bookingId || !tripId || !ratings) {
@@ -61,7 +69,27 @@ const submitRating = async (req, res) => {
       console.log('❌ [RATING] Validation failed - review too long:', review.length, 'characters');
       return res.status(400).json({ error: 'Review text must be 500 characters or less' });
     }
-    console.log('✅ [RATING] Review validation passed');
+    // Parse photos if provided
+    let parsedPhotos = [];
+    if (photos) {
+      if (Array.isArray(photos)) {
+        // Photos is already an array from frontend
+        parsedPhotos = photos;
+        console.log('🔍 [RATING] Photos is array:', parsedPhotos);
+      } else if (typeof photos === 'string') {
+        // Photos is a JSON string
+        try {
+          parsedPhotos = JSON.parse(photos);
+          console.log('🔍 [RATING] Parsed photos from string:', parsedPhotos);
+        } catch (error) {
+          console.error('❌ [RATING] Error parsing photos string:', error);
+          return res.status(400).json({ error: 'Invalid photos format' });
+        }
+      } else {
+        console.error('❌ [RATING] Photos has invalid type:', typeof photos);
+        return res.status(400).json({ error: 'Invalid photos format' });
+      }
+    }
 
     // Check if booking exists and belongs to user
     console.log('🔍 [RATING] Checking booking existence with:', { bookingId, userId });
@@ -140,6 +168,7 @@ const submitRating = async (req, res) => {
       operatorId,
       userId,
       ratings,
+      photos: parsedPhotos,
     });
 
     const result = await db.query(
@@ -163,7 +192,7 @@ const submitRating = async (req, res) => {
         ratings.comfort,
         ratings.value_for_money,
         review || null,
-        photos ? JSON.stringify(photos) : '[]',
+        photos ? JSON.stringify(parsedPhotos) : '[]',
       ]
     );
 
@@ -260,6 +289,7 @@ const getTripRatings = async (req, res) => {
  */
 const getTripReviews = async (req, res) => {
   try {
+    const userId = req.user?.userId;
     const { tripId } = req.params;
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, parseInt(req.query.limit) || 10);
@@ -333,9 +363,27 @@ const getTripReviews = async (req, res) => {
         console.warn('Failed to parse photos for review', review.rating_id, error);
         photos = [];
       }
+
+      // Check permissions for edit/delete
+      const isAuthor = userId && review.user_id === userId;
+      let canEdit = false;
+      let canDelete = false;
+
+      if (isAuthor) {
+        canDelete = true;
+
+        // Check if within 24 hours for edit
+        const createdAt = new Date(review.created_at);
+        const now = new Date();
+        const hoursSince = (now - createdAt) / (1000 * 60 * 60);
+        canEdit = hoursSince <= 24;
+      }
+
       return {
-        ...review,
-        photos,
+        id: review.rating_id,
+        authorName: review.author_name,
+        authorEmail: review.author_email,
+        rating: review.overall_rating,
         categoryRatings: {
           cleanliness: review.cleanliness_rating,
           driver_behavior: review.driver_behavior_rating,
@@ -343,6 +391,15 @@ const getTripReviews = async (req, res) => {
           comfort: review.comfort_rating,
           value_for_money: review.value_for_money_rating,
         },
+        reviewText: review.review_text,
+        photos,
+        createdAt: review.created_at,
+        updatedAt: review.updated_at,
+        helpfulCount: review.helpful_count || 0,
+        userHelpful: false, // Not needed for trip reviews
+        isAuthor,
+        canEdit,
+        canDelete,
       };
     });
 
@@ -376,7 +433,8 @@ const updateReview = async (req, res) => {
     }
 
     const { ratingId } = req.params;
-    const { review, photos } = req.body;
+    // eslint-disable-next-line no-unused-vars
+    const { review, photos, removedPhotos, newPhotos } = req.body;
 
     // Validate review text if provided
     if (review && review.length > 500) {
@@ -408,13 +466,55 @@ const updateReview = async (req, res) => {
         .json({ error: 'Review can only be edited within 24 hours of creation' });
     }
 
+    // Get current photos - handle various formats
+    let currentPhotos = [];
+    try {
+      if (!rating.photos || rating.photos === '[]') {
+        currentPhotos = [];
+      } else if (typeof rating.photos === 'string') {
+        // Try to parse as JSON array first
+        if (rating.photos.startsWith('[') && rating.photos.endsWith(']')) {
+          currentPhotos = JSON.parse(rating.photos);
+        } else {
+          // Single URL or malformed data - treat as single URL
+          currentPhotos = [rating.photos];
+        }
+      } else if (Array.isArray(rating.photos)) {
+        // Already an array
+        currentPhotos = rating.photos;
+      } else {
+        console.warn('Unexpected photos format:', typeof rating.photos, rating.photos);
+        currentPhotos = [];
+      }
+
+      // Ensure all are strings and trim whitespace
+      currentPhotos = currentPhotos
+        .filter((photo) => photo && typeof photo === 'string')
+        .map((photo) => photo.trim());
+    } catch (error) {
+      console.warn('Failed to parse current photos:', error, 'Raw value:', rating.photos);
+      currentPhotos = [];
+    }
+
+    // Remove deleted photos from current photos
+    if (removedPhotos && Array.isArray(removedPhotos)) {
+      const trimmedRemoved = removedPhotos.map((url) => url.trim());
+      currentPhotos = currentPhotos.filter((photo) => !trimmedRemoved.includes(photo));
+    }
+
+    // Add new photos (assuming they are already uploaded URLs)
+    if (photos && Array.isArray(photos)) {
+      const trimmedPhotos = photos.map((url) => url.trim());
+      currentPhotos = [...currentPhotos, ...trimmedPhotos];
+    }
+
     // Update review
     const result = await db.query(
       `UPDATE ratings 
              SET review_text = $1, photos = $2, updated_at = NOW()
              WHERE rating_id = $3
              RETURNING *`,
-      [review || rating.review_text, photos ? JSON.stringify(photos) : rating.photos, ratingId]
+      [review !== undefined ? review : rating.review_text, JSON.stringify(currentPhotos), ratingId]
     );
 
     res.json({
@@ -621,6 +721,7 @@ const getOperatorReviews = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, parseInt(req.query.limit) || 10);
     const sort = req.query.sort || 'recent'; // recent, helpful, rating-high, rating-low
+    const userId = req.user?.userId; // Optional authentication
 
     const offset = (page - 1) * limit;
 
@@ -683,43 +784,75 @@ const getOperatorReviews = async (req, res) => {
       [operatorId, limit, offset]
     );
 
-    const reviews = reviewsResult.rows.map((review) => {
-      let photos = [];
-      try {
-        if (review.photos && typeof review.photos === 'string' && review.photos.trim()) {
-          photos = JSON.parse(review.photos);
-        } else if (Array.isArray(review.photos)) {
-          photos = review.photos;
+    const reviews = await Promise.all(
+      reviewsResult.rows.map(async (review) => {
+        let photos = [];
+        try {
+          if (review.photos && typeof review.photos === 'string' && review.photos.trim()) {
+            photos = JSON.parse(review.photos);
+          } else if (Array.isArray(review.photos)) {
+            photos = review.photos;
+          }
+        } catch (error) {
+          console.warn('Failed to parse photos for review', review.rating_id, error);
+          photos = [];
         }
-      } catch (error) {
-        console.warn('Failed to parse photos for review', review.rating_id, error);
-        photos = [];
-      }
-      return {
-        id: review.rating_id,
-        authorName: review.author_name,
-        authorEmail: review.author_email,
-        rating: review.overall_rating,
-        categoryRatings: {
-          cleanliness: review.cleanliness_rating,
-          driver_behavior: review.driver_behavior_rating,
-          punctuality: review.punctuality_rating,
-          comfort: review.comfort_rating,
-          value_for_money: review.value_for_money_rating,
-        },
-        reviewText: review.review_text,
-        photos,
-        route:
-          review.origin && review.destination ? `${review.origin} - ${review.destination}` : null,
-        createdAt: review.created_at,
-        updatedAt: review.updated_at,
-        helpfulCount: review.helpful_count || 0,
-        userHelpful: false, // TODO: implement user helpful votes
-        isAuthor: false, // TODO: implement author check
-        canEdit: false, // TODO: implement edit permissions
-        canDelete: false, // TODO: implement delete permissions
-      };
-    });
+
+        // Check permissions
+        let canEdit = false;
+        let canDelete = false;
+        let userHelpful = null;
+
+        if (userId) {
+          // Check if user is the author
+          const isAuthor = review.user_id === userId;
+
+          if (isAuthor) {
+            canDelete = true; // Can always delete own review
+
+            // Check if within 24 hours for edit
+            const createdAt = new Date(review.created_at);
+            const now = new Date();
+            const hoursSince = (now - createdAt) / (1000 * 60 * 60);
+            canEdit = hoursSince <= 24;
+          }
+
+          // Check if user voted on this review
+          const voteResult = await db.query(
+            'SELECT is_helpful FROM rating_votes WHERE rating_id = $1 AND user_id = $2',
+            [review.rating_id, userId]
+          );
+          if (voteResult.rows.length > 0) {
+            userHelpful = voteResult.rows[0].is_helpful;
+          }
+        }
+
+        return {
+          id: review.rating_id,
+          authorName: review.author_name,
+          authorEmail: review.author_email,
+          rating: review.overall_rating,
+          categoryRatings: {
+            cleanliness: review.cleanliness_rating,
+            driver_behavior: review.driver_behavior_rating,
+            punctuality: review.punctuality_rating,
+            comfort: review.comfort_rating,
+            value_for_money: review.value_for_money_rating,
+          },
+          reviewText: review.review_text,
+          photos,
+          route:
+            review.origin && review.destination ? `${review.origin} - ${review.destination}` : null,
+          createdAt: review.created_at,
+          updatedAt: review.updated_at,
+          helpfulCount: review.helpful_count || 0,
+          userHelpful,
+          isAuthor: userId ? review.user_id === userId : false,
+          canEdit,
+          canDelete,
+        };
+      })
+    );
 
     res.json({
       success: true,
@@ -765,6 +898,128 @@ const checkBookingRating = async (req, res) => {
   }
 };
 
+/**
+ * Get review for a specific booking
+ * GET /trips/ratings/booking/:bookingId
+ */
+const getBookingReview = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { bookingId } = req.params;
+
+    if (!bookingId) {
+      return res.status(400).json({ error: 'Booking ID is required' });
+    }
+
+    // Get the rating for this booking and user
+    const ratingResult = await db.query(
+      `SELECT 
+                r.rating_id,
+                r.booking_id,
+                r.trip_id,
+                r.user_id,
+                r.overall_rating,
+                r.cleanliness_rating,
+                r.driver_behavior_rating,
+                r.punctuality_rating,
+                r.comfort_rating,
+                r.value_for_money_rating,
+                r.review_text,
+                r.photos,
+                r.helpful_count,
+                r.unhelpful_count,
+                r.created_at,
+                r.updated_at,
+                r.is_approved,
+                u.full_name as author_name,
+                u.email as author_email,
+                rt.origin,
+                rt.destination
+            FROM ratings r
+            LEFT JOIN users u ON r.user_id = u.user_id
+            LEFT JOIN trips t ON r.trip_id = t.trip_id
+            LEFT JOIN routes rt ON t.route_id = rt.route_id
+            WHERE r.booking_id = $1 AND r.user_id = $2`,
+      [bookingId, userId]
+    );
+
+    if (ratingResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No review found for this booking',
+      });
+    }
+
+    const review = ratingResult.rows[0];
+
+    let photos = [];
+    try {
+      if (review.photos && typeof review.photos === 'string' && review.photos.trim()) {
+        photos = JSON.parse(review.photos);
+      } else if (Array.isArray(review.photos)) {
+        photos = review.photos;
+      }
+    } catch (error) {
+      console.warn('Failed to parse photos for review', review.rating_id, error);
+      photos = [];
+    }
+
+    // Check permissions
+    const isAuthor = review.user_id === userId;
+    let canEdit = false;
+    let canDelete = false;
+
+    if (isAuthor) {
+      canDelete = true;
+
+      // Check if within 24 hours for edit
+      const createdAt = new Date(review.created_at);
+      const now = new Date();
+      const hoursSince = (now - createdAt) / (1000 * 60 * 60);
+      canEdit = hoursSince <= 24;
+    }
+
+    const reviewData = {
+      id: review.rating_id,
+      authorName: review.author_name,
+      authorEmail: review.author_email,
+      rating: review.overall_rating,
+      categoryRatings: {
+        cleanliness: review.cleanliness_rating,
+        driver_behavior: review.driver_behavior_rating,
+        punctuality: review.punctuality_rating,
+        comfort: review.comfort_rating,
+        value_for_money: review.value_for_money_rating,
+      },
+      reviewText: review.review_text,
+      photos,
+      route:
+        review.origin && review.destination ? `${review.origin} - ${review.destination}` : null,
+      createdAt: review.created_at,
+      updatedAt: review.updated_at,
+      helpfulCount: review.helpful_count || 0,
+      userHelpful: false, // Not needed for single review
+      isAuthor,
+      canEdit,
+      canDelete,
+    };
+
+    res.json({
+      success: true,
+      data: reviewData,
+      message: 'Review retrieved successfully',
+    });
+  } catch (error) {
+    console.error('Error getting booking review:', error);
+    res.status(500).json({ error: 'Failed to get booking review' });
+  }
+};
+
 module.exports = {
   submitRating,
   getTripRatings,
@@ -775,4 +1030,5 @@ module.exports = {
   deleteReview,
   voteHelpful,
   checkBookingRating,
+  getBookingReview,
 };
