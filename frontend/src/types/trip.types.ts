@@ -347,7 +347,11 @@ export interface AlternativeDestination {
  * Matches API: GET /trips/alternatives response.flexibleSearch
  */
 export interface FlexibleSearch {
-  date: string // YYYY-MM-DD format
+  trips: Trip[]
+  totalCount: number
+  page: number
+  totalPages: number
+  limit: number
   description: string // e.g., "Search next 7 days"
 }
 

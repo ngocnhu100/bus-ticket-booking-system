@@ -96,12 +96,41 @@ const search_trip_schema = Joi.object({
   }),
   minPrice: Joi.number().min(0),
   maxPrice: Joi.number().min(0),
-  operator: Joi.alternatives().try(Joi.string().trim(), Joi.array().items(Joi.string().trim())),
-  busType: Joi.alternatives().try(
-    Joi.string().valid('standard', 'limousine', 'sleeper'),
-    Joi.array().items(Joi.string().valid('standard', 'limousine', 'sleeper'))
-  ),
-  amenity: Joi.alternatives().try(Joi.string().trim(), Joi.array().items(Joi.string().trim())),
+  operator: Joi.custom((value, helpers) => {
+    if (Array.isArray(value)) {
+      return value.map((s) => s.trim());
+    } else if (typeof value === 'string') {
+      return value.split(',').map((s) => s.trim());
+    } else {
+      return helpers.error('any.invalid');
+    }
+  }),
+  busType: Joi.custom((value, helpers) => {
+    let arr;
+    if (Array.isArray(value)) {
+      arr = value;
+    } else if (typeof value === 'string') {
+      arr = value.split(',').map((s) => s.trim());
+    } else {
+      return helpers.error('any.invalid');
+    }
+    // Validate each item
+    for (const item of arr) {
+      if (!['standard', 'limousine', 'sleeper'].includes(item)) {
+        return helpers.error('any.invalid');
+      }
+    }
+    return arr;
+  }),
+  amenity: Joi.custom((value, helpers) => {
+    if (Array.isArray(value)) {
+      return value.map((s) => s.trim());
+    } else if (typeof value === 'string') {
+      return value.split(',').map((s) => s.trim());
+    } else {
+      return helpers.error('any.invalid');
+    }
+  }),
   seatLocation: Joi.alternatives().try(
     Joi.string().valid('window', 'aisle'),
     Joi.string().regex(/^(window|aisle)(,(window|aisle))*$/),
@@ -109,6 +138,10 @@ const search_trip_schema = Joi.object({
   ),
   minRating: Joi.number().min(0).max(5),
   minSeats: Joi.number().integer().min(0),
+
+  // Flexible search
+  flexibleDays: Joi.number().integer().min(1).max(30).default(7),
+  direction: Joi.string().valid('next', 'previous').default('next'),
 
   // Sort and pagination
   sort: Joi.string().default('default'),

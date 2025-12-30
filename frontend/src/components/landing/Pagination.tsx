@@ -46,7 +46,17 @@ export function Pagination({
     return pages
   }
 
+  const getItemsPerPageOptions = () => {
+    const defaultOptions = [5, 10, 20, 50]
+    if (defaultOptions.includes(itemsPerPage)) {
+      return defaultOptions
+    }
+    // Add current itemsPerPage if not in defaults, and sort
+    return [...defaultOptions, itemsPerPage].sort((a, b) => a - b)
+  }
+
   const pageNumbers = getPageNumbers()
+  const itemsPerPageOptions = getItemsPerPageOptions()
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-6 bg-card rounded-lg border border-border">
@@ -58,10 +68,11 @@ export function Pagination({
           onChange={(e) => onItemsPerPageChange?.(parseInt(e.target.value))}
           className="px-3 py-1.5 rounded border border-input bg-background text-foreground text-sm cursor-pointer hover:border-primary transition-colors min-w-24"
         >
-          <option value={5}>5 trips</option>
-          <option value={10}>10 trips</option>
-          <option value={20}>20 trips</option>
-          <option value={50}>50 trips</option>
+          {itemsPerPageOptions.map((option) => (
+            <option key={option} value={option}>
+              {option} trips
+            </option>
+          ))}
         </select>
       </div>
 

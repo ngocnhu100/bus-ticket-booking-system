@@ -11,6 +11,7 @@ export type SortOption =
   | 'price-asc'
   | 'price-desc'
   | 'departure-asc'
+  | 'departure-desc'
   | 'duration-asc'
   | 'rating-desc'
 
@@ -24,6 +25,7 @@ const sortOptions = [
   { value: 'price-asc', label: 'Price: Low to High' },
   { value: 'price-desc', label: 'Price: High to Low' },
   { value: 'departure-asc', label: 'Earliest Departure' },
+  { value: 'departure-desc', label: 'Latest Departure' },
   { value: 'duration-asc', label: 'Shortest Duration' },
   { value: 'rating-desc', label: 'Highest Operator Rating' },
 ]

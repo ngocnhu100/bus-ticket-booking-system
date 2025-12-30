@@ -384,7 +384,7 @@ class TripService {
   /**
    * Get comprehensive alternative trip suggestions
    */
-  async getAlternativeTrips(origin, destination, date) {
+  async getAlternativeTrips(origin, destination, date, flexibleDays = 7, page = 1) {
     const alternatives = {
       alternativeDates: [],
       alternativeDestinations: [],
@@ -403,13 +403,27 @@ class TripService {
         destination
       );
 
-      // Get flexible search option (next 7 days)
-      const flexibleDate = new Date(date);
-      flexibleDate.setDate(flexibleDate.getDate() + 3); // Middle of 7-day range
-      alternatives.flexibleSearch = {
-        date: flexibleDate.toISOString().split('T')[0],
-        description: 'Search next 7 days',
-      };
+      // Flexible search: search next N days for trips on the same route
+      const flexibleSearch = await this.searchTrips({
+        origin,
+        destination,
+        date,
+        limit: 20,
+        page,
+        // Search next N days - make this configurable
+        flexibleDays,
+      });
+
+      if (flexibleSearch.trips && flexibleSearch.trips.length > 0) {
+        alternatives.flexibleSearch = {
+          trips: flexibleSearch.trips,
+          totalCount: flexibleSearch.totalCount,
+          page: flexibleSearch.page,
+          totalPages: flexibleSearch.totalPages,
+          limit: flexibleSearch.limit,
+          description: `Search next ${flexibleDays} days`,
+        };
+      }
 
       return alternatives;
     } catch (error) {
@@ -420,14 +434,14 @@ class TripService {
   }
 
   /**
-   * Get alternative dates for the same route (next 3 days)
+   * Get alternative dates for the same route (next 7 days)
    */
   async getAlternativeDates(origin, destination, date) {
     const alternativeDates = [];
     const baseDate = new Date(date);
 
-    // Check next 3 days for available trips
-    for (let i = 1; i <= 3; i++) {
+    // Check next 7 days for available trips
+    for (let i = 1; i <= 7; i++) {
       const checkDate = new Date(baseDate);
       checkDate.setDate(baseDate.getDate() + i);
 

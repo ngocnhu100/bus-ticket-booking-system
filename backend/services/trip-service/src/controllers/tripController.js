@@ -180,10 +180,8 @@ class TripController {
 
   async search(req, res) {
     try {
-      console.log('[TripController.search] req.query:', JSON.stringify(req.query, null, 2));
       const { error, value } = searchTripSchema.validate(req.query);
       if (error) {
-        console.error('[TripController.search] Validation error:', error.details[0]);
         return res.status(422).json({
           success: false,
           error: { code: 'VAL_001', message: error.details[0].message },
@@ -579,11 +577,13 @@ class TripController {
 
   /**
    * Get alternative trip suggestions when no trips found
-   * GET /alternatives?origin=...&destination=...&date=...
+   * GET /alternatives?origin=...&destination=...&date=...&flexibleDays=...
    */
   async getAlternatives(req, res) {
     try {
-      const { origin, destination, date } = req.query;
+      const { origin, destination, date, flexibleDays, page } = req.query;
+      const days = parseInt(flexibleDays) || 7; // Default to 7 days
+      const pageNum = parseInt(page) || 1; // Default to page 1
 
       if (!origin || !date) {
         return res.status(400).json({
@@ -592,7 +592,13 @@ class TripController {
         });
       }
 
-      const alternatives = await tripService.getAlternativeTrips(origin, destination, date);
+      const alternatives = await tripService.getAlternativeTrips(
+        origin,
+        destination,
+        date,
+        days,
+        pageNum
+      );
 
       console.log('[TripController] Alternatives response:', JSON.stringify(alternatives, null, 2));
 
