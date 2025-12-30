@@ -36,6 +36,7 @@ import GuestCheckout from '@/components/booking/GuestCheckout'
 import GuestConfirmation from './pages/GuestConfirmation'
 import RevenueAnalytics from '@/pages/admin/RevenueAnalytics'
 import AdminAccountManagement from '@/pages/admin/AdminAccountManagement'
+import AdminChatbotFeedback from '@/pages/admin/AdminChatbotFeedback'
 import { ChatbotProvider } from './context/ChatbotContext'
 import { ChatbotWidget } from './components/chatbot'
 import ReviewGuidelines from './pages/ReviewGuidelines'
@@ -165,6 +166,11 @@ const App = () => (
                     element={<RevenueAnalytics />}
                   />{' '}
                   {/* Revenue Analytics */}
+                  <Route
+                    path="/admin/chatbot-feedback"
+                    element={<AdminChatbotFeedback />}
+                  />{' '}
+                  {/* Chatbot Feedback */}
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />

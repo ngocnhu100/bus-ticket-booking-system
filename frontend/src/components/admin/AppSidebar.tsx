@@ -9,6 +9,7 @@ import {
   Settings,
   MapPin,
   Calendar,
+  MessageSquare,
 } from 'lucide-react'
 import { NavLink } from '@/components/NavLink'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -34,6 +35,11 @@ const menuItems = [
   { title: 'Operators', url: '/admin/operators', icon: Briefcase },
   { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Analytics', url: '/admin/analytics', icon: BarChart3 },
+  {
+    title: 'Chatbot Feedback',
+    url: '/admin/chatbot-feedback',
+    icon: MessageSquare,
+  },
   { title: 'Reports', url: '/admin/reports', icon: FileText },
   { title: 'Settings', url: '/admin/settings', icon: Settings },
 ]

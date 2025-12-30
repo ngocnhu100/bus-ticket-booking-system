@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import type { ChatMessage, ChatAction } from '../../types/chatbot.types'
 import { MessageCircle } from 'lucide-react'
 import { PassengerInfoForm } from './PassengerInfoForm'
+import { MessageFeedback } from './MessageFeedback'
 
 interface MessageBubbleProps {
   message: ChatMessage
@@ -926,6 +927,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               ))}
             </div>
           )}
+        {/* Add feedback component for assistant messages */}
+        {isBot && sessionId && (
+          <MessageFeedback messageId={message.id} sessionId={sessionId} />
+        )}
       </div>
     </div>
   )

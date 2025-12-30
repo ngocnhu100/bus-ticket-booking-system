@@ -5,6 +5,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const chatbotController = require('./controllers/chatbotController');
+const feedbackController = require('./controllers/feedbackController');
 const { optionalAuthenticate } = require('./middleware/authMiddleware');
 const { errorHandler, notFoundHandler } = require('./middleware/errorMiddleware');
 
@@ -29,6 +30,15 @@ app.post('/submit-passenger-info', optionalAuthenticate, chatbotController.submi
 app.get('/sessions/:sessionId/history', optionalAuthenticate, chatbotController.getHistory);
 app.post('/sessions/:sessionId/reset', optionalAuthenticate, chatbotController.resetConversation);
 app.post('/feedback', optionalAuthenticate, chatbotController.submitFeedback);
+
+// Admin feedback routes (require admin authentication in production)
+// Note: In production, these should be protected with admin auth middleware
+app.get('/admin/feedback/stats', feedbackController.getStats);
+app.get('/admin/feedback/recent', feedbackController.getRecent);
+app.get('/admin/feedback/negative', feedbackController.getNegative);
+app.get('/admin/feedback/comments', feedbackController.getWithComments);
+app.get('/admin/feedback/trend', feedbackController.getTrend);
+app.get('/admin/feedback/session/:sessionId', feedbackController.getBySession);
 
 // Error handling
 app.use(notFoundHandler);

@@ -77,10 +77,25 @@ INTENT DEFINITIONS:
 - select_seats: User is selecting/choosing specific seat(s) for a trip (after trip is already selected)
 - book_trip: User wants to book a trip - includes selecting trips or completing payment
 - provide_passenger_info: User is providing passenger information (name, ID, phone, email) during booking flow
-- ask_faq: User has questions about policies, services, rules, FAQs
-- modify_booking: User wants to change an existing booking
-- cancel_booking: User wants to cancel/refund a booking
+- ask_faq: User has GENERAL questions about policies, services, rules, processes, or wants to talk to human support. Includes questions like "What is...", "How does...", "Can I...", "I want to talk to a human"
+- modify_booking: User wants to MODIFY/CHANGE an EXISTING SPECIFIC booking they already have (must have booking reference)
+- cancel_booking: User wants to CANCEL/REQUEST REFUND for an EXISTING SPECIFIC booking they already have (must have booking reference). NOT general questions about refund policy.
 - general_inquiry: Greetings, general questions, unclear intent
+
+CRITICAL FAQ RECOGNITION:
+Questions about policies WITHOUT a booking reference are ask_faq, NOT cancel_booking or modify_booking!
+Examples of ask_faq:
+- "What is the cancellation policy?" → ask_faq
+- "How do refunds work?" / "Hoàn tiền như thế nào?" → ask_faq  
+- "Can I change my booking?" → ask_faq
+- "I want to talk to a human" / "Tôi muốn nói chuyện với người thật" → ask_faq
+- "What is the luggage allowance?" → ask_faq
+- "How much does it cost to cancel?" → ask_faq
+
+Examples of cancel_booking (must have booking reference):
+- "I want to cancel booking BK20251115001" → cancel_booking
+- "Cancel my trip BK123456" → cancel_booking
+- "Refund my booking BK987654" → cancel_booking
 
 CRITICAL CONTEXT RULES (Most Important):
 **ALWAYS check the last chatbot message first!**

@@ -2,6 +2,8 @@ const groqAIService = require('./groqAIService');
 const tripServiceClient = require('./tripServiceClient');
 const bookingServiceClient = require('./bookingServiceClient');
 const conversationRepository = require('../repositories/conversationRepository');
+const feedbackRepository = require('../repositories/feedbackRepository');
+const faqService = require('./faqService');
 const { getRedisClient } = require('../redis');
 const { passengerSchema } = require('../validators/chatValidators');
 const {
@@ -2236,13 +2238,37 @@ Return ONLY the text response, no JSON, no explanations.`;
   async handleFAQ(question, conversationContext, lang) {
     console.log('[ChatbotService] Handling FAQ:', { question: question.substring(0, 100), lang });
     try {
-      console.log('[ChatbotService] Answering FAQ via AI');
-      const answer = await groqAIService.answerFAQ(question, conversationContext);
-      console.log('[ChatbotService] FAQ answer generated');
-      return {
-        text: answer,
-        suggestions: this.responses.faq_suggestions[lang],
+      console.log('[ChatbotService] Processing FAQ with knowledge base');
+      const faqResponse = await faqService.processFAQQuery(question, lang);
+      
+      console.log('[ChatbotService] FAQ response generated:', faqResponse.intent);
+      
+      // Build the response
+      const response = {
+        text: faqResponse.response,
+        suggestions: faqResponse.suggestions || this.responses.faq_suggestions[lang],
       };
+
+      // Add related links if available
+      if (faqResponse.relatedLinks && faqResponse.relatedLinks.length > 0) {
+        response.actions = faqResponse.relatedLinks.map(link => ({
+          type: 'link',
+          label: link.text,
+          url: link.url
+        }));
+      }
+
+      // Add escalation action if needed
+      if (faqResponse.requiresAction && faqResponse.actionType === 'escalate_to_human') {
+        response.actions = response.actions || [];
+        response.actions.push(...(faqResponse.contactMethods || []).map(method => ({
+          type: method.type,
+          label: method.label,
+          value: method.value
+        })));
+      }
+
+      return response;
     } catch (error) {
       console.error('[ChatbotService] Error handling FAQ:', error);
       return {
@@ -2535,7 +2561,8 @@ Return ONLY the text response, no JSON, no explanations.`;
       hasComment: !!comment,
     });
     try {
-      await conversationRepository.saveFeedback(sessionId, messageId, rating, comment);
+      // Save to both repositories for backwards compatibility
+      await feedbackRepository.saveFeedback(sessionId, messageId, rating, comment);
       console.log('[ChatbotService] Feedback saved successfully');
       return { success: true, message: this.responses.feedback_success[lang] };
     } catch (error) {

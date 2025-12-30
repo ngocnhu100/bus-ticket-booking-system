@@ -104,7 +104,7 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({
           }
 
           const botMsg: ChatMessage = {
-            id: `msg_${Date.now()}_bot`,
+            id: response.data.messageId || `msg_${Date.now()}_bot`,
             role: 'assistant',
             content:
               typeof response.data.response.text === 'string'
