@@ -233,6 +233,12 @@ export function TripSearchResults() {
           setTrips([])
           return
         }
+
+        if (!origin || !destination) {
+          setTrips([])
+          return
+        }
+
         const searchParams = {
           origin,
           destination,
@@ -264,7 +270,10 @@ export function TripSearchResults() {
           sort: sortBy !== 'default' ? sortBy : undefined,
           page: currentPage > 1 ? currentPage : undefined,
           limit: itemsPerPage,
-          flexibleDays: urlFlexibleDays > 0 ? urlFlexibleDays : undefined,
+          flexibleDays:
+            urlFlexibleDays && urlFlexibleDays > 0
+              ? urlFlexibleDays
+              : undefined,
           direction: urlDirection || 'next',
         }
 
@@ -300,7 +309,7 @@ export function TripSearchResults() {
     fetchTrips()
 
     // Add current search to history only once per search parameters
-    if (!hasAddedSearchRef.current) {
+    if (!hasAddedSearchRef.current && origin && destination) {
       addSearch({
         origin,
         destination,
@@ -368,6 +377,8 @@ export function TripSearchResults() {
 
   // Fetch alternative suggestions when no trips found
   useEffect(() => {
+    if (!origin || !destination) return
+
     // Prevent multiple API calls for the same search
     const searchKey = `${origin}-${destination}-${date}-${flexibleDays}-${flexibleSearchPage}`
     if (hasFetchedAlternativesRef.current === searchKey) {
@@ -433,8 +444,8 @@ export function TripSearchResults() {
     const params = new URLSearchParams()
 
     // Add search params
-    params.set('from', origin)
-    params.set('to', destination)
+    params.set('from', origin || '')
+    params.set('to', destination || '')
     params.set('date', date)
     params.set('passengers', passengers)
 
@@ -1049,8 +1060,8 @@ export function TripSearchResults() {
                                       className="w-full justify-start text-left"
                                       onClick={() => {
                                         const newParams = new URLSearchParams({
-                                          from: origin,
-                                          to: destination,
+                                          from: origin || '',
+                                          to: destination || '',
                                           date: altDate.date,
                                           passengers,
                                         })
@@ -1095,7 +1106,7 @@ export function TripSearchResults() {
                                       className="w-full justify-start text-left"
                                       onClick={() => {
                                         const newParams = new URLSearchParams({
-                                          from: origin,
+                                          from: origin || '',
                                           to: altDest.destination,
                                           date,
                                           passengers,
@@ -1185,8 +1196,8 @@ export function TripSearchResults() {
                                     .split('T')[0]
 
                                   const newParams = new URLSearchParams({
-                                    from: origin,
-                                    to: destination,
+                                    from: origin || '',
+                                    to: destination || '',
                                     date: newDateStr,
                                     passengers,
                                     flexibleDays: flexibleDays.toString(),
@@ -1265,7 +1276,9 @@ export function TripSearchResults() {
                               <TripResultsCard
                                 key={trip.trip_id}
                                 trip={trip}
-                                onSelect={() => handleSelectTrip(trip.trip_id)}
+                                onSelectTrip={() =>
+                                  handleSelectTrip(trip.trip_id)
+                                }
                                 isSelected={selectedTripId === trip.trip_id}
                               />
                             ))}

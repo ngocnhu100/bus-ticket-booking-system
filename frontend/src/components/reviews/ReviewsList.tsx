@@ -7,7 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ChevronDown, Star, Image as ImageIcon } from 'lucide-react'
+import {
+  ChevronDown,
+  Star,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ReviewData } from './ReviewCard'
 import { ReviewCard } from './ReviewCard'
@@ -23,6 +29,11 @@ interface ReviewsListProps {
   ratingFilter?: number | null
   onRatingFilterChange?: (rating: number | null) => void
   operatorStats?: OperatorRatingStats | null
+  currentPage?: number
+  totalPages?: number
+  onPageChange?: (page: number) => void
+  limit?: number
+  onLimitChange?: (limit: number) => void
 }
 
 export function ReviewsList({
@@ -35,6 +46,11 @@ export function ReviewsList({
   ratingFilter = null,
   onRatingFilterChange,
   operatorStats,
+  currentPage = 1,
+  totalPages = 1,
+  onPageChange,
+  limit = 10,
+  onLimitChange,
 }: ReviewsListProps) {
   console.log('ReviewsList received:', { reviews, sortBy, ratingFilter })
 
@@ -313,6 +329,27 @@ export function ReviewsList({
             </Select>
           </div>
         )}
+
+        {/* Limit Dropdown */}
+        {onLimitChange && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium text-foreground">Per Page</p>
+            <Select
+              value={limit.toString()}
+              onValueChange={(value) => onLimitChange(Number(value))}
+            >
+              <SelectTrigger className="w-full sm:w-32">
+                <SelectValue placeholder="Per page" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Expandable Filters Section */}
@@ -456,8 +493,50 @@ export function ReviewsList({
         )}
       </div>
 
-      {/* Load More */}
-      {hasMore && filteredReviews.length > 0 && (
+      {/* Pagination */}
+      {totalPages > 1 && onPageChange && (
+        <div className="flex justify-center items-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1 || isLoading}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNum =
+                Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i
+              if (pageNum > totalPages) return null
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pageNum === currentPage ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => onPageChange(pageNum)}
+                  disabled={isLoading}
+                >
+                  {pageNum}
+                </Button>
+              )
+            })}
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages || isLoading}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Load More (fallback) */}
+      {totalPages <= 1 && hasMore && onLoadMore && (
         <div className="flex justify-center pt-4">
           <Button variant="outline" onClick={onLoadMore} disabled={isLoading}>
             {isLoading ? 'Loading...' : 'Load More Reviews'}

@@ -82,7 +82,7 @@ export function usePaymentStatus(
       if (pollingRef.current) clearInterval(pollingRef.current)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
-  }, [bookingId, pollInterval, maxWait])
+  }, [bookingId, pollInterval, maxWait, user])
 
   return { status, loading, error }
 }

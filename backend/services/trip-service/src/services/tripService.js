@@ -400,7 +400,8 @@ class TripService {
       // Get alternative destinations from origin
       alternatives.alternativeDestinations = await this.getAlternativeDestinations(
         origin,
-        destination
+        destination,
+        date
       );
 
       // Flexible search: search next N days for trips on the same route
@@ -477,11 +478,11 @@ class TripService {
   /**
    * Get alternative destinations from origin city
    */
-  async getAlternativeDestinations(origin, excludeDestination = null) {
+  async getAlternativeDestinations(origin, excludeDestination = null, date = null) {
     // Popular destinations from major cities in Vietnam
     const destinationMap = {
       'Ho Chi Minh City': ['Da Nang', 'Nha Trang', 'Can Tho', 'Vung Tau', 'Da Lat'],
-      Hanoi: ['Hai Phong', 'Halong', 'Ninh Binh', 'Sa Pa', 'Quang Ninh'],
+      Hanoi: ['Ho Chi Minh City', 'Hai Phong', 'Halong', 'Ninh Binh', 'Sa Pa', 'Quang Ninh'],
       'Da Nang': ['Hoi An', 'Hue', 'Quang Nam', 'Tam Ky', 'Nha Trang'],
       'Nha Trang': ['Da Lat', 'Phan Rang', 'Cam Ranh', 'Da Nang', 'Ho Chi Minh City'],
       'Can Tho': ['Chau Doc', 'Long Xuyen', 'Rach Gia', 'Soc Trang', 'Ho Chi Minh City'],
@@ -502,22 +503,31 @@ class TripService {
       destinations = ['Ho Chi Minh City', 'Hanoi', 'Da Nang', 'Nha Trang', 'Can Tho'];
     }
 
-    // Filter out the excluded destination and limit to 3
-    const filteredDestinations = destinations
-      .filter((dest) => dest !== excludeDestination)
-      .slice(0, 3);
-
-    // Check which destinations have actual trips available
+    // Check which destinations have actual trips available for the given date
     const availableDestinations = [];
-    for (const dest of filteredDestinations) {
+    for (const dest of destinations) {
       try {
-        const trips = await tripRepository.search({
+        const searchParams = {
           origin,
           destination: dest,
           limit: 1,
-        });
+        };
+
+        // Add date filter if provided
+        if (date) {
+          searchParams.date = date;
+        }
+
+        console.log(
+          `[getAlternativeDestinations] Searching trips: ${origin} -> ${dest} on ${date}`
+        );
+        const trips = await tripRepository.search(searchParams);
+        console.log(
+          `[getAlternativeDestinations] Found ${trips.trips?.length || 0} trips for ${origin} -> ${dest}`
+        );
 
         if (trips.trips && trips.trips.length > 0) {
+          console.log(`[getAlternativeDestinations] Adding ${dest} with ${trips.totalCount} trips`);
           availableDestinations.push({
             destination: dest,
             tripCount: trips.totalCount,
@@ -528,7 +538,12 @@ class TripService {
       }
     }
 
-    return availableDestinations;
+    // Filter out the excluded destination and limit to 3
+    const filteredDestinations = availableDestinations
+      .filter((item) => item.destination !== excludeDestination)
+      .slice(0, 3);
+
+    return filteredDestinations;
   }
 }
 

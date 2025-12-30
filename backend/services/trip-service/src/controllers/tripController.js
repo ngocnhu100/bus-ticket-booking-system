@@ -647,11 +647,11 @@ class TripController {
 
   /**
    * Get alternative destinations from origin
-   * GET /alternatives/destinations?origin=...&exclude=...
+   * GET /alternatives/destinations?origin=...&exclude=...&date=...
    */
   async getAlternativeDestinations(req, res) {
     try {
-      const { origin, exclude } = req.query;
+      const { origin, exclude, date } = req.query;
 
       if (!origin) {
         return res.status(400).json({
@@ -660,7 +660,18 @@ class TripController {
         });
       }
 
-      const alternativeDestinations = await tripService.getAlternativeDestinations(origin, exclude);
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'MISSING_PARAMS', message: 'Date is required' },
+        });
+      }
+
+      const alternativeDestinations = await tripService.getAlternativeDestinations(
+        origin,
+        exclude,
+        date
+      );
 
       res.json({
         success: true,

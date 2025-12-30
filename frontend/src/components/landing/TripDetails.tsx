@@ -38,7 +38,9 @@ export function TripDetails({ trip }: TripDetailsProps) {
     null
   )
   const [reviewsPage, setReviewsPage] = useState(1)
+  const [reviewsLimit, setReviewsLimit] = useState(5)
   const [hasMoreReviews, setHasMoreReviews] = useState(false)
+  const [totalPages, setTotalPages] = useState(1)
   const [operatorStats, setOperatorStats] =
     useState<OperatorRatingStats | null>(null)
 
@@ -87,7 +89,7 @@ export function TripDetails({ trip }: TripDetailsProps) {
 
         const response = await getOperatorReviews(trip.operator.operator_id, {
           page: reviewsPage,
-          limit: 10,
+          limit: reviewsLimit,
           sortBy: reviewsSortBy,
           rating: reviewsRatingFilter || undefined,
         })
@@ -109,20 +111,11 @@ export function TripDetails({ trip }: TripDetailsProps) {
 
           console.log('Mapped reviews:', reviewData)
 
-          if (reviewsPage === 1) {
-            console.log('Setting reviews (page 1):', reviewData)
-            setReviews(reviewData)
-          } else {
-            console.log(
-              'Appending reviews (page',
-              reviewsPage,
-              '):',
-              reviewData
-            )
-            setReviews((prev) => [...prev, ...reviewData])
-          }
+          console.log('Setting reviews:', reviewData)
+          setReviews(reviewData)
 
           setHasMoreReviews(reviewsPage < response.pagination.totalPages)
+          setTotalPages(response.pagination.totalPages)
         }
       } catch (error) {
         console.error('Failed to fetch reviews:', error)
@@ -140,6 +133,7 @@ export function TripDetails({ trip }: TripDetailsProps) {
     reviewsPage,
     reviewsSortBy,
     reviewsRatingFilter,
+    reviewsLimit,
   ])
 
   // Helper function to format time
@@ -547,6 +541,14 @@ export function TripDetails({ trip }: TripDetailsProps) {
               setReviewsPage(1) // Reset to first page when filter changes
             }}
             operatorStats={operatorStats}
+            currentPage={reviewsPage}
+            totalPages={totalPages}
+            onPageChange={(page) => setReviewsPage(page)}
+            limit={reviewsLimit}
+            onLimitChange={(limit) => {
+              setReviewsLimit(limit)
+              setReviewsPage(1) // Reset to first page when limit changes
+            }}
           />
         </TabsContent>
       </Tabs>

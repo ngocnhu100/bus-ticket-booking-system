@@ -14,16 +14,16 @@ class RouteRepository {
     } = routeData;
 
     // Check for existing route with same origin-destination
-    const checkQuery = `
-      SELECT route_id FROM routes 
-      WHERE LOWER(origin) = LOWER($1) AND LOWER(destination) = LOWER($2)
-    `;
-    const checkResult = await pool.query(checkQuery, [origin, destination]);
-    if (checkResult.rows.length > 0) {
-      const error = new Error('A route with this origin and destination already exists');
-      error.code = 'DUPLICATE_ROUTE';
-      throw error;
-    }
+    // const checkQuery = `
+    //   SELECT route_id FROM routes
+    //   WHERE LOWER(origin) = LOWER($1) AND LOWER(destination) = LOWER($2)
+    // `;
+    // const checkResult = await pool.query(checkQuery, [origin, destination]);
+    // if (checkResult.rows.length > 0) {
+    //   const error = new Error('A route with this origin and destination already exists');
+    //   error.code = 'DUPLICATE_ROUTE';
+    //   throw error;
+    // }
     const client = await pool.connect();
     try {
       await client.query('BEGIN');

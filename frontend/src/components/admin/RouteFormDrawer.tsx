@@ -564,6 +564,9 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
             >
               Pickup Points
             </h3>
+            {errors.pickup_points && (
+              <p className="text-xs text-red-500">{errors.pickup_points}</p>
+            )}
             {form.pickup_points.map((point, idx) => (
               <div
                 key={idx}
@@ -584,6 +587,11 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     color: 'var(--foreground)',
                   }}
                 />
+                {errors[`pickup_points.${idx}.name`] && (
+                  <p className="text-xs text-red-500">
+                    {errors[`pickup_points.${idx}.name`]}
+                  </p>
+                )}
                 <input
                   type="text"
                   value={point.address}
@@ -598,6 +606,11 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     color: 'var(--foreground)',
                   }}
                 />
+                {errors[`pickup_points.${idx}.address`] && (
+                  <p className="text-xs text-red-500">
+                    {errors[`pickup_points.${idx}.address`]}
+                  </p>
+                )}
                 <input
                   type="number"
                   value={point.departure_offset_minutes || ''}
@@ -647,6 +660,9 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
             >
               Dropoff Points
             </h3>
+            {errors.dropoff_points && (
+              <p className="text-xs text-red-500">{errors.dropoff_points}</p>
+            )}
             {form.dropoff_points.map((point, idx) => (
               <div
                 key={idx}
@@ -667,6 +683,11 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     color: 'var(--foreground)',
                   }}
                 />
+                {errors[`dropoff_points.${idx}.name`] && (
+                  <p className="text-xs text-red-500">
+                    {errors[`dropoff_points.${idx}.name`]}
+                  </p>
+                )}
                 <input
                   type="text"
                   value={point.address}
@@ -681,6 +702,11 @@ export const RouteFormDrawer: React.FC<RouteFormDrawerProps> = ({
                     color: 'var(--foreground)',
                   }}
                 />
+                {errors[`dropoff_points.${idx}.address`] && (
+                  <p className="text-xs text-red-500">
+                    {errors[`dropoff_points.${idx}.address`]}
+                  </p>
+                )}
                 <input
                   type="number"
                   value={point.departure_offset_minutes || ''}

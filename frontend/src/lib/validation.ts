@@ -120,12 +120,12 @@ export function validateCreateRoute(payload: CreateRoutePayload) {
 
   // origin validation
   if (!payload.origin || !between(payload.origin, 2, 100)) {
-    errors['origin'] = 'origin must be between 2 and 100 characters'
+    errors['origin'] = 'Origin must be between 2 and 100 characters'
   }
 
   // destination validation
   if (!payload.destination || !between(payload.destination, 2, 100)) {
-    errors['destination'] = 'destination must be between 2 and 100 characters'
+    errors['destination'] = 'Destination must be between 2 and 100 characters'
   }
 
   // Check origin !== destination
@@ -142,7 +142,7 @@ export function validateCreateRoute(payload: CreateRoutePayload) {
     payload.distance_km < 1 ||
     payload.distance_km > 5000
   ) {
-    errors['distance_km'] = 'distance_km must be between 1 and 5000'
+    errors['distance_km'] = 'Distance_km must be between 1 and 5000'
   }
 
   // estimated_minutes validation
@@ -152,7 +152,7 @@ export function validateCreateRoute(payload: CreateRoutePayload) {
     payload.estimated_minutes > 10080
   ) {
     errors['estimated_minutes'] =
-      'estimated_minutes must be between 10 and 10080'
+      'Estimated_minutes must be between 10 and 10080'
   }
 
   // pickup_points validation
