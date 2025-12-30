@@ -61,12 +61,12 @@ class AnalyticsRepository {
           generate_series(
             $1::date,
             ($2::date + interval '1 day' - interval '1 day'),
-            interval $3
+            '${interval}'::interval
           )::date as period_date
       ),
       booking_stats AS (
         SELECT
-          TO_CHAR(created_at, $4) as period,
+          TO_CHAR(created_at, $3) as period,
           COUNT(*) as total_bookings,
           COUNT(CASE WHEN status = 'confirmed' THEN 1 END) as confirmed_bookings,
           COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled_bookings,
@@ -76,17 +76,17 @@ class AnalyticsRepository {
         GROUP BY period
       )
       SELECT
-        TO_CHAR(ds.period_date, $4) as period,
+        TO_CHAR(ds.period_date, $3) as period,
         COALESCE(bs.total_bookings, 0) as total_bookings,
         COALESCE(bs.confirmed_bookings, 0) as confirmed_bookings,
         COALESCE(bs.cancelled_bookings, 0) as cancelled_bookings,
         COALESCE(bs.pending_bookings, 0) as pending_bookings
       FROM date_series ds
-      LEFT JOIN booking_stats bs ON TO_CHAR(ds.period_date, $4) = bs.period
+      LEFT JOIN booking_stats bs ON TO_CHAR(ds.period_date, $3) = bs.period
       ORDER BY ds.period_date ASC
     `;
 
-    const result = await pool.query(query, [fromDate, toDate, interval, dateFormat]);
+    const result = await pool.query(query, [fromDate, toDate, dateFormat]);
     return result.rows;
   }
 
@@ -170,16 +170,26 @@ class AnalyticsRepository {
    * Get total revenue with optional filters
    */
   async getTotalRevenue(fromDate = null, toDate = null, status = null) {
+    const params = [];
+    let paramIndex = 1;
+    
+    let statusCondition;
+    if (status) {
+      statusCondition = `status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    } else {
+      statusCondition = `status IN ('confirmed', 'completed')`;
+    }
+    
     let query = `
       SELECT 
         COALESCE(SUM(total_price), 0) as total_revenue,
         COUNT(*) as booking_count,
         COALESCE(AVG(total_price), 0) as average_booking_value
       FROM bookings
-      WHERE status IN ('confirmed', 'completed')
+      WHERE ${statusCondition}
     `;
-    const params = [];
-    let paramIndex = 1;
 
     if (fromDate) {
       query += ` AND created_at >= $${paramIndex}`;
@@ -191,11 +201,6 @@ class AnalyticsRepository {
       query += ` AND created_at <= $${paramIndex}`;
       params.push(toDate);
       paramIndex++;
-    }
-
-    if (status) {
-      query = query.replace("IN ('confirmed', 'completed')", `= $${paramIndex}`);
-      params.push(status);
     }
 
     const result = await pool.query(query, params);

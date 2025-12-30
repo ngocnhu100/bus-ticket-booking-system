@@ -11,7 +11,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { NavLink } from '@/components/NavLink'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import {
   Sidebar,
@@ -41,6 +41,7 @@ const menuItems = [
 export function AppSidebar() {
   const { open } = useSidebar()
   const location = useLocation()
+  const navigate = useNavigate()
 
   const isActive = (path: string) => {
     if (path === '/admin') {
@@ -53,14 +54,17 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <div className="px-4 py-6">
-          <div className="flex items-center gap-2">
+          <div 
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate('/')}
+          >
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <Bus className="h-6 w-6 text-primary-foreground" />
             </div>
             {open && (
               <div>
                 <h2 className="text-lg font-semibold text-sidebar-foreground">
-                  Logo
+                  BusGo
                 </h2>
                 <p className="text-xs text-sidebar-foreground/70">
                   Admin Panel
