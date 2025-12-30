@@ -503,10 +503,10 @@ const AdminBusManagement: React.FC = () => {
                         )}
                         <div>
                           <div className="text-sm font-medium text-foreground">
-                            {bus.name}
+                            {bus.model}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {bus.model} • {bus.plate_number}
+                            {bus.operator_name} • {bus.plate_number}
                           </div>
                         </div>
                       </div>
@@ -616,10 +616,17 @@ const AdminBusManagement: React.FC = () => {
                     <tr>
                       <td colSpan={7} className="bg-muted/50 px-4 py-4">
                         <div className="space-y-3">
-                          <h4 className="text-sm font-medium text-foreground">
-                            Bus Images (
-                            {bus.image_urls?.length || (bus.image_url ? 1 : 0)})
-                          </h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium text-foreground">
+                              Bus Images (
+                              {bus.image_urls?.length ||
+                                (bus.image_url ? 1 : 0)}
+                              )
+                            </h4>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              Bus ID: {bus.bus_id}
+                            </p>
+                          </div>
                           {bus.image_urls && bus.image_urls.length > 0 ? (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                               {bus.image_urls.map((url, index) => (

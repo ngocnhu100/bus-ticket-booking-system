@@ -313,6 +313,7 @@ class TripController {
             columns: seatMapData.columns,
             driver: seatMapData.driver,
             doors: seatMapData.doors,
+            layout_structure: seatMapData.layout_structure, // Add layout_structure
             seats: transformedSeats,
           },
           legend: {

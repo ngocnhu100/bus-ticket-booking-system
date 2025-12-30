@@ -477,7 +477,10 @@ const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                                 seats: filteredSeats,
                                 total_seats: filteredSeats.length,
                               })
-                              if (layoutData.currentFloor > newFloors) {
+                              if (
+                                layoutData.currentFloor &&
+                                layoutData.currentFloor > newFloors
+                              ) {
                                 setCurrentFloor(newFloors)
                               }
                               setWarningModal({

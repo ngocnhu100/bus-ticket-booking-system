@@ -153,6 +153,11 @@ class BusController {
         });
       }
 
+      // Convert 'inactive' status to 'maintenance' (normalize frontend status to valid DB values)
+      if (value.status === 'inactive') {
+        value.status = 'maintenance';
+      }
+
       let updatedBus;
       if (value.model || value.capacity !== undefined) {
         // Nếu thay model → cần lấy lại bus_model_id và kiểm tra capacity

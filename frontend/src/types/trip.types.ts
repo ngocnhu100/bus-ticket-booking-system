@@ -2,6 +2,17 @@
 // ADMIN ENTITY TYPES - For Management APIs
 // ============================================================================
 
+// Layout structure types for seat maps
+export type SeatItemType =
+  | string
+  | null
+  | { code: string; floor?: number; price?: number }
+
+export type LayoutRow = {
+  row: number
+  seats: SeatItemType[]
+}
+
 /**
  * RouteAdminData - Route information for admin management
  * Matches API:  /trips/routes
@@ -93,6 +104,9 @@ export interface SeatMapData {
   driver?: DriverPosition | null
   doors?: DoorPosition[]
   seats: Seat[]
+  layout_structure?: {
+    rows: LayoutRow[]
+  }
 }
 
 /**

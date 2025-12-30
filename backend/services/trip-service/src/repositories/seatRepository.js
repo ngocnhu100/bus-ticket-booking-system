@@ -150,6 +150,7 @@ class SeatRepository {
       columns: seatsPerRow,
       driver,
       doors,
+      layout_structure: layoutData,
       seats: transformedSeats,
     };
   }

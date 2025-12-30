@@ -12,7 +12,7 @@ class BusRepository {
       type = 'standard',
       capacity,
       amenities = [],
-      status = 'active',
+      status = 'maintenance',
       image_urls = [],
     } = busData;
 

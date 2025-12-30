@@ -18,7 +18,7 @@ const emptyForm: Omit<BusAdminData, 'bus_id' | 'created_at'> = {
   capacity: 20,
   amenities: [],
   image_urls: [],
-  status: 'active',
+  status: 'maintenance',
 }
 
 interface BusFormDrawerProps {
@@ -286,7 +286,7 @@ export const BusFormDrawer: React.FC<BusFormDrawerProps> = ({
       const generatedName = `${form.model} (${form.plate_number})`
       const formData = initialBus
         ? { ...form, name: generatedName }
-        : { ...form, name: generatedName, status: 'active' as const }
+        : { ...form, name: generatedName, status: 'maintenance' as const }
       await onSave(formData)
       // Refresh the table after successful form submission
       onRefresh?.()

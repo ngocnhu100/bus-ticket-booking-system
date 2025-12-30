@@ -3,7 +3,12 @@ import { AlertCircle } from 'lucide-react'
 import { Icon } from 'lucide-react'
 import { steeringWheel } from '@lucide/lab'
 import { Card } from '@/components/ui/card'
-import type { Seat, SeatMapData } from '@/types/trip.types'
+import type {
+  Seat,
+  SeatMapData,
+  SeatItemType,
+  LayoutRow,
+} from '@/types/trip.types'
 import { SeatItem } from './SeatItem'
 import { SeatLegend } from './SeatLegend'
 
@@ -57,36 +62,20 @@ export function SeatMap({
   // Use `selectedSeats` prop directly to avoid duplicated local state
   const [selectionError, setSelectionError] = useState<string>('')
 
-  // Organize seats by row for easier rendering
-  const seatsByRow = useMemo(() => {
-    // Safety check for seatMapData.seats
-    if (
-      !seatMapData ||
-      !seatMapData.seats ||
-      !Array.isArray(seatMapData.seats)
-    ) {
-      return []
-    }
-
-    const rows = new Map<number, Seat[]>()
-    seatMapData.seats.forEach((seat) => {
-      // Use seat.row (1-indexed) to organize into rows
-      const row = seat.row - 1 // Convert to 0-indexed for array
-      if (!rows.has(row)) {
-        rows.set(row, [])
-      }
-      rows.get(row)!.push(seat)
-    })
-
-    // Sort seats within each row by column
-    rows.forEach((seats) => {
-      seats.sort((a, b) => a.column - b.column)
-    })
-
-    // Return sorted rows
-    return Array.from(rows.entries())
-      .sort(([rowA], [rowB]) => rowA - rowB)
-      .map(([, seats]) => seats)
+  // Check if we have layout_structure and multiple floors
+  const hasMultipleFloors = useMemo(() => {
+    if (!seatMapData?.layout_structure?.rows) return false
+    const allSeats = seatMapData.layout_structure.rows.flatMap(
+      (row: LayoutRow) =>
+        row.seats.filter(
+          (
+            s: SeatItemType
+          ): s is { code: string; floor?: number; price?: number } =>
+            s !== null && typeof s === 'object' && 'floor' in s
+        )
+    )
+    const floorSet = new Set(allSeats.map((s) => s.floor))
+    return floorSet.size > 1
   }, [seatMapData])
 
   const handleSeatClick = (seat: Seat) => {
@@ -125,11 +114,6 @@ export function SeatMap({
     onSeatSelect?.(seat, !isCurrentlySelected)
   }
 
-  // Get row label (1, 2, 3, etc.)
-  const getRowLabel = (rowIndex: number) => {
-    return (rowIndex + 1).toString() // 1, 2, 3, etc.
-  }
-
   return (
     <div className={`w-full ${className}`}>
       <>
@@ -154,123 +138,412 @@ export function SeatMap({
           )}
 
           {/* Seat Grid */}
-          <div className="flex justify-center">
-            <div className="space-y-3">
-              {/* Driver Row */}
-              <div className="flex items-center gap-4">
-                {/* Driver Label */}
-                <div className="w-6 text-center">
-                  <Icon
-                    iconNode={steeringWheel}
-                    className="w-6 h-6 mx-auto"
-                    style={{ color: 'hsl(var(--foreground))' }}
-                  />
-                </div>
+          {!seatMapData?.layout_structure?.rows ? (
+            // Fallback for old format
+            <div className="flex justify-center">
+              <div className="space-y-3">Invalid seat map data format.</div>
+            </div>
+          ) : hasMultipleFloors ? (
+            // Two-floor layout - side by side
+            <div className="flex justify-center gap-8">
+              {/* Floor 1 (Left) */}
+              <div>
+                <h3 className="text-center text-sm font-semibold mb-4 text-muted-foreground">
+                  Lower floor
+                </h3>
+                <div className="space-y-3">
+                  {/* Driver Row */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-6 text-center">
+                      <Icon
+                        iconNode={steeringWheel}
+                        className="w-6 h-6 mx-auto"
+                        style={{ color: 'hsl(var(--foreground))' }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <div className="w-9 h-9"></div>
+                    </div>
+                  </div>
 
-                {/* Empty space for driver position */}
-                <div className="flex flex-wrap gap-2">
-                  <div className="w-9 h-9"></div>
+                  {seatMapData.layout_structure.rows.map(
+                    (layoutRow: LayoutRow, rowIndex: number) => {
+                      // Check if this row has floor 1 seats
+                      const hasFloor1 = layoutRow.seats.some(
+                        (s: SeatItemType) =>
+                          s !== null &&
+                          (typeof s === 'string' ||
+                            (typeof s === 'object' &&
+                              (!('floor' in s) || s.floor === 1)))
+                      )
+
+                      if (!hasFloor1) return null
+
+                      return (
+                        <div
+                          key={`floor1-row-${rowIndex}`}
+                          className="flex items-center gap-4"
+                        >
+                          <div className="w-6 text-center">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {layoutRow.row}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            {layoutRow.seats.map(
+                              (seatItem: SeatItemType, colIndex: number) => {
+                                if (seatItem === null) {
+                                  return (
+                                    <div
+                                      key={`floor1-empty-${rowIndex}-${colIndex}`}
+                                      className="w-9 h-9"
+                                    ></div>
+                                  )
+                                }
+
+                                // Skip if not floor 1
+                                if (
+                                  typeof seatItem === 'object' &&
+                                  'floor' in seatItem &&
+                                  seatItem.floor !== 1
+                                ) {
+                                  return null
+                                }
+
+                                // Get seat code
+                                const seatCode =
+                                  typeof seatItem === 'string'
+                                    ? seatItem
+                                    : seatItem.code
+
+                                // Find corresponding seat object
+                                const seat = seatMapData.seats.find(
+                                  (s: Seat) => s.seat_code === seatCode
+                                )
+
+                                if (!seat) {
+                                  return (
+                                    <div
+                                      key={`floor1-notfound-${rowIndex}-${colIndex}`}
+                                      className="w-9 h-9"
+                                    ></div>
+                                  )
+                                }
+
+                                const userLock = userLocks.find(
+                                  (lock) => lock.seat_code === seat.seat_code
+                                )
+                                const isLockExpired = userLock
+                                  ? new Date(userLock.expires_at).getTime() <=
+                                    new Date().getTime()
+                                  : false
+                                const validUserLock =
+                                  userLock && !isLockExpired
+                                    ? userLock
+                                    : undefined
+                                const isLockedByUser =
+                                  userLocks.some(
+                                    (lock) =>
+                                      lock.seat_code === seat.seat_code &&
+                                      new Date(lock.expires_at).getTime() >
+                                        new Date().getTime()
+                                  ) ||
+                                  (currentUserId &&
+                                    seat.locked_by === currentUserId)
+                                const isCurrentlySelected = !!(
+                                  seat.seat_id &&
+                                  selectedSeats.includes(seat.seat_id) &&
+                                  seat.locked_by !== 'booking'
+                                )
+                                const canToggleSeat =
+                                  seat.locked_by !== 'booking' &&
+                                  seat.status !== 'occupied' &&
+                                  (seat.status === 'available' ||
+                                    isLockedByUser ||
+                                    isCurrentlySelected)
+
+                                return (
+                                  <SeatItem
+                                    key={seat.seat_id}
+                                    seat={seat}
+                                    isSelected={isCurrentlySelected}
+                                    onClick={() => handleSeatClick(seat)}
+                                    disabled={
+                                      readOnly ||
+                                      operationInProgress ||
+                                      !canToggleSeat
+                                    }
+                                    userLock={validUserLock}
+                                    onLockExpire={onLockExpire}
+                                    currentUserId={currentUserId}
+                                  />
+                                )
+                              }
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                  )}
                 </div>
               </div>
 
-              {seatsByRow.map((rowSeats, rowIndex) => (
-                <div key={rowIndex} className="flex items-center gap-4">
-                  {/* Row Label */}
-                  <div className="w-6 text-center">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {getRowLabel(rowIndex)}
-                    </span>
+              {/* Floor 2 (Right) */}
+              <div>
+                <h3 className="text-center text-sm font-semibold mb-4 text-muted-foreground">
+                  Upper floor
+                </h3>
+                <div className="space-y-3">
+                  {/* Driver Row */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-6 text-center">
+                      <Icon
+                        iconNode={steeringWheel}
+                        className="w-6 h-6 mx-auto"
+                        style={{ color: 'hsl(var(--foreground))' }}
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <div className="w-9 h-9"></div>
+                    </div>
                   </div>
 
-                  {/* Seats in Row */}
-                  <div className="flex gap-2">
-                    {/* Create a grid with positions 1 to maxColumns */}
-                    {Array.from(
-                      { length: seatMapData.columns },
-                      (_, colIndex) => {
-                        const column = colIndex + 1 // 1-indexed
-                        const seat = rowSeats.find((s) => s.column === column)
+                  {seatMapData.layout_structure.rows.map(
+                    (layoutRow: LayoutRow, rowIndex: number) => {
+                      // Check if this row has floor 2 seats
+                      const hasFloor2 = layoutRow.seats.some(
+                        (s: SeatItemType) =>
+                          s !== null &&
+                          typeof s === 'object' &&
+                          'floor' in s &&
+                          s.floor === 2
+                      )
 
-                        if (seat) {
-                          const userLock = userLocks.find(
-                            (lock) => lock.seat_code === seat.seat_code
-                          )
+                      if (!hasFloor2) return null
 
-                          // Check if the lock is expired
-                          const isLockExpired = userLock
-                            ? new Date(userLock.expires_at).getTime() <=
-                              new Date().getTime()
-                            : false
+                      return (
+                        <div
+                          key={`floor2-row-${rowIndex}`}
+                          className="flex items-center gap-4"
+                        >
+                          <div className="w-6 text-center">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                              {layoutRow.row}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            {layoutRow.seats.map(
+                              (seatItem: SeatItemType, colIndex: number) => {
+                                if (seatItem === null) {
+                                  return (
+                                    <div
+                                      key={`floor2-empty-${rowIndex}-${colIndex}`}
+                                      className="w-9 h-9"
+                                    ></div>
+                                  )
+                                }
 
-                          // Only pass userLock if it hasn't expired
-                          const validUserLock =
-                            userLock && !isLockExpired ? userLock : undefined
+                                // Skip if not floor 2
+                                if (
+                                  typeof seatItem !== 'object' ||
+                                  !('floor' in seatItem) ||
+                                  seatItem.floor !== 2
+                                ) {
+                                  return null
+                                }
 
-                          // Check if seat is locked by current user:
-                          // 1. Primary: Check if seat_code exists in userLocks array AND lock hasn't expired
-                          // 2. Fallback: Check if seat.locked_by matches currentUserId
-                          const isLockedByUser =
-                            userLocks.some(
-                              (lock) =>
-                                lock.seat_code === seat.seat_code &&
-                                new Date(lock.expires_at).getTime() >
-                                  new Date().getTime()
-                            ) ||
-                            (currentUserId && seat.locked_by === currentUserId)
-                          const isCurrentlySelected = !!(
-                            seat.seat_id &&
-                            selectedSeats.includes(seat.seat_id) &&
-                            seat.locked_by !== 'booking'
-                          )
-                          // A seat should be clickable if:
-                          // - It's available, OR
-                          // - It's locked by the current user, OR
-                          // - It's currently selected by the user (allows deselection)
-                          // But NOT if it's locked by booking OR occupied
-                          const canToggleSeat =
-                            seat.locked_by !== 'booking' &&
-                            seat.status !== 'occupied' &&
-                            (seat.status === 'available' ||
-                              isLockedByUser ||
-                              isCurrentlySelected)
-                          return (
-                            <SeatItem
-                              key={seat.seat_id}
-                              seat={seat}
-                              isSelected={isCurrentlySelected}
-                              onClick={() => handleSeatClick(seat)}
-                              disabled={
-                                readOnly ||
-                                operationInProgress ||
-                                !canToggleSeat
+                                const seatCode = seatItem.code
+                                const seat = seatMapData.seats.find(
+                                  (s: Seat) => s.seat_code === seatCode
+                                )
+
+                                if (!seat) {
+                                  return (
+                                    <div
+                                      key={`floor2-notfound-${rowIndex}-${colIndex}`}
+                                      className="w-9 h-9"
+                                    ></div>
+                                  )
+                                }
+
+                                const userLock = userLocks.find(
+                                  (lock) => lock.seat_code === seat.seat_code
+                                )
+                                const isLockExpired = userLock
+                                  ? new Date(userLock.expires_at).getTime() <=
+                                    new Date().getTime()
+                                  : false
+                                const validUserLock =
+                                  userLock && !isLockExpired
+                                    ? userLock
+                                    : undefined
+                                const isLockedByUser =
+                                  userLocks.some(
+                                    (lock) =>
+                                      lock.seat_code === seat.seat_code &&
+                                      new Date(lock.expires_at).getTime() >
+                                        new Date().getTime()
+                                  ) ||
+                                  (currentUserId &&
+                                    seat.locked_by === currentUserId)
+                                const isCurrentlySelected = !!(
+                                  seat.seat_id &&
+                                  selectedSeats.includes(seat.seat_id) &&
+                                  seat.locked_by !== 'booking'
+                                )
+                                const canToggleSeat =
+                                  seat.locked_by !== 'booking' &&
+                                  seat.status !== 'occupied' &&
+                                  (seat.status === 'available' ||
+                                    isLockedByUser ||
+                                    isCurrentlySelected)
+
+                                return (
+                                  <SeatItem
+                                    key={seat.seat_id}
+                                    seat={seat}
+                                    isSelected={isCurrentlySelected}
+                                    onClick={() => handleSeatClick(seat)}
+                                    disabled={
+                                      readOnly ||
+                                      operationInProgress ||
+                                      !canToggleSeat
+                                    }
+                                    userLock={validUserLock}
+                                    onLockExpire={onLockExpire}
+                                    currentUserId={currentUserId}
+                                  />
+                                )
                               }
-                              userLock={validUserLock}
-                              onLockExpire={onLockExpire}
-                              currentUserId={currentUserId}
-                            />
-                          )
-                        } else {
-                          // Empty space for missing seat
-                          return (
-                            <div
-                              key={`empty-${rowIndex}-${column}`}
-                              className="w-9 h-9"
-                            ></div>
-                          )
-                        }
-                      }
-                    )}
+                            )}
+                          </div>
+                        </div>
+                      )
+                    }
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Single-floor layout - use layout_structure directly
+            <div className="flex justify-center">
+              <div className="space-y-3">
+                {/* Driver Row */}
+                <div className="flex items-center gap-4">
+                  <div className="w-6 text-center">
+                    <Icon
+                      iconNode={steeringWheel}
+                      className="w-6 h-6 mx-auto"
+                      style={{ color: 'hsl(var(--foreground))' }}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="w-9 h-9"></div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* Legend */}
-          <div className="mt-6">
-            <SeatLegend />
-          </div>
+                {seatMapData.layout_structure.rows.map(
+                  (layoutRow: LayoutRow, rowIndex: number) => (
+                    <div
+                      key={`row-${rowIndex}`}
+                      className="flex items-center gap-4"
+                    >
+                      <div className="w-6 text-center">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {layoutRow.row}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {layoutRow.seats.map(
+                          (seatItem: SeatItemType, colIndex: number) => {
+                            if (seatItem === null) {
+                              return (
+                                <div
+                                  key={`empty-${rowIndex}-${colIndex}`}
+                                  className="w-9 h-9"
+                                ></div>
+                              )
+                            }
+
+                            const seatCode =
+                              typeof seatItem === 'string'
+                                ? seatItem
+                                : seatItem.code
+
+                            const seat = seatMapData.seats.find(
+                              (s: Seat) => s.seat_code === seatCode
+                            )
+
+                            if (!seat) {
+                              return (
+                                <div
+                                  key={`notfound-${rowIndex}-${colIndex}`}
+                                  className="w-9 h-9"
+                                ></div>
+                              )
+                            }
+
+                            const userLock = userLocks.find(
+                              (lock) => lock.seat_code === seat.seat_code
+                            )
+                            const isLockExpired = userLock
+                              ? new Date(userLock.expires_at).getTime() <=
+                                new Date().getTime()
+                              : false
+                            const validUserLock =
+                              userLock && !isLockExpired ? userLock : undefined
+                            const isLockedByUser =
+                              userLocks.some(
+                                (lock) =>
+                                  lock.seat_code === seat.seat_code &&
+                                  new Date(lock.expires_at).getTime() >
+                                    new Date().getTime()
+                              ) ||
+                              (currentUserId &&
+                                seat.locked_by === currentUserId)
+                            const isCurrentlySelected = !!(
+                              seat.seat_id &&
+                              selectedSeats.includes(seat.seat_id) &&
+                              seat.locked_by !== 'booking'
+                            )
+                            const canToggleSeat =
+                              seat.locked_by !== 'booking' &&
+                              seat.status !== 'occupied' &&
+                              (seat.status === 'available' ||
+                                isLockedByUser ||
+                                isCurrentlySelected)
+
+                            return (
+                              <SeatItem
+                                key={seat.seat_id}
+                                seat={seat}
+                                isSelected={isCurrentlySelected}
+                                onClick={() => handleSeatClick(seat)}
+                                disabled={
+                                  readOnly ||
+                                  operationInProgress ||
+                                  !canToggleSeat
+                                }
+                                userLock={validUserLock}
+                                onLockExpire={onLockExpire}
+                                currentUserId={currentUserId}
+                              />
+                            )
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          )}
         </Card>
+
+        {/* Legend */}
+        <div className="mt-6">
+          <SeatLegend />
+        </div>
 
         {/* Warning if read-only */}
         {readOnly && (
