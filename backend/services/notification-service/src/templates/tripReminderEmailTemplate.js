@@ -30,6 +30,8 @@ async function generateTripReminderTemplate(data, hoursUntilDeparture) {
     passengers = [],
     operatorName = 'Bus Operator',
     busModel = 'Standard Bus',
+    pickupLocation = null,
+    dropoffLocation = null,
   } = data;
 
   const reminderText = hoursUntilDeparture === 1 ? '1 hour' : `${hoursUntilDeparture} hours`;
@@ -244,6 +246,46 @@ async function generateTripReminderTemplate(data, hoursUntilDeparture) {
             font-weight: 600;
             margin-top: 5px;
         }
+        .location-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #28a745;
+        }
+        .location-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        .location-item {
+            background-color: white;
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            border-left: 3px solid #28a745;
+            display: flex;
+            align-items: center;
+        }
+        .location-item:last-child {
+            margin-bottom: 0;
+        }
+        .location-icon {
+            margin-right: 10px;
+            color: #28a745;
+            font-size: 16px;
+        }
+        .location-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .location-address {
+            color: #666;
+            margin-top: 2px;
+            font-size: 13px;
+        }
         .cta-buttons {
             display: flex;
             gap: 16px;
@@ -431,25 +473,6 @@ async function generateTripReminderTemplate(data, hoursUntilDeparture) {
                 </div>
             </div>
 
-            <!-- Pickup & Drop-off Information (only show if data exists) -->
-            ${
-              data &&
-              ((data.pickupPoint && data.pickupPoint !== 'TBD') ||
-                (data.dropoffPoint && data.dropoffPoint !== 'TBD'))
-                ? `
-            <div class="section-title">Pickup & Drop-off Information</div>
-            <div class="info-row">
-                <div class="info-label">Pickup Point:</div>
-                <div class="info-value">${data.pickupPoint || 'TBD'}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Drop-off Point:</div>
-                <div class="info-value">${data.dropoffPoint || 'TBD'}</div>
-            </div>
-            `
-                : ''
-            }
-
             <!-- Contact Information -->
             <div class="section-title">Contact Information</div>
             <div class="info-row">
@@ -461,6 +484,43 @@ async function generateTripReminderTemplate(data, hoursUntilDeparture) {
                 <div class="info-value">${customerPhone || 'N/A'}</div>
             </div>
 
+
+            <!-- Pickup/Dropoff Information -->
+            ${
+              pickupLocation || dropoffLocation
+                ? `
+            <div class="section-title">Pickup & Dropoff Locations</div>
+            <div class="location-section">
+                ${
+                  pickupLocation
+                    ? `
+                <div class="location-item">
+                    <div class="location-icon">📍</div>
+                    <div>
+                        <div class="location-name">${pickupLocation.name}</div>
+                        ${pickupLocation.address ? `<div class="location-address">${pickupLocation.address}</div>` : ''}
+                    </div>
+                </div>
+                `
+                    : ''
+                }
+                ${
+                  dropoffLocation
+                    ? `
+                <div class="location-item">
+                    <div class="location-icon">📍</div>
+                    <div>
+                        <div class="location-name">${dropoffLocation.name}</div>
+                        ${dropoffLocation.address ? `<div class="location-address">${dropoffLocation.address}</div>` : ''}
+                    </div>
+                </div>
+                `
+                    : ''
+                }
+            </div>
+            `
+                : ''
+            }
 
             <!-- Passenger Information -->
             <div class="section-title">Boarding Information</div>

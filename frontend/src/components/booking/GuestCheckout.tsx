@@ -33,7 +33,8 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
 }) => {
   const { user } = useAuth()
   // const navigate = useNavigate()
-  const { selectedTrip } = useBookingStore()
+  const { selectedTrip, selectedPickupPoint, selectedDropoffPoint } =
+    useBookingStore()
 
   const selectedSeats = propSeats ?? []
   const [contactEmail, setContactEmail] = React.useState(user?.email || '')
@@ -125,6 +126,8 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
           passengers: passengers,
           contactEmail: contactEmail.trim(),
           contactPhone: contactPhone.trim(),
+          pickupPointId: selectedPickupPoint?.point_id,
+          dropoffPointId: selectedDropoffPoint?.point_id,
           isGuestCheckout: !user,
         }
         const response = await createBooking(bookingData)
@@ -432,7 +435,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
               </div>
               <div className="mb-2 text-sm text-gray-700">
                 <b>Selected Payment Method:</b>{' '}
-                {selectedPaymentMethod.toUpperCase() || '(NOT SELECTED)'}
+                {selectedPaymentMethod?.toUpperCase() || '(NOT SELECTED)'}
               </div>
               <button
                 type="button"

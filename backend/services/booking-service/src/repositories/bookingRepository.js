@@ -84,8 +84,10 @@ class BookingRepository {
         total_price,
         currency,
         payment_status,
-        is_guest_checkout
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        is_guest_checkout,
+        pickup_point_id,
+        dropoff_point_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `;
 
@@ -107,6 +109,8 @@ class BookingRepository {
       bookingData.currency || 'VND',
       'unpaid',
       isGuestFlag,
+      bookingData.pickupPointId || null,
+      bookingData.dropoffPointId || null,
     ];
     console.log('[BookingRepository] SQL values:', values);
     console.log('[BookingRepository] user_id will be:', sanitizedUserId);
@@ -531,54 +535,6 @@ class BookingRepository {
   }
 
   /**
-   * Find upcoming confirmed bookings within a time window
-   * @param {Date} startTime - Start of time window
-   * @param {Date} endTime - End of time window
-   * @returns {Promise<Array>} Upcoming bookings
-   */
-  async findUpcomingTrips(startTime, endTime) {
-    const query = `
-      SELECT
-        b.booking_id,
-        b.booking_reference,
-        b.trip_id,
-        b.user_id,
-        b.contact_email,
-        b.contact_phone,
-        b.status,
-        b.payment_status,
-        b.total_price,
-        b.currency,
-        t.departure_time,
-        u.preferences
-      FROM bookings b
-      INNER JOIN trips t ON b.trip_id = t.trip_id
-      LEFT JOIN users u ON b.user_id = u.user_id
-      WHERE b.status = 'confirmed'
-      AND b.payment_status = 'paid'
-      AND t.departure_time BETWEEN $1 AND $2
-      AND b.contact_phone IS NOT NULL
-      AND b.contact_phone != ''
-    `;
-
-    const result = await db.query(query, [startTime, endTime]);
-    return result.rows.map((row) => ({
-      booking_id: row.booking_id,
-      booking_reference: row.booking_reference,
-      trip_id: row.trip_id,
-      user_id: row.user_id,
-      contact_email: row.contact_email,
-      contact_phone: row.contact_phone,
-      status: row.status,
-      payment_status: row.payment_status,
-      total_price: row.total_price,
-      currency: row.currency,
-      departure_time: row.departure_time,
-      preferences: row.preferences || {},
-    }));
-  }
-
-  /**
    * Update booking with modification fee
    * @param {string} bookingId - Booking UUID
    * @param {object} data - Modification fee data
@@ -804,6 +760,151 @@ class BookingRepository {
     });
 
     return result.rows[0] ? mapToBooking(result.rows[0]) : null;
+  }
+
+  /**
+   * Get trip by ID
+   * @param {string} tripId - Trip UUID
+   * @returns {Promise<object|null>} Trip details
+   */
+  async getTripById(tripId) {
+    try {
+      const query = `
+        SELECT
+          t.*,
+          r.origin as route_origin,
+          r.destination as route_destination,
+          o.name as operator_name,
+          o.contact_phone as operator_phone,
+          o.contact_email as operator_email,
+          bm.name as bus_model,
+          b.seat_capacity as bus_capacity
+        FROM trips t
+        LEFT JOIN routes r ON t.route_id = r.route_id
+        LEFT JOIN buses b ON t.bus_id = b.bus_id
+        LEFT JOIN operators o ON b.operator_id = o.operator_id
+        LEFT JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
+        WHERE t.trip_id = $1 AND t.status IN ('active', 'scheduled')
+      `;
+      const result = await db.query(query, [tripId]);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      const row = result.rows[0];
+
+      // Transform to match the expected trip structure
+      return {
+        trip_id: row.trip_id,
+        route_id: row.route_id,
+        bus_id: row.bus_id,
+        operator_id: row.operator_id,
+        route: {
+          origin: row.route_origin,
+          destination: row.route_destination,
+        },
+        operator: {
+          name: row.operator_name,
+          phone: row.operator_phone,
+          email: row.operator_email,
+        },
+        bus: {
+          model: row.bus_model,
+          capacity: row.bus_capacity,
+        },
+        schedule: {
+          departure_time: row.departure_time,
+          arrival_time: row.arrival_time,
+        },
+        pricing: {
+          base_price: row.base_price,
+          service_fee: row.service_fee,
+        },
+        policies: row.policies,
+        status: row.status,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      };
+    } catch (error) {
+      console.error('Error fetching trip:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Find upcoming trips for reminder notifications
+   * @param {Date} startTime - Start of time window
+   * @param {Date} endTime - End of time window
+   * @returns {Promise<Array>} Array of upcoming bookings
+   */
+  async findUpcomingTrips(startTime, endTime) {
+    try {
+      const query = `
+        SELECT
+          b.booking_id,
+          b.booking_reference,
+          b.contact_email,
+          b.contact_phone,
+          b.status,
+          b.payment_status,
+          b.total_price,
+          b.currency,
+          b.pickup_point_id,
+          b.dropoff_point_id,
+          u.preferences,
+          t.trip_id,
+          t.departure_time,
+          t.arrival_time,
+          r.origin as route_origin,
+          r.destination as route_destination,
+          o.name as operator_name,
+          o.contact_phone as operator_phone,
+          o.contact_email as operator_email,
+          bm.name as bus_model,
+          bm.total_seats as bus_capacity
+        FROM bookings b
+        JOIN trips t ON b.trip_id = t.trip_id
+        JOIN routes r ON t.route_id = r.route_id
+        LEFT JOIN buses bus ON t.bus_id = bus.bus_id
+        LEFT JOIN operators o ON bus.operator_id = o.operator_id
+        LEFT JOIN bus_models bm ON bus.bus_model_id = bm.bus_model_id
+        LEFT JOIN users u ON b.user_id = u.user_id
+        WHERE b.status = 'confirmed'
+          AND b.payment_status = 'paid'
+          AND t.status = 'scheduled'
+          AND t.departure_time >= $1
+          AND t.departure_time <= $2
+        ORDER BY t.departure_time ASC
+      `;
+
+      const result = await db.query(query, [startTime, endTime]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error finding upcoming trips:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get route point by ID
+   * @param {string} pointId - Route point ID
+   * @returns {Promise<object|null>} Route point details
+   */
+  async getRoutePointById(pointId) {
+    try {
+      const query = 'SELECT * FROM route_points WHERE point_id = $1';
+      const result = await db.query(query, [pointId]);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error fetching route point:', error.message);
+      return null;
+    }
   }
 }
 

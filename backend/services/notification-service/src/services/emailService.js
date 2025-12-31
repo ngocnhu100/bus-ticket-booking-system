@@ -6,6 +6,7 @@ const { generateTripReminderTemplate } = require('../templates/tripReminderEmail
 const { generateTripUpdateTemplate } = require('../templates/tripUpdateEmailTemplate');
 const { generateTripDelayTemplate } = require('../templates/tripDelayEmailTemplate');
 const { generateRefundEmailTemplate } = require('../templates/refundEmailTemplate');
+const { generateBookingExpirationTemplate } = require('../templates/bookingExpirationTemplate');
 const { generateBookingCancellationTemplate } = require('../templates/bookingCancellationTemplate');
 
 // Only set API key if it's provided
@@ -277,6 +278,8 @@ class EmailService {
         bookingDetailsUrl: bookingData.bookingDetailsUrl,
         cancellationPolicy: bookingData.cancellationPolicy,
         operatorContact: bookingData.operatorContact,
+        pickupPoint: bookingData.tripDetails?.pickupPoint,
+        dropoffPoint: bookingData.tripDetails?.dropoffPoint,
       });
 
       const msg = {
@@ -498,9 +501,10 @@ class EmailService {
     }
 
     // Use specific template for delay notifications
-    const htmlContent = updateType === 'delay'
-      ? generateTripDelayTemplate(updateData)
-      : generateTripUpdateTemplate(updateData);
+    const htmlContent =
+      updateType === 'delay'
+        ? generateTripDelayTemplate(updateData)
+        : generateTripUpdateTemplate(updateData);
 
     const msg = {
       to: email,
@@ -646,6 +650,59 @@ class EmailService {
       console.error('⚠️ Error sending booking cancellation email:', error);
       console.error('⚠️ SendGrid response:', error.response?.body || error.message);
       throw new Error('Failed to send booking cancellation email');
+    }
+  }
+
+  async sendBookingExpirationEmail(email, expirationData) {
+    if (!expirationData || typeof expirationData !== 'object') {
+      throw new Error('Invalid expiration data provided');
+    }
+
+    const { bookingReference, expirationTime, trip } = expirationData;
+
+    if (!bookingReference) {
+      throw new Error('Booking reference is required for expiration email');
+    }
+
+    const template = generateBookingExpirationTemplate({
+      bookingReference,
+      expirationTime,
+      trip,
+      customerEmail: email,
+      contactEmail: process.env.EMAIL_FROM || 'support@quad-n.me',
+      contactPhone: '+84-1800-TICKET',
+    });
+
+    // Check if SendGrid is configured
+    if (!process.env.SENDGRID_API_KEY) {
+      console.log(`📧 [DEV MODE] Booking expiration email would be sent to ${email}`);
+      console.log(`📧 [DEV MODE] Subject: ${template.subject}`);
+      console.log(`📧 [DEV MODE] Booking: ${bookingReference}`);
+      return { success: true, mode: 'development' };
+    }
+
+    const msg = {
+      personalizations: [
+        {
+          to: [{ email: email }],
+        },
+      ],
+      from: { email: DEFAULT_EMAIL_FROM },
+      subject: template.subject,
+      content: [
+        { type: 'text/html', value: template.html },
+        { type: 'text/plain', value: template.text },
+      ],
+    };
+
+    try {
+      await sgMail.send(msg);
+      console.log(`📧 Booking expiration email sent to ${email} for booking ${bookingReference}`);
+      return { success: true };
+    } catch (error) {
+      console.error('⚠️ Error sending booking expiration email:', error);
+      console.error('⚠️ SendGrid response:', error.response?.body || error.message);
+      throw new Error('Failed to send booking expiration email');
     }
   }
 }

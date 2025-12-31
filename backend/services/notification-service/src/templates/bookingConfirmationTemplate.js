@@ -20,6 +20,8 @@ const generateBookingConfirmationTemplate = (bookingData) => {
     bookingDetailsUrl,
     cancellationPolicy,
     operatorContact,
+    pickupPoint,
+    dropoffPoint,
   } = bookingData;
 
   // Format currency
@@ -418,11 +420,11 @@ const generateBookingConfirmationTemplate = (bookingData) => {
             <div class="section-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#667eea"/></svg> Pickup & Drop-off Information</div>
             <div class="info-row">
                 <div class="info-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 6px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#666"/></svg> Pickup Point:</div>
-                <div class="info-value">${tripDetails.pickupPoint || 'TBD'}</div>
+                <div class="info-value">${pickupPoint?.name || 'TBD'}${pickupPoint?.address ? ` - ${pickupPoint.address}` : ''}</div>
             </div>
             <div class="info-row">
                 <div class="info-label"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 6px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#666"/></svg> Drop-off Point:</div>
-                <div class="info-value">${tripDetails.dropoffPoint || 'TBD'}</div>
+                <div class="info-value">${dropoffPoint?.name || 'TBD'}${dropoffPoint?.address ? ` - ${dropoffPoint.address}` : ''}</div>
             </div>
 
             <!-- Passengers Section -->

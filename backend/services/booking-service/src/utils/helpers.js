@@ -112,6 +112,8 @@ function mapToBooking(row) {
     locked_until: row.locked_until,
     is_guest_checkout: row.is_guest_checkout === true || row.is_guest_checkout === 1,
     has_rating: row.has_rating === true || row.has_rating === 1,
+    pickup_point_id: row.pickup_point_id,
+    dropoff_point_id: row.dropoff_point_id,
     trip_details: row.origin
       ? {
           route: {

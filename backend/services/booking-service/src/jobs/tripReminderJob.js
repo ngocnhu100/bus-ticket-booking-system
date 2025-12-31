@@ -135,16 +135,32 @@ class TripReminderJob {
       // Get passengers for seat information
       const passengers = await passengerRepository.findByBookingId(booking.booking_id);
 
-      // Prepare reminder data
-      // TODO: Pickup/Dropoff points - extract from booking data
-      const firstPickupPoint =
-        tripDetails.pickup_points && tripDetails.pickup_points.length > 0
-          ? tripDetails.pickup_points[0].name
-          : 'TBD';
-      const lastDropoffPoint =
-        tripDetails.dropoff_points && tripDetails.dropoff_points.length > 0
-          ? tripDetails.dropoff_points[tripDetails.dropoff_points.length - 1].name
-          : 'TBD';
+      // Get selected pickup and dropoff points
+      let pickupPoint = null;
+      let dropoffPoint = null;
+
+      console.log(`🔍 Checking pickup/dropoff for booking ${booking.booking_reference}:`, {
+        pickup_point_id: booking.pickup_point_id,
+        dropoff_point_id: booking.dropoff_point_id,
+      });
+
+      if (booking.pickup_point_id) {
+        try {
+          pickupPoint = await this.getRoutePointById(booking.pickup_point_id);
+          console.log(`📍 Pickup point fetched:`, pickupPoint);
+        } catch (error) {
+          console.warn('Failed to fetch pickup point:', error.message);
+        }
+      }
+
+      if (booking.dropoff_point_id) {
+        try {
+          dropoffPoint = await this.getRoutePointById(booking.dropoff_point_id);
+          console.log(`📍 Dropoff point fetched:`, dropoffPoint);
+        } catch (error) {
+          console.warn('Failed to fetch dropoff point:', error.message);
+        }
+      }
 
       const reminderData = {
         bookingReference: booking.booking_reference,
@@ -171,13 +187,33 @@ class TripReminderJob {
         })),
         operatorName: tripDetails.operator?.name || 'Bus Operator',
         busModel: tripDetails.bus?.model || 'Standard Bus',
-        // Pickup and dropoff points from trip details
-        pickupPoint: firstPickupPoint,
-        dropoffPoint: lastDropoffPoint,
+        // Pickup and dropoff points from booking selection
+        pickupLocation: pickupPoint
+          ? {
+              name: pickupPoint.name,
+              address: pickupPoint.address,
+            }
+          : null,
+        dropoffLocation: dropoffPoint
+          ? {
+              name: dropoffPoint.name,
+              address: dropoffPoint.address,
+            }
+          : null,
       };
+
+      // Debug log for pickup/dropoff data
+      console.log(`📍 Trip reminder data for booking ${booking.booking_reference}:`, {
+        pickupLocation: reminderData.pickupLocation,
+        dropoffLocation: reminderData.dropoffLocation,
+        departureTime: reminderData.departureTime,
+        hoursUntilDeparture,
+      });
 
       // Extract user preferences (with defaults for guest bookings)
       const userPreferences = booking.preferences || {};
+      console.log(`🔧 User preferences:`, JSON.stringify(userPreferences, null, 2));
+
       const notificationPrefs = userPreferences.notifications || {
         tripReminders: { email: true, sms: false },
       };
@@ -277,6 +313,15 @@ class TripReminderJob {
       console.error('Error fetching trip details:', error.message);
       return null;
     }
+  }
+
+  /**
+   * Get route point by ID
+   * @param {string} pointId - Route point ID
+   * @returns {Promise<object|null>} Route point details
+   */
+  async getRoutePointById(pointId) {
+    return await bookingRepository.getRoutePointById(pointId);
   }
 }
 

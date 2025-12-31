@@ -223,7 +223,22 @@ app.post('/send-email', async (req, res) => {
         }
         console.log('📧 Calling sendBookingCancellationEmail with data:', data);
         await emailService.sendBookingCancellationEmail(to, data);
-        console.log('📧 Booking cancellation email sent successfully');
+        break;
+      }
+
+      case 'booking-expiration': {
+        const { data } = req.body;
+        if (!data) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'VAL_001',
+              message: 'data required for booking expiration emails',
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+        await emailService.sendBookingExpirationEmail(to, data);
         break;
       }
 

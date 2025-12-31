@@ -44,13 +44,9 @@ const createBookingSchema = Joi.object({
             'string.pattern.base': 'Document ID must be 9-12 digits',
           }),
 
-        email: Joi.string()
-          .email()
-          .optional()
-          .allow(null, '')
-          .messages({
-            'string.email': 'Invalid email format',
-          }),
+        email: Joi.string().email().optional().allow(null, '').messages({
+          'string.email': 'Invalid email format',
+        }),
 
         seatCode: Joi.string()
           .pattern(/^((VIP\d{1,2}[A-Z])|([A-Z]\d{1,2}|\d{1,2}[A-Z]))$/)
@@ -90,6 +86,14 @@ const createBookingSchema = Joi.object({
       'string.pattern.base': 'Invalid Vietnamese phone number format',
       'any.required': 'Contact phone is required',
     }),
+
+  pickupPointId: Joi.string().uuid().optional().messages({
+    'string.guid': 'Invalid pickup point ID format',
+  }),
+
+  dropoffPointId: Joi.string().uuid().optional().messages({
+    'string.guid': 'Invalid dropoff point ID format',
+  }),
 
   isGuestCheckout: Joi.boolean().optional().default(false),
 })

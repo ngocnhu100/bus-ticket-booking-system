@@ -15,6 +15,8 @@ export interface CreateBookingRequest {
   passengers: PassengerInfo[]
   contactEmail: string
   contactPhone: string
+  pickupPointId?: string
+  dropoffPointId?: string
   isGuestCheckout?: boolean
 }
 

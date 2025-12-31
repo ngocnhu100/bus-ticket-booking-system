@@ -27,7 +27,8 @@ class BookingService {
    * @returns {Promise<object>} Created booking with passengers
    */
   async createBooking(bookingData, userId = null) {
-    const { tripId, seats, passengers, contactEmail, contactPhone } = bookingData;
+    const { tripId, seats, passengers, contactEmail, contactPhone, pickupPointId, dropoffPointId } =
+      bookingData;
 
     // 1. Validate trip exists and get pricing
     const trip = await this.getTripById(tripId);
@@ -104,6 +105,8 @@ class BookingService {
       totalPrice: totalPrice,
       currency: 'VND',
       isGuestCheckout: userId == null,
+      pickupPointId,
+      dropoffPointId,
     });
 
     // 6. Create passenger records with validated price
@@ -996,7 +999,7 @@ class BookingService {
 
       await axios.post(`${notificationServiceUrl}/send-email`, {
         to: data.booking.contact_email,
-        template: 'booking-expiration',
+        type: 'booking-expiration',
         data: {
           bookingReference: data.booking.booking_reference,
           expirationTime: data.booking.locked_until,
@@ -1067,6 +1070,15 @@ class BookingService {
   }
 
   /**
+   * Get route point by ID
+   * @param {string} pointId - Route point ID
+   * @returns {Promise<object|null>} Route point details
+   */
+  async getRoutePointById(pointId) {
+    return await bookingRepository.getRoutePointById(pointId);
+  }
+
+  /**
    * Send comprehensive booking confirmation email with all details
    * @param {object} booking - Booking object with payment info
    * @param {object} paymentData - Payment data
@@ -1083,11 +1095,39 @@ class BookingService {
       // 2. Get passengers
       const passengers = await passengerRepository.findByBookingId(booking.booking_id);
 
+      // 3. Get selected pickup and dropoff points
+      let pickupPoint = { name: 'TBD', address: 'TBD' };
+      let dropoffPoint = { name: 'TBD', address: 'TBD' };
+
+      if (booking.pickup_point_id) {
+        try {
+          const point = await this.getRoutePointById(booking.pickup_point_id);
+          pickupPoint = {
+            name: point?.name || 'TBD',
+            address: point?.address || 'TBD',
+          };
+        } catch (error) {
+          console.warn('Failed to fetch pickup point:', error.message);
+        }
+      }
+
+      if (booking.dropoff_point_id) {
+        try {
+          const point = await this.getRoutePointById(booking.dropoff_point_id);
+          dropoffPoint = {
+            name: point?.name || 'TBD',
+            address: point?.address || 'TBD',
+          };
+        } catch (error) {
+          console.warn('Failed to fetch dropoff point:', error.message);
+        }
+      }
+
       console.log(
         `[BookingService] Sending booking confirmation email for ${booking.booking_reference}`
       );
 
-      // 3. Prepare comprehensive booking data
+      // 4. Prepare comprehensive booking data
       const bookingConfirmationData = {
         bookingReference: booking.booking_reference,
         customerName: passengers[0]?.full_name || 'Valued Customer',
@@ -1100,8 +1140,8 @@ class BookingService {
           arrivalTime: tripDetails.schedule?.arrival_time,
           operatorName: tripDetails.operator?.name || 'Bus Operator',
           busModel: tripDetails.bus?.model || 'Bus',
-          pickupPoint: tripDetails.pickup_points?.[0]?.name || 'TBD',
-          dropoffPoint: tripDetails.dropoff_points?.[0]?.name || 'TBD',
+          pickupPoint: pickupPoint,
+          dropoffPoint: dropoffPoint,
         },
         passengers: passengers.map((p) => ({
           fullName: p.full_name,
