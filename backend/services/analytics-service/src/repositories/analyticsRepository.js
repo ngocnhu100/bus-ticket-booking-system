@@ -106,13 +106,13 @@ class AnalyticsRepository {
     let paramIndex = 1;
 
     if (fromDate) {
-      query += ` AND created_at >= $${paramIndex}`;
+      query += ` AND created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND created_at <= $${paramIndex}`;
+      query += ` AND created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }
@@ -144,13 +144,13 @@ class AnalyticsRepository {
     let paramIndex = 1;
 
     if (fromDate) {
-      query += ` AND b.created_at >= $${paramIndex}`;
+      query += ` AND b.created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND b.created_at <= $${paramIndex}`;
+      query += ` AND b.created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }
@@ -192,13 +192,13 @@ class AnalyticsRepository {
     `;
 
     if (fromDate) {
-      query += ` AND created_at >= $${paramIndex}`;
+      query += ` AND created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND created_at <= $${paramIndex}`;
+      query += ` AND created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }
@@ -230,8 +230,8 @@ class AnalyticsRepository {
         COUNT(*) as bookings,
         COALESCE(AVG(total_price), 0) as average_booking_value
       FROM bookings
-      WHERE created_at >= $2 
-        AND created_at <= $3
+      WHERE created_at >= $2::date
+        AND created_at < ($3::date + interval '1 day')
         AND status IN ('confirmed', 'completed')
       GROUP BY period
       ORDER BY period ASC
@@ -262,13 +262,13 @@ class AnalyticsRepository {
     let paramIndex = 1;
 
     if (fromDate) {
-      query += ` AND b.created_at >= $${paramIndex}`;
+      query += ` AND b.created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND b.created_at <= $${paramIndex}`;
+      query += ` AND b.created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }
@@ -301,13 +301,13 @@ class AnalyticsRepository {
     let paramIndex = 1;
 
     if (fromDate) {
-      query += ` AND created_at >= $${paramIndex}`;
+      query += ` AND created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND created_at <= $${paramIndex}`;
+      query += ` AND created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }
@@ -339,13 +339,13 @@ class AnalyticsRepository {
     let paramIndex = 1;
 
     if (fromDate) {
-      query += ` AND b.created_at >= $${paramIndex}`;
+      query += ` AND b.created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND b.created_at <= $${paramIndex}`;
+      query += ` AND b.created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }
@@ -399,13 +399,13 @@ class AnalyticsRepository {
     let paramIndex = 1;
 
     if (fromDate) {
-      query += ` AND created_at >= $${paramIndex}`;
+      query += ` AND created_at >= $${paramIndex}::date`;
       params.push(fromDate);
       paramIndex++;
     }
 
     if (toDate) {
-      query += ` AND created_at <= $${paramIndex}`;
+      query += ` AND created_at < ($${paramIndex}::date + interval '1 day')`;
       params.push(toDate);
       paramIndex++;
     }

@@ -184,9 +184,10 @@ export function getDateRangeFromString(
   const fromDate = new Date(
     Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())
   )
-  // For the 'to' date, include the full current day by going to the next day at 00:00:00 UTC
+  // Backend query already adds 1 day with "created_at < (toDate + 1 day)"
+  // So we should NOT add 1 here - just use today's date
   const toDate = new Date(
-    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+    Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   )
 
   return {

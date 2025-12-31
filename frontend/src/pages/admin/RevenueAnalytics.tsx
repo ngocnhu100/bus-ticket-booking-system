@@ -89,11 +89,13 @@ export default function RevenueAnalytics() {
               customDateRange.from.getDate()
             )
           )
+          // Backend query already adds 1 day with "created_at < (toDate + 1 day)"
+          // So we should NOT add 1 here - just use the selected toDate
           const toDateUTC = new Date(
             Date.UTC(
               customDateRange.to.getFullYear(),
               customDateRange.to.getMonth(),
-              customDateRange.to.getDate() + 1
+              customDateRange.to.getDate()
             )
           )
 
@@ -116,6 +118,7 @@ export default function RevenueAnalytics() {
         }
 
         if (activeTab === 'revenue') {
+          console.log('🔵 Fetching REVENUE analytics:', { fromDate, toDate, groupBy: selectedGroupBy })
           const response = await fetchRevenueAnalytics({
             fromDate,
             toDate,
@@ -123,13 +126,23 @@ export default function RevenueAnalytics() {
             operatorId:
               selectedOperator !== 'all' ? selectedOperator : undefined,
           })
+          console.log('🔵 Revenue response:', {
+            totalBookings: response.data.summary.totalBookings,
+            totalRevenue: response.data.summary.totalRevenue
+          })
           setData(response)
           setBookingData(null)
         } else {
+          console.log('🟢 Fetching BOOKING analytics:', { fromDate, toDate, groupBy: selectedGroupBy })
           const response = await fetchBookingAnalytics({
             fromDate,
             toDate,
             groupBy: selectedGroupBy,
+          })
+          console.log('🟢 Booking response:', {
+            totalBookings: response.data.summary.totalBookings,
+            successRate: response.data.summary.successRate,
+            cancellationRate: response.data.summary.cancellationRate
           })
           setBookingData(response)
           setData(null)
