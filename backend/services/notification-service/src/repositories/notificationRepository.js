@@ -158,12 +158,17 @@ class NotificationRepository {
    */
   static async findBookingByReference(bookingReference) {
     const query = `
-      SELECT b.booking_id, b.user_id, b.contact_email, b.contact_phone
+      SELECT b.booking_id, b.user_id, b.contact_email, b.contact_phone, u.preferences
       FROM bookings b
+      LEFT JOIN users u ON b.user_id = u.user_id
       WHERE b.booking_reference = $1
     `;
     const result = await pool.query(query, [bookingReference]);
-    return result.rows[0] || null;
+    const booking = result.rows[0] || null;
+    if (booking) {
+      booking.preferences = booking.preferences || {};
+    }
+    return booking;
   }
 
   /**

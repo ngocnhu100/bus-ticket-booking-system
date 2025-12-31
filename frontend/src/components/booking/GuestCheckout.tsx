@@ -2,7 +2,7 @@ import React from 'react'
 import StripeCardCheckout from '../StripeCardCheckout'
 
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, UserCheck } from 'lucide-react'
+import { ChevronLeft, UserCheck, Lock } from 'lucide-react'
 import { PassengerInformationForm } from '@/components/booking/PassengerInformationForm'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/context/AuthContext'
@@ -101,7 +101,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
     setIsSubmitting(true)
     try {
       if (!selectedPaymentMethod) {
-        setError('Vui lòng chọn phương thức thanh toán.')
+        setError('Please select a payment method.')
         setIsSubmitting(false)
         return
       }
@@ -220,17 +220,10 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
           </div>
           {/* Security Icon */}
           <div className="flex items-center gap-2">
-            <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" stroke="#22c55e" strokeWidth="2" />
-              <path
-                d="M8 12l2 2 4-4"
-                stroke="#22c55e"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="text-green-700 font-semibold">Bảo mật</span>
+            <Lock size={28} className="text-green-700" />
+            <span className="text-green-700 font-semibold">
+              Secure Checkout
+            </span>
           </div>
         </nav>
       </header>
@@ -438,8 +431,8 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                 </label>
               </div>
               <div className="mb-2 text-sm text-gray-700">
-                <b>Phương thức thanh toán đã chọn:</b>{' '}
-                {selectedPaymentMethod || '(chưa chọn)'}
+                <b>Selected Payment Method:</b>{' '}
+                {selectedPaymentMethod.toUpperCase() || '(NOT SELECTED)'}
               </div>
               <button
                 type="button"
@@ -459,10 +452,10 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
               paymentResult.provider === 'stripe' &&
               paymentResult.clientSecret ? (
                 <div className="mt-6 p-4 border rounded-lg bg-green-50 text-green-800">
-                  <div>Thanh toán thẻ - nhập thông tin thẻ để hoàn tất:</div>
+                  <div>Card payment - enter card information to complete:</div>
                   <div className="mt-4">
                     {/* Render StripeCardCheckout */}
-                    <React.Suspense fallback={<div>Đang tải Stripe...</div>}>
+                    <React.Suspense fallback={<div>Loading Stripe...</div>}>
                       <StripeCardCheckout
                         clientSecret={paymentResult.clientSecret}
                       />
@@ -472,7 +465,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
               ) : (
                 paymentResult && (
                   <div className="mt-6 p-4 border rounded-lg bg-green-50 text-green-800">
-                    <div>Thanh toán đã được khởi tạo.</div>
+                    <div>Payment has been initiated.</div>
                     {paymentResult.paymentUrl && (
                       <div>
                         <a
@@ -481,7 +474,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          Nhấn vào đây nếu không được chuyển hướng tự động
+                          Click here if not automatically redirected
                         </a>
                       </div>
                     )}

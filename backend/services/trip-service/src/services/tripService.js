@@ -161,10 +161,16 @@ class TripService {
       // Send notification for each booking via API Gateway
       for (const booking of bookings) {
         try {
+          // Detect update type based on time change
+          const oldDep = new Date(oldTrip.schedule.departure_time);
+          const newDep = new Date(newTrip.schedule.departure_time);
+          const updateType = newDep > oldDep ? 'delay' : 'schedule_change';
+
           const updateData = {
             bookingReference: booking.booking_reference,
-            updateType: 'schedule_change',
-            reason: 'Trip schedule updated by operator',
+            updateType, // 'delay' if new departure > old, else 'schedule_change'
+            reason:
+              updateType === 'delay' ? 'Trip delayed by admin' : 'Trip schedule updated by admin',
             originalDepartureTime: oldTrip.schedule.departure_time,
             newDepartureTime: newTrip.schedule.departure_time,
             originalArrivalTime: oldTrip.schedule.arrival_time,
