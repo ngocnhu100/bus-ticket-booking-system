@@ -4,6 +4,7 @@ const { generateTicketEmailTemplate } = require('../templates/ticketEmailTemplat
 const { generateBookingConfirmationTemplate } = require('../templates/bookingConfirmationTemplate');
 const { generateTripReminderTemplate } = require('../templates/tripReminderEmailTemplate');
 const { generateTripUpdateTemplate } = require('../templates/tripUpdateEmailTemplate');
+const { generateTripDelayTemplate } = require('../templates/tripDelayEmailTemplate');
 const { generateRefundEmailTemplate } = require('../templates/refundEmailTemplate');
 const { generateBookingCancellationTemplate } = require('../templates/bookingCancellationTemplate');
 
@@ -496,7 +497,10 @@ class EmailService {
       return { success: true, mode: 'development' };
     }
 
-    const htmlContent = generateTripUpdateTemplate(updateData);
+    // Use specific template for delay notifications
+    const htmlContent = updateType === 'delay'
+      ? generateTripDelayTemplate(updateData)
+      : generateTripUpdateTemplate(updateData);
 
     const msg = {
       to: email,

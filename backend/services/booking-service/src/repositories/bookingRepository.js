@@ -549,7 +549,8 @@ class BookingRepository {
         b.payment_status,
         b.total_price,
         b.currency,
-        t.departure_time
+        t.departure_time,
+        u.preferences
       FROM bookings b
       INNER JOIN trips t ON b.trip_id = t.trip_id
       LEFT JOIN users u ON b.user_id = u.user_id

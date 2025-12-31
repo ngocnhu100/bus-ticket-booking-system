@@ -3,6 +3,9 @@
  * Comprehensive email sent immediately after successful payment
  */
 
+// Timezone configuration - centralized timezone management
+const TIMEZONE_CONFIG = require('../config/timezone');
+
 const generateBookingConfirmationTemplate = (bookingData) => {
   const {
     bookingReference,
@@ -28,16 +31,26 @@ const generateBookingConfirmationTemplate = (bookingData) => {
   // Format date/time
   const formatDateTime = (dateTime) => {
     if (!dateTime) return 'N/A';
-    const date = new Date(dateTime);
-    if (isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
+    try {
+      const date = new Date(dateTime);
+      if (isNaN(date.getTime())) return 'N/A';
+
+      // Convert to configured timezone
+      const localTime = new Date(
+        date.getTime() + TIMEZONE_CONFIG.VIETNAM_OFFSET_HOURS * 60 * 60 * 1000
+      );
+
+      return localTime.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return 'N/A';
+    }
   };
 
   // Safe get passenger name

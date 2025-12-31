@@ -9,7 +9,8 @@ import { CustomDropdown } from '../ui/custom-dropdown'
 import { PriceInput } from '../ui/price-input'
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { AdapterLuxon } from '@mui/x-date-pickers/AdapterLuxon'
+import { DateTime } from 'luxon'
 
 interface RoutesData {
   route_id: string
@@ -590,17 +591,20 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
                 >
                   Departure Time
                 </label>
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <LocalizationProvider
+                  dateAdapter={AdapterLuxon}
+                  adapterLocale="en-US"
+                >
                   <DateTimePicker
                     value={
                       updateForm.departure_time
-                        ? new Date(updateForm.departure_time)
+                        ? DateTime.fromISO(updateForm.departure_time).toLocal()
                         : null
                     }
                     onChange={(newValue) =>
                       handleUpdateChange(
                         'departure_time',
-                        newValue ? newValue.toISOString() : ''
+                        newValue ? newValue.toUTC().toISO() : ''
                       )
                     }
                     slotProps={{
@@ -843,17 +847,22 @@ export const TripFormDrawer: React.FC<TripFormDrawerProps> = ({
                   >
                     Departure Time *
                   </label>
-                  <LocalizationProvider dateAdapter={AdapterDateFns}>
+                  <LocalizationProvider
+                    dateAdapter={AdapterLuxon}
+                    adapterLocale="en-US"
+                  >
                     <DateTimePicker
                       value={
                         createForm.departure_time
-                          ? new Date(createForm.departure_time)
+                          ? DateTime.fromISO(
+                              createForm.departure_time
+                            ).toLocal()
                           : null
                       }
                       onChange={(newValue) =>
                         handleCreateChange(
                           'departure_time',
-                          newValue ? newValue.toISOString() : ''
+                          newValue ? newValue.toUTC().toISO() : ''
                         )
                       }
                       slotProps={{

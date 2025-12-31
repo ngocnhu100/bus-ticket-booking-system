@@ -6,7 +6,6 @@ import {
   Users,
   BarChart3,
   FileText,
-  Settings,
   MapPin,
   User,
   Calendar,
@@ -43,7 +42,6 @@ const menuItems = [
   },
   { title: 'Reports', url: '/admin/reports', icon: FileText },
   { title: 'Profile', url: '/admin/profile', icon: User },
-  { title: 'Settings', url: '/admin/settings', icon: Settings },
 ]
 
 export function AppSidebar() {

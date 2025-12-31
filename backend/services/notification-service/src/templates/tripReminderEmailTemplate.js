@@ -10,6 +10,8 @@
  * - Seat upgrade suggestions
  */
 
+// Timezone configuration - centralized timezone management
+const TIMEZONE_CONFIG = require('../config/timezone');
 const weatherService = require('../services/weatherService');
 
 async function generateTripReminderTemplate(data, hoursUntilDeparture) {
@@ -38,7 +40,13 @@ async function generateTripReminderTemplate(data, hoursUntilDeparture) {
     if (!timeStr || timeStr === 'TBD') return 'TBD';
     try {
       const date = new Date(timeStr);
-      return date.toLocaleString('en-US', {
+
+      // Convert to configured timezone
+      const localTime = new Date(
+        date.getTime() + TIMEZONE_CONFIG.VIETNAM_OFFSET_HOURS * 60 * 60 * 1000
+      );
+
+      return localTime.toLocaleString('en-US', {
         month: 'short',
         day: '2-digit',
         year: 'numeric',
