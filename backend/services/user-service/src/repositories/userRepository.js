@@ -1,15 +1,15 @@
 // userRepository.js - user-service
 // Chứa toàn bộ logic thao tác DB user, tách từ auth-service
 
-
 const pool = require('../configs/database');
 
 class UserRepository {
-    async updateUserAvatar(userId, avatarUrl) {
-      const query = 'UPDATE users SET avatar = $1, updated_at = NOW() WHERE user_id = $2 RETURNING avatar';
-      const result = await pool.query(query, [avatarUrl, userId]);
-      return result.rows[0];
-    }
+  async updateUserAvatar(userId, avatarUrl) {
+    const query =
+      'UPDATE users SET avatar = $1, updated_at = NOW() WHERE user_id = $2 RETURNING avatar';
+    const result = await pool.query(query, [avatarUrl, userId]);
+    return result.rows[0];
+  }
   async create(userData) {
     const {
       email,
@@ -157,7 +157,7 @@ class UserRepository {
   }
 
   async update(userId, updateData) {
-    const allowedFields = ['email', 'phone', 'fullName', 'avatar', 'preferences'];
+    const allowedFields = ['email', 'phone', 'fullName', 'avatar'];
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -168,7 +168,6 @@ class UserRepository {
       phone: 'phone',
       fullName: 'full_name',
       avatar: 'avatar',
-      preferences: 'preferences',
     };
 
     for (const [key, value] of Object.entries(updateData)) {
@@ -207,7 +206,7 @@ class UserRepository {
         detail: err.detail,
         message: err.message,
         stack: err.stack,
-        error: err
+        error: err,
       });
       // Log lại query, values khi có lỗi
       console.error('[userRepository.update] query on error:', query);

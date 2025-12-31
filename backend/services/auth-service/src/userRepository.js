@@ -253,7 +253,7 @@ class UserRepository {
   }
 
   async update(userId, updateData) {
-    const allowedFields = ['email', 'phone', 'fullName', 'avatar', 'preferences'];
+    const allowedFields = ['email', 'phone', 'fullName', 'avatar'];
     const updates = [];
     const values = [];
     let paramIndex = 1;
@@ -264,7 +264,6 @@ class UserRepository {
       phone: 'phone',
       fullName: 'full_name',
       avatar: 'avatar',
-      preferences: 'preferences',
     };
 
     for (const [key, value] of Object.entries(updateData)) {

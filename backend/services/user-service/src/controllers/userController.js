@@ -20,20 +20,6 @@ module.exports = {
           error: { code: 'USER_001', message: 'User not found' },
         });
       }
-      // Chuẩn hóa preferences
-      let preferences = user.preferences || {};
-      if (!preferences.language) preferences.language = 'vi';
-      if (!preferences.currency) preferences.currency = 'VND';
-
-      // ⚠️ LƯU Ý: Chỉ chuẩn hóa nếu notifications bị thiếu hoàn toàn, KHÔNG thay đổi giá trị hiện có
-      if (!preferences.notifications || typeof preferences.notifications !== 'object') {
-        preferences.notifications = {
-          bookingConfirmations: { email: true, sms: false },
-          tripReminders: { email: true, sms: false },
-          tripUpdates: { email: true, sms: false },
-          promotionalEmails: false,
-        };
-      }
       res.json({
         success: true,
         data: {
@@ -45,7 +31,6 @@ module.exports = {
           avatar: user.avatar || null,
           emailVerified: user.email_verified,
           phoneVerified: user.phone_verified,
-          preferences,
           createdAt: user.created_at,
         },
       });
@@ -143,7 +128,7 @@ module.exports = {
           error: { code: 'AUTH_001', message: 'Unauthorized' },
         });
       }
-      const { fullName, phone, avatar, preferences } = req.body;
+      const { fullName, phone, avatar } = req.body;
       // Validate tên không rỗng
       if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
         return res.status(400).json({
@@ -208,7 +193,6 @@ module.exports = {
       // (Không set avatar mặc định vào DB)
 
       // ⚠️ LƯU Ý: KHÔNG cập nhật preferences trong updateProfile
-      // Chỉ cập nhật: fullName, phone, avatar
       const updateData = { fullName, phone };
       if (typeof avatarUrl === 'string' && avatarUrl.trim() !== '') {
         updateData.avatar = avatarUrl;

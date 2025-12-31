@@ -14,15 +14,6 @@ import {
   getUserProfile,
   changeUserPassword,
 } from '@/api/userProfileApi'
-// ...existing code...
-const LANGUAGES = [
-  { value: 'vi', label: 'Tiếng Việt' },
-  { value: 'en', label: 'English' },
-]
-const CURRENCIES = [
-  { value: 'VND', label: 'VND' },
-  { value: 'USD', label: 'USD' },
-]
 
 const Profile = () => {
   // State cho hiển thị mật khẩu
@@ -144,20 +135,6 @@ const Profile = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value })
-  }
-  const handlePrefChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target
-    const checked =
-      e.target instanceof HTMLInputElement ? e.target.checked : undefined
-    setForm((prev) => ({
-      ...prev,
-      preferences: {
-        ...prev.preferences,
-        [name]: type === 'checkbox' ? checked : value,
-      },
-    }))
   }
 
   // Xử lý upload avatar qua API backend
@@ -347,62 +324,6 @@ const Profile = () => {
             ) : (
               <div className="py-2 px-3 bg-muted rounded">{form.phone}</div>
             )}
-          </div>
-          {/* Preferences */}
-          <div className="space-y-2">
-            <Label>Preferences</Label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Language */}
-              <div className="flex flex-col">
-                <span className="mb-1 font-medium">Language</span>
-                {isEditing ? (
-                  <select
-                    id="language"
-                    name="language"
-                    value={form.preferences.language}
-                    onChange={handlePrefChange}
-                    className="border rounded px-2 py-1 mt-1"
-                    disabled={saving}
-                  >
-                    {LANGUAGES.map((lang) => (
-                      <option key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="py-2 px-3 bg-muted rounded inline-block mt-1">
-                    {LANGUAGES.find(
-                      (l) => l.value === form.preferences.language
-                    )?.label || form.preferences.language}
-                  </div>
-                )}
-              </div>
-              {/* Currency */}
-              <div className="flex flex-col">
-                <span className="mb-1 font-medium">Currency</span>
-                {isEditing ? (
-                  <select
-                    id="currency"
-                    name="currency"
-                    value={form.preferences.currency}
-                    onChange={handlePrefChange}
-                    className="border rounded px-2 py-1 mt-1"
-                    disabled={saving}
-                  >
-                    {CURRENCIES.map((cur) => (
-                      <option key={cur.value} value={cur.value}>
-                        {cur.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="py-2 px-3 bg-muted rounded inline-block mt-1">
-                    {form.preferences.currency}
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
           {/* Action buttons */}
           <div className="flex gap-3 pt-4">
