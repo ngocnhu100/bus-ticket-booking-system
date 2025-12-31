@@ -508,10 +508,27 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       const API_BASE_URL =
         import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
+      // If amount is not provided or is 0, fetch it from booking
+      let amount = paymentData.amount || 0
+      if (amount === 0) {
+        console.log('[PaymentMethodSelector] Amount is 0, fetching from booking...')
+        const bookingResponse = await fetch(
+          `${API_BASE_URL}/bookings/${paymentData.bookingId}/guest`,
+          {
+            method: 'GET',
+          }
+        )
+        if (bookingResponse.ok) {
+          const bookingData = await bookingResponse.json()
+          amount = bookingData.data?.pricing?.total || bookingData.data?.total_price || 0
+          console.log('[PaymentMethodSelector] Fetched amount from booking:', amount)
+        }
+      }
+
       console.log('[PaymentMethodSelector] Creating payment:', {
         bookingId: paymentData.bookingId,
         paymentMethod: methodId,
-        amount: paymentData.amount,
+        amount: amount,
       })
 
       // Call payment API to create payment session
@@ -523,7 +540,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
         body: JSON.stringify({
           bookingId: paymentData.bookingId,
           paymentMethod: methodId,
-          amount: paymentData.amount,
+          amount: amount,
           description: `Thanh toán đặt vé ${paymentData.bookingReference}`,
         }),
       })

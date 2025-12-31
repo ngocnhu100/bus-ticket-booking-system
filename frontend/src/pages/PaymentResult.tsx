@@ -208,25 +208,40 @@ const PaymentResult: React.FC = () => {
       paymentResult.resultCode &&
       paymentResult.resultCode === '0'
     ) {
-      fetch(`${API_BASE_URL}/bookings/internal/${bookingId}/confirm-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentMethod: 'momo',
-          transactionRef: paymentResult.orderId,
-          amount: 0, // amount from booking
-          paymentStatus: 'paid',
-        }),
-      })
+      // Fetch booking to get the actual amount
+      fetch(`${API_BASE_URL}/bookings/${bookingId}/guest`)
+        .then((res) => res.json())
+        .then((bookingData) => {
+          const amount =
+            bookingData.data?.pricing?.total ||
+            bookingData.data?.total_price ||
+            parseInt(paymentResult.amount || '0')
+
+          return fetch(
+            `${API_BASE_URL}/bookings/internal/${bookingId}/confirm-payment`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                paymentMethod: 'momo',
+                transactionRef: paymentResult.orderId,
+                amount: amount,
+                paymentStatus: 'paid',
+              }),
+            }
+          )
+        })
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
             setManualStatus('PAID')
           }
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[PaymentResult] Error confirming payment:', err)
+        })
     }
-  }, [bookingId, paymentResult.resultCode, paymentResult.orderId])
+  }, [bookingId, paymentResult.resultCode, paymentResult.orderId, paymentResult.amount])
 
   if (!bookingId) {
     return (

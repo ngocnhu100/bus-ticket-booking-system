@@ -86,7 +86,7 @@ export default function Login() {
     } catch (error) {
       const errorMessage =
         (error as Error).message || 'Unable to sign in right now.'
-      const errorCode = (error as unknown).code || ''
+      const errorCode = (error as { code?: string }).code || ''
       setStatus({
         type: 'error',
         message: errorMessage,
