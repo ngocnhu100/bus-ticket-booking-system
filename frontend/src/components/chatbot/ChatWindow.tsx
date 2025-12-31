@@ -32,16 +32,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   error,
   sessionId,
 }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [resizeSide, setResizeSide] = useState<'left' | 'top' | null>(null)
   const [dimensions, setDimensions] = useState({ width: 520, height: 480 }) // Default: wider for trip selection
-
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading])
 
   // Handle resize start
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -233,9 +227,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             onMessageFromAction={onMessageFromAction}
             sessionId={sessionId}
           />
-
-          {/* Auto-scroll anchor */}
-          <div ref={messagesEndRef} />
 
           {/* Input Area */}
           <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />

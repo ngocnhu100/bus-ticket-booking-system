@@ -999,6 +999,13 @@ export const MessageList: React.FC<MessageListProps> = ({
   onMessageFromAction,
   sessionId,
 }) => {
+  const messagesEndRef = React.useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when new messages arrive or loading state changes
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isLoading])
+
   return (
     <div
       ref={containerRef}
@@ -1024,6 +1031,8 @@ export const MessageList: React.FC<MessageListProps> = ({
             />
           ))}
           {isLoading && <TypingIndicator />}
+          {/* Anchor element for auto-scroll */}
+          <div ref={messagesEndRef} />
         </>
       )}
     </div>
