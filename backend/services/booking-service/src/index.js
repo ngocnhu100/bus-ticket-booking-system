@@ -90,7 +90,6 @@ app.get(
   optionalAuthenticate,
   bookingController.getModificationPreview
 );
-app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
 // Nếu chỉ cho user đăng nhập thanh toán, dùng dòng dưới:
 // app.post('/:id/confirm-payment', authenticate, bookingController.confirmPayment);
 // Để cho phép cả guest và user, dùng optionalAuthenticate:

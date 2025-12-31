@@ -68,6 +68,7 @@ app.post('/send-booking-confirmation', async (req, res) => {
       });
     }
 
+    console.log('📧 Sending booking data:', bookingData);
     await emailService.sendBookingConfirmationEmail(email, bookingData);
 
     res.json({
