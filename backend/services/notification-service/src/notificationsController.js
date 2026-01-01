@@ -17,7 +17,9 @@ class NotificationsController {
    */
   static async getNotifications(req, res) {
     try {
-      const userId = req.user.id;
+      // Handle both JWT payload structures from auth service
+      const userId = req.user.id || req.user.userId || req.user.sub;
+      console.log('🔍 User from JWT token:', { userId, user: req.user });
       const { limit = 20, offset = 0, type, channel, status } = req.query;
 
       // Validate pagination parameters
@@ -64,7 +66,7 @@ class NotificationsController {
    */
   static async getNotification(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id || req.user.userId || req.user.sub;
       const { notificationId } = req.params;
 
       const notification = await NotificationRepository.getNotification(notificationId, userId);
@@ -105,7 +107,7 @@ class NotificationsController {
    */
   static async markAsRead(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id || req.user.userId || req.user.sub;
       const { notificationId } = req.params;
 
       const notification = await NotificationRepository.markAsRead(notificationId, userId);
@@ -144,7 +146,7 @@ class NotificationsController {
    */
   static async getStats(req, res) {
     try {
-      const userId = req.user.id;
+      const userId = req.user.id || req.user.userId || req.user.sub;
 
       const stats = await NotificationRepository.getStats(userId);
 

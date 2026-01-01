@@ -256,6 +256,38 @@ const AdminTripSchedulingPage: React.FC = () => {
     setOpenConfirmDialog(true)
   }
 
+  /**
+   * Handle mark as departed
+   */
+  const handleMarkDeparted = async (tripId: string) => {
+    setConfirmDialogConfig({
+      title: 'Mark Trip as Departed',
+      message:
+        'Are you sure you want to mark this trip as departed? This action cannot be undone.',
+      action: async () => {
+        await markDeparted(tripId)
+        setOpenConfirmDialog(false)
+      },
+    })
+    setOpenConfirmDialog(true)
+  }
+
+  /**
+   * Handle mark as arrived
+   */
+  const handleMarkArrived = async (tripId: string) => {
+    setConfirmDialogConfig({
+      title: 'Mark Trip as Arrived',
+      message:
+        'Are you sure you want to mark this trip as arrived? This action cannot be undone.',
+      action: async () => {
+        await markArrived(tripId)
+        setOpenConfirmDialog(false)
+      },
+    })
+    setOpenConfirmDialog(true)
+  }
+
   return (
     <DashboardLayout>
       {/* Header */}
@@ -581,7 +613,7 @@ const AdminTripSchedulingPage: React.FC = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    markDeparted(trip.trip_id)
+                                    handleMarkDeparted(trip.trip_id)
                                   }}
                                   className="p-1 text-yellow-600 hover:bg-blue-50 rounded"
                                   title="Mark as Departed"
@@ -593,7 +625,7 @@ const AdminTripSchedulingPage: React.FC = () => {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    markArrived(trip.trip_id)
+                                    handleMarkArrived(trip.trip_id)
                                   }}
                                   className="p-1 text-purple-600 hover:bg-purple-50 rounded"
                                   title="Mark as Arrived"

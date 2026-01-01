@@ -30,7 +30,7 @@ class TripRepository {
           SELECT COUNT(*) 
           FROM bookings bk 
           JOIN booking_passengers bp ON bk.booking_id = bp.booking_id 
-          WHERE bk.trip_id = t.trip_id AND bk.status IN ('confirmed', 'pending')
+          WHERE bk.trip_id = t.trip_id AND bk.status = 'confirmed'
         ) as booked_seats
         
       FROM trips t
@@ -333,7 +333,7 @@ class TripRepository {
         JOIN buses b ON t.bus_id = b.bus_id
         JOIN operators o ON b.operator_id = o.operator_id
         JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-      LEFT JOIN (SELECT bk.trip_id, COUNT(*) as booking_count FROM bookings bk JOIN booking_passengers bp ON bk.booking_id = bp.booking_id WHERE bk.status IN ('confirmed', 'pending') GROUP BY bk.trip_id) bk ON t.trip_id = bk.trip_id`;
+      LEFT JOIN (SELECT bk.trip_id, COUNT(*) as booking_count FROM bookings bk JOIN booking_passengers bp ON bk.booking_id = bp.booking_id WHERE bk.status = 'confirmed' GROUP BY bk.trip_id) bk ON t.trip_id = bk.trip_id`;
 
       let query = `SELECT
         t.trip_id, t.departure_time, t.arrival_time, t.base_price, t.status, t.policies::jsonb AS policies, t.created_at,
@@ -347,7 +347,7 @@ class TripRepository {
       JOIN buses b ON t.bus_id = b.bus_id
       JOIN operators o ON b.operator_id = o.operator_id
       JOIN bus_models bm ON b.bus_model_id = bm.bus_model_id
-      LEFT JOIN (SELECT bk.trip_id, COUNT(*) as booking_count FROM bookings bk JOIN booking_passengers bp ON bk.booking_id = bp.booking_id WHERE bk.status IN ('confirmed', 'pending') GROUP BY bk.trip_id) bk ON t.trip_id = bk.trip_id`;
+      LEFT JOIN (SELECT bk.trip_id, COUNT(*) as booking_count FROM bookings bk JOIN booking_passengers bp ON bk.booking_id = bp.booking_id WHERE bk.status = 'confirmed' GROUP BY bk.trip_id) bk ON t.trip_id = bk.trip_id`;
 
       const values = [];
       let index = 1;

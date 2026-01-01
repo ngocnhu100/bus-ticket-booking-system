@@ -111,9 +111,14 @@ export const NotificationPreferences = () => {
             !updatedProfile.preferences.notifications.promotionalEmails,
         },
       }
-      // Clean up: remove promotionalEmails from root level if it exists
-      if (updatedProfile.preferences.promotionalEmails !== undefined) {
-        delete updatedProfile.preferences.promotionalEmails
+      // Clean up: remove promotionalEmails from root level if it exists (legacy support)
+      if ('promotionalEmails' in updatedProfile.preferences) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { promotionalEmails: _promotionalEmails, ...rest } =
+          updatedProfile.preferences as UserPreferences & {
+            promotionalEmails?: boolean
+          }
+        updatedProfile.preferences = rest as UserPreferences
       }
     } else if (channel) {
       updatedProfile.preferences = {
