@@ -45,10 +45,10 @@ export function EditReviewForm({
     e.preventDefault()
     setError(null)
 
-    // if (!reviewText.trim()) {
-    //   setError('Review text cannot be empty.')
-    //   return
-    // }
+    if (!reviewText.trim()) {
+      setError('Review text cannot be empty.')
+      return
+    }
 
     try {
       console.log('EditReviewForm submit data:', {

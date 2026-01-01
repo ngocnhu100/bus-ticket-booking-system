@@ -83,6 +83,12 @@ export function SubmitRatingForm({
       return
     }
 
+    // Validate: if photos exist, review text is required
+    if (photos.length > 0 && reviewText.trim() === '') {
+      setError('Please write a review when uploading photos.')
+      return
+    }
+
     setPreview(true)
   }
 
@@ -244,13 +250,6 @@ export function SubmitRatingForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="flex gap-3 p-4 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-          <p className="text-sm font-medium">{error}</p>
-        </div>
-      )}
-
       {/* Rating Categories */}
       <div className="space-y-4">
         <h3 className="font-semibold text-foreground">Rate Your Experience</h3>
@@ -361,25 +360,33 @@ export function SubmitRatingForm({
       />
 
       {/* Actions */}
-      <div className="flex gap-3 pt-4">
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="flex-1"
-          variant="default"
-        >
-          {isLoading ? 'Submitting...' : 'Submit Rating'}
-        </Button>
-        {onCancel && (
-          <Button
-            type="button"
-            onClick={onCancel}
-            variant="ghost"
-            className="flex-1"
-          >
-            Cancel
-          </Button>
+      <div className="space-y-3">
+        {error && (
+          <div className="flex gap-3 p-4 mb-6 bg-destructive/10 text-destructive rounded-lg border border-destructive/20">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="text-sm font-medium">{error}</p>
+          </div>
         )}
+        <div className="flex gap-3">
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="flex-1"
+            variant="default"
+          >
+            {isLoading ? 'Submitting...' : 'Submit Rating'}
+          </Button>
+          {onCancel && (
+            <Button
+              type="button"
+              onClick={onCancel}
+              variant="ghost"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
       </div>
     </form>
   )
