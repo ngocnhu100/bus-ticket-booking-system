@@ -958,6 +958,84 @@ class ChatbotService {
         }
       }
 
+      // Check if user wants to edit passenger information
+      const isEditIntent =
+        message.toLowerCase().includes('sửa thông tin') ||
+        message.toLowerCase().includes('edit info') ||
+        message.toLowerCase().includes('edit') ||
+        message.toLowerCase().includes('sửa') ||
+        message.toLowerCase().includes('modify');
+
+      // Get booking context
+      console.log('[ChatbotService] Retrieving booking context for session:', sessionId);
+      const bookingContext = await conversationRepository.getBookingContext(sessionId);
+      
+      // Handle edit passenger info request
+      if (isEditIntent && bookingContext && bookingContext.passengerInfo) {
+        console.log('[ChatbotService] User wants to edit passenger information');
+        
+        // Clear passenger info to allow re-entry
+        bookingContext.passengerInfo = [];
+        await conversationRepository.saveBookingContext(sessionId, bookingContext);
+        
+        const passengerCount = bookingContext.selectedSeats?.length || 1;
+        const selectedSeats = bookingContext.selectedSeats || [];
+        
+        // Build passenger info form with seats
+        const seatsWithPrice = selectedSeats.map(seatCode => ({
+          seat_code: seatCode,
+          price: bookingContext.selectedTrip?.pricing?.base_price || bookingContext.selectedTrip?.base_price || 0
+        }));
+        
+        return {
+          text: lang === 'vi'
+            ? `Được rồi! Vui lòng điền lại thông tin ${passengerCount} hành khách:`
+            : `Okay! Please re-enter information for ${passengerCount} passenger(s):`,
+          actions: [
+            {
+              type: 'passenger_info_form',
+              seats: seatsWithPrice,
+              required_fields: [
+                {
+                  name: 'full_name',
+                  type: 'text',
+                  label: lang === 'vi' ? 'Họ và tên' : 'Full Name',
+                  placeholder: lang === 'vi' ? 'Nguyễn Văn A' : 'John Doe',
+                  required: true,
+                  validation: 'min:2,max:100'
+                },
+                {
+                  name: 'phone',
+                  type: 'tel',
+                  label: lang === 'vi' ? 'Số điện thoại' : 'Phone Number',
+                  placeholder: '0909123456',
+                  required: true,
+                  validation: 'phone:VN'
+                },
+                {
+                  name: 'email',
+                  type: 'email',
+                  label: 'Email',
+                  placeholder: 'example@email.com',
+                  required: true,
+                  validation: 'email'
+                },
+                {
+                  name: 'id_number',
+                  type: 'text',
+                  label: lang === 'vi' ? 'CMND/CCCD' : 'ID Number',
+                  placeholder: '001234567890',
+                  required: false,
+                  validation: 'digits:9,12'
+                }
+              ],
+              total_price: seatsWithPrice.reduce((sum, s) => sum + s.price, 0)
+            }
+          ],
+          suggestions: lang === 'vi' ? ['Hủy đặt vé'] : ['Cancel booking']
+        };
+      }
+
       // Check if user is trying to pay for an existing booking (payment flow)
       const isPaymentIntent =
         message.toLowerCase().includes('pay') ||
@@ -966,9 +1044,6 @@ class ChatbotService {
         message.toLowerCase().includes('proceed') ||
         message.toLowerCase().includes('confirm');
 
-      // Get booking context
-      console.log('[ChatbotService] Retrieving booking context for session:', sessionId);
-      const bookingContext = await conversationRepository.getBookingContext(sessionId);
       console.log('[ChatbotService] Booking context retrieved:', {
         hasContext: !!bookingContext,
         hasSearchResults: !!(bookingContext && bookingContext.searchResults),
