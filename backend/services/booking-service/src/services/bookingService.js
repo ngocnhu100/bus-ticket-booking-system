@@ -149,6 +149,12 @@ class BookingService {
           arrival_time: trip.schedule.arrival_time,
         },
       },
+      payment_info: {
+        amount: booking.total_price,
+        currency: booking.currency || 'VND',
+        status: booking.payment_status,
+        locked_until: booking.locked_until,
+      },
     };
   }
 
@@ -179,6 +185,12 @@ class BookingService {
     return {
       ...booking,
       passengers,
+      pricing: {
+        subtotal: parseFloat(booking.subtotal),
+        service_fee: parseFloat(booking.service_fee),
+        total: parseFloat(booking.total_price),
+        currency: booking.currency || 'VND',
+      },
       trip_details: trip
         ? {
             route: {

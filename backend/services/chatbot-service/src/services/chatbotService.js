@@ -2160,7 +2160,8 @@ Return ONLY the text response, no JSON, no explanations.`;
               data: {
                 bookingId: bookingResult.bookingId,
                 bookingReference: bookingResult.bookingReference,
-                amount: bookingResult.pricing?.total || 0,
+                amount: bookingResult.booking?.pricing?.total || bookingResult.pricing?.total || 0,
+                booking: bookingResult.booking, // Include full booking object
                 paymentMethods: [
                   { id: 'momo', name: 'MoMo', icon: '💳', available: true },
                   { id: 'zalopay', name: 'ZaloPay', icon: '💰', available: true },
@@ -2443,6 +2444,18 @@ Return ONLY the text response, no JSON, no explanations.`;
 
       console.log('[ChatbotService] Built passengers array:', JSON.stringify(passengers, null, 2));
 
+      // Get pickup and dropoff point IDs from session context
+      const sessionContext = await conversationRepository.getBookingContext(sessionId);
+      const pickupPointId = sessionContext?.selectedPickupPoint?.point_id || null;
+      const dropoffPointId = sessionContext?.selectedDropoffPoint?.point_id || null;
+
+      console.log('[ChatbotService] Pickup/Dropoff points:', {
+        pickupPointId,
+        dropoffPointId,
+        pickupName: sessionContext?.selectedPickupPoint?.name,
+        dropoffName: sessionContext?.selectedDropoffPoint?.name,
+      });
+
       const bookingData = {
         tripId,
         seats: seats.map((s) => String(s).toUpperCase()),
@@ -2453,6 +2466,9 @@ Return ONLY the text response, no JSON, no explanations.`;
         contactEmail: contactInfo?.email || passengers[0].email || '',
         contactPhone: contactInfo?.phone || passengers[0].phone,
         isGuestCheckout: !finalAuthToken,
+        // Include pickup and dropoff point IDs if selected
+        pickupPointId: pickupPointId,
+        dropoffPointId: dropoffPointId,
       };
 
       console.log('[ChatbotService] Booking data prepared:', {
@@ -2461,6 +2477,8 @@ Return ONLY the text response, no JSON, no explanations.`;
         passengerCount: passengers.length,
         isGuestCheckout: !finalAuthToken,
         hasContactInfo: !!contactInfo,
+        pickupPointId: bookingData.pickupPointId,
+        dropoffPointId: bookingData.dropoffPointId,
         passengersData: passengers.map((p, i) => ({
           index: i,
           name: p.fullName,

@@ -508,12 +508,20 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       const API_BASE_URL =
         import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-      // If amount is not provided or is 0, fetch it from booking
+      console.log('[PaymentMethodSelector] Full payment data:', paymentData)
+
+      // Get amount from payment data
       let amount = paymentData.amount || 0
+      
+      // If amount is not provided, try to get from booking pricing
+      if (amount === 0 && paymentData.booking?.pricing?.total) {
+        amount = paymentData.booking.pricing.total
+        console.log('[PaymentMethodSelector] Using amount from booking pricing:', amount)
+      }
+      
+      // If still no amount, fetch from booking API (only for guest bookings)
       if (amount === 0) {
-        console.log(
-          '[PaymentMethodSelector] Amount is 0, fetching from booking...'
-        )
+        console.log('[PaymentMethodSelector] Amount is 0, fetching from booking...')
         const bookingResponse = await fetch(
           `${API_BASE_URL}/bookings/${paymentData.bookingId}/guest`,
           {
@@ -526,10 +534,9 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
             bookingData.data?.pricing?.total ||
             bookingData.data?.total_price ||
             0
-          console.log(
-            '[PaymentMethodSelector] Fetched amount from booking:',
-            amount
-          )
+          console.log('[PaymentMethodSelector] Fetched amount from booking:', amount)
+        } else {
+          throw new Error('Cannot fetch booking amount. Please try again.')
         }
       }
 
