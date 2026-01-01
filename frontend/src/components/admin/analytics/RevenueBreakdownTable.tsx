@@ -19,6 +19,67 @@ import { useState } from 'react'
 import type { RevenueAnalyticsResponse } from '@/api/revenueAnalytics'
 import { formatCurrency } from '@/api/revenueAnalytics'
 
+function parsePeriod(period: string): Date {
+  // Parse period string to Date - handle different formats
+  if (period.includes('W')) {
+    // Week format: "YYYY-WNN" -> parse as first day of that week
+    const match = period.match(/(\d{4})-W(\d{2})/)
+    if (match) {
+      const year = parseInt(match[1])
+      const week = parseInt(match[2])
+      // Calculate first day of the week (approximation)
+      const firstDay = new Date(year, 0, 1 + (week - 1) * 7)
+      return firstDay
+    }
+  } else if (period.match(/^\d{4}-\d{2}$/)) {
+    // Month format: "YYYY-MM" -> parse as first day of month
+    return new Date(period + '-01')
+  }
+  // Day format: "YYYY-MM-DD" or full ISO string
+  return new Date(period)
+}
+
+function formatPeriodDisplay(period: string): string {
+  // Format period for display based on its type
+  if (period.includes('W')) {
+    // Week format: "2025-W49" -> "Dec 1 - Dec 7, 2025"
+    const match = period.match(/(\d{4})-W(\d{2})/)
+    if (match) {
+      const year = parseInt(match[1])
+      const week = parseInt(match[2])
+      // Calculate first day of the week
+      const firstDay = new Date(year, 0, 1 + (week - 1) * 7)
+      // Calculate last day of the week
+      const lastDay = new Date(firstDay)
+      lastDay.setDate(firstDay.getDate() + 6)
+
+      const startStr = firstDay.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })
+      const endStr = lastDay.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })
+      return `${startStr} - ${endStr}, ${year}`
+    }
+  } else if (period.match(/^\d{4}-\d{2}$/)) {
+    // Month format: "2025-12" -> "December 2025"
+    const date = new Date(period + '-01')
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+    })
+  }
+  // Day format: "2025-12-15" -> "Dec 15, 2025"
+  const date = new Date(period)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
 interface RevenueBreakdownTableProps {
   data: RevenueAnalyticsResponse
 }
@@ -41,7 +102,7 @@ export function RevenueBreakdownTable({ data }: RevenueBreakdownTableProps) {
           Revenue Breakdown
         </CardTitle>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+          <div className="flex items-center justify-center h-200px text-muted-foreground">
             <p className="text-sm">No revenue breakdown data available</p>
           </div>
         </CardContent>
@@ -54,8 +115,8 @@ export function RevenueBreakdownTable({ data }: RevenueBreakdownTableProps) {
     let bValue: string | number = b[sortBy]
 
     if (sortBy === 'period') {
-      aValue = new Date(aValue).getTime()
-      bValue = new Date(bValue).getTime()
+      aValue = parsePeriod(String(aValue)).getTime()
+      bValue = parsePeriod(String(bValue)).getTime()
     }
 
     if (sortOrder === 'asc') {
@@ -140,11 +201,7 @@ export function RevenueBreakdownTable({ data }: RevenueBreakdownTableProps) {
                 return (
                   <TableRow key={index}>
                     <TableCell className="font-medium">
-                      {new Date(item.period).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
+                      {formatPeriodDisplay(item.period)}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       <UITooltip>
@@ -185,7 +242,7 @@ export function RevenueBreakdownTable({ data }: RevenueBreakdownTableProps) {
           <div className="flex items-center justify-between mt-4">
             <div className="text-sm text-muted-foreground">
               Showing {startIndex + 1}-{Math.min(endIndex, sortedData.length)}{' '}
-              of {sortedData.length} days
+              of {sortedData.length} periods
             </div>
             <div className="flex items-center gap-2">
               <Button
