@@ -127,14 +127,14 @@ export function RoutePerformanceChart({ data }: RoutePerformanceChartProps) {
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
               }}
-              formatter={(value: number) => {
-                if (typeof value === 'number') {
-                  return [
-                    formatValue(value, selectedMetric),
-                    getMetricLabel(selectedMetric),
-                  ]
+              formatter={(value: number | undefined) => {
+                if (value === undefined) {
+                  return ['N/A', getMetricLabel(selectedMetric)]
                 }
-                return [value, getMetricLabel(selectedMetric)]
+                return [
+                  formatValue(value, selectedMetric),
+                  getMetricLabel(selectedMetric),
+                ]
               }}
               labelStyle={{ color: 'var(--foreground)' }}
             />

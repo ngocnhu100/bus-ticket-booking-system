@@ -67,7 +67,7 @@ export function BookingStatusTable({ data }: BookingStatusChartProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+          <div className="flex items-center justify-center h-200px text-muted-foreground">
             <p className="text-sm">No booking status data available</p>
           </div>
         </CardContent>
@@ -219,11 +219,13 @@ export function BookingStatusTable({ data }: BookingStatusChartProps) {
                   }}
                 />
                 <Tooltip
-                  formatter={(value: number) => [
-                    selectedMetric === 'revenue' ||
-                    selectedMetric === 'averageValue'
-                      ? formatCurrency(value)
-                      : value.toLocaleString(),
+                  formatter={(value: number | undefined) => [
+                    value === undefined
+                      ? 'N/A'
+                      : selectedMetric === 'revenue' ||
+                          selectedMetric === 'averageValue'
+                        ? formatCurrency(value)
+                        : value.toLocaleString(),
                     selectedMetric === 'revenue'
                       ? 'Revenue'
                       : selectedMetric === 'bookings'
@@ -247,7 +249,7 @@ export function BookingStatusTable({ data }: BookingStatusChartProps) {
             ) : (
               <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <Pie
-                  data={rawData as Record<string, string | number>[]}
+                  data={rawData as unknown as Record<string, string | number>[]}
                   cx="50%"
                   cy="45%"
                   outerRadius={80}
@@ -263,11 +265,13 @@ export function BookingStatusTable({ data }: BookingStatusChartProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value: number) => [
-                    selectedMetric === 'revenue' ||
-                    selectedMetric === 'averageValue'
-                      ? formatCurrency(value)
-                      : value.toLocaleString(),
+                  formatter={(value: number | undefined) => [
+                    value === undefined
+                      ? 'N/A'
+                      : selectedMetric === 'revenue' ||
+                          selectedMetric === 'averageValue'
+                        ? formatCurrency(value)
+                        : value.toLocaleString(),
                     selectedMetric === 'revenue'
                       ? 'Revenue'
                       : selectedMetric === 'bookings'

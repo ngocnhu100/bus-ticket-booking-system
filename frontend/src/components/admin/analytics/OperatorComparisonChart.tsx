@@ -149,8 +149,10 @@ export function OperatorComparisonChart({
                 tickFormatter={(value) => formatValue(value, selectedMetric)}
               />
               <Tooltip
-                formatter={(value: number) => [
-                  formatValue(value, selectedMetric),
+                formatter={(value: number | undefined) => [
+                  value === undefined
+                    ? 'N/A'
+                    : formatValue(value, selectedMetric),
                   getMetricLabel(selectedMetric),
                 ]}
                 labelStyle={{ color: 'var(--foreground)' }}
@@ -176,9 +178,7 @@ export function OperatorComparisonChart({
                 label={({ operator, percent }) => {
                   const name =
                     typeof operator === 'string' ? operator : String(operator)
-                  const shortName =
-                    name.length > 12 ? name.substring(0, 12) + '...' : name
-                  return `${shortName} ${percent ? (percent * 100).toFixed(0) : 0}%`
+                  return `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`
                 }}
                 outerRadius={80}
                 fill="#8884d8"
@@ -192,8 +192,10 @@ export function OperatorComparisonChart({
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [
-                  formatValue(value, selectedMetric),
+                formatter={(value: number | undefined) => [
+                  value === undefined
+                    ? 'N/A'
+                    : formatValue(value, selectedMetric),
                   getMetricLabel(selectedMetric),
                 ]}
                 labelStyle={{ color: 'var(--foreground)' }}

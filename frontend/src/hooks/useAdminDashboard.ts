@@ -306,9 +306,11 @@ export function useAdminDashboard() {
             const trips = upcomingTripsResult.data.trips
               .filter((trip: TripItem) => {
                 // Filter only trips with future departure times
-                const departureTime = new Date(
+                const departureTimeStr =
                   trip.departure_time || trip.schedule?.departure_time
-                )
+                if (!departureTimeStr) return false
+
+                const departureTime = new Date(departureTimeStr)
                 const now = new Date()
                 console.log(
                   `Trip ${trip.trip_id}: departure=${departureTime.toISOString()}, now=${now.toISOString()}, isFuture=${departureTime > now}`

@@ -113,10 +113,13 @@ export function BookingStatusDistribution({
               />
               <Tooltip
                 formatter={(
-                  value: number,
-                  item: { payload?: { percentage?: number } }
+                  value: number | undefined,
+                  name: string,
+                  props: { payload?: { percentage?: number } }
                 ) => [
-                  `${value.toLocaleString()} (${item.payload?.percentage}%)`,
+                  value === undefined
+                    ? 'N/A'
+                    : `${value.toLocaleString()} (${props.payload?.percentage ?? 0}%)`,
                   'Count',
                 ]}
                 labelFormatter={(label) => formatStatusLabel(label)}
@@ -136,7 +139,12 @@ export function BookingStatusDistribution({
           ) : (
             <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <Pie
-                data={statusDistribution as Record<string, string | number>[]}
+                data={
+                  statusDistribution as unknown as Record<
+                    string,
+                    string | number
+                  >[]
+                }
                 cx="50%"
                 cy="45%"
                 outerRadius={80}
@@ -153,10 +161,13 @@ export function BookingStatusDistribution({
               </Pie>
               <Tooltip
                 formatter={(
-                  value: number,
-                  item: { payload?: { percentage?: number } }
+                  value: number | undefined,
+                  name: string,
+                  props: { payload?: { percentage?: number } }
                 ) => [
-                  `${value.toLocaleString()} (${item.payload?.percentage}%)`,
+                  value === undefined
+                    ? 'N/A'
+                    : `${value.toLocaleString()} (${props.payload?.percentage ?? 0}%)`,
                   'Count',
                 ]}
                 labelFormatter={(label) => formatStatusLabel(label)}
