@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Combobox } from '@/components/ui/combobox'
+import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { AlertCircle, Calendar, ArrowLeftRight, Users } from 'lucide-react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -24,19 +24,6 @@ interface SearchFormData {
   passengers: number | string
 }
 
-// Fallback cities list
-const fallbackCities = [
-  'Hanoi',
-  'Ho Chi Minh City',
-  'Da Nang',
-  'Hai Phong',
-  'Can Tho',
-  'Hue',
-  'Nha Trang',
-  'Da Lat',
-  'Sapa',
-]
-
 export const TripSearchForm = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState<SearchFormData>({
@@ -47,60 +34,6 @@ export const TripSearchForm = () => {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [cities, setCities] = useState<string[]>(fallbackCities)
-  const [citiesLoading, setCitiesLoading] = useState(true)
-  const [citiesError, setCitiesError] = useState<string | null>(null)
-
-  const fetchCities = async () => {
-    try {
-      setCitiesLoading(true)
-      setCitiesError(null)
-
-      const response = await fetch('/cities.json')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = (await response.json()) as Array<{ NameEn: string }>
-      const cityNames = data
-        .map((province) => {
-          const name = province.NameEn
-          switch (name) {
-            case 'Ha Noi':
-              return 'Hanoi'
-            case 'Ho Chi Minh':
-              return 'Ho Chi Minh City'
-            case 'Da Nang':
-              return 'Da Nang'
-            case 'Hai Phong':
-              return 'Hai Phong'
-            case 'Can Tho':
-              return 'Can Tho'
-            case 'Thua Thien Hue':
-              return 'Hue'
-            case 'Khanh Hoa':
-              return 'Nha Trang'
-            case 'Lam Dong':
-              return 'Da Lat'
-            case 'Lao Cai':
-              return 'Sapa'
-            default:
-              return name
-          }
-        })
-        .sort()
-      setCities(cityNames)
-    } catch (error) {
-      console.error('Failed to load cities:', error)
-      setCitiesError('Failed to load cities. Using default list.')
-      setCities(fallbackCities)
-    } finally {
-      setCitiesLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchCities()
-  }, [])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -160,19 +93,14 @@ export const TripSearchForm = () => {
                 <Label htmlFor="from" className="text-base font-medium">
                   From
                 </Label>
-                <Combobox
-                  options={cities}
+                <LocationAutocomplete
                   value={formData.from}
                   onValueChange={(value) => {
                     setFormData({ ...formData, from: value })
                     setErrors({ ...errors, from: '' })
                   }}
-                  placeholder={
-                    citiesLoading
-                      ? 'Loading cities...'
-                      : 'Select departure city'
-                  }
-                  disabled={citiesLoading}
+                  placeholder="Search departure city (e.g., ha noi)"
+                  type="origin"
                 />
                 {errors.from && (
                   <div className="flex items-center gap-2 text-sm text-destructive">
@@ -282,30 +210,19 @@ export const TripSearchForm = () => {
                 <Label htmlFor="to" className="text-base font-medium">
                   To
                 </Label>
-                <Combobox
-                  options={cities}
+                <LocationAutocomplete
                   value={formData.to}
                   onValueChange={(value) => {
                     setFormData({ ...formData, to: value })
                     setErrors({ ...errors, to: '' })
                   }}
-                  placeholder={
-                    citiesLoading
-                      ? 'Loading cities...'
-                      : 'Select destination city'
-                  }
-                  disabled={citiesLoading}
+                  placeholder="Search destination city (e.g., da nang, hue)"
+                  type="destination"
                 />
                 {errors.to && (
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="w-4 h-4" />
                     {errors.to}
-                  </div>
-                )}
-                {citiesError && !errors.to && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <AlertCircle className="w-4 h-4" />
-                    {citiesError}
                   </div>
                 )}
               </div>

@@ -231,6 +231,17 @@ class TripService {
     return await tripRepository.search(filters);
   }
 
+  /**
+   * Autocomplete locations for search
+   * @param {string} query - Search query
+   * @param {string} type - 'origin', 'destination', or 'both'
+   * @param {number} limit - Maximum number of results
+   * @returns {Promise<Array>} Array of location suggestions
+   */
+  async autocompleteLocations(query, type = 'both', limit = 10) {
+    return await tripRepository.autocompleteLocations(query, type, limit);
+  }
+
   async getAllTrips(filters) {
     // Get all trips with admin filters
     return await tripRepository.findAll(filters);

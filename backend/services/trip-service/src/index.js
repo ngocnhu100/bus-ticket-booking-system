@@ -68,6 +68,7 @@ app.use('/upload', uploadRoutes.router);
 
 // --- Public routes ---
 app.get('/search', tripController.search);
+app.get('/autocomplete/locations', tripController.autocompleteLocations);
 
 // --- Admin: Trip listing (must come before /:id route) ---
 app.get('/', authenticate, authorize(['admin']), tripController.getAll);

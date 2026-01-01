@@ -209,6 +209,56 @@ class TripController {
     }
   }
 
+  /**
+   * Autocomplete locations for search (origin and destination)
+   * Supports unaccented, full-text, and fuzzy search
+   * GET /trips/autocomplete/locations?q=ha+noi&type=both&limit=10
+   */
+  async autocompleteLocations(req, res) {
+    try {
+      const query = req.query.q || req.query.query;
+      const type = req.query.type || 'both'; // 'origin', 'destination', or 'both'
+      const limit = parseInt(req.query.limit) || 10;
+
+      if (!query || query.trim().length < 2) {
+        return res.json({
+          success: true,
+          data: {
+            suggestions: [],
+            message: 'Query must be at least 2 characters',
+          },
+        });
+      }
+
+      if (!['origin', 'destination', 'both'].includes(type)) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VAL_001',
+            message: 'Invalid type parameter. Must be "origin", "destination", or "both"',
+          },
+        });
+      }
+
+      const suggestions = await tripService.autocompleteLocations(query, type, limit);
+
+      res.json({
+        success: true,
+        data: {
+          suggestions,
+          query,
+          type,
+        },
+      });
+    } catch (err) {
+      console.error('Autocomplete error:', err);
+      res.status(500).json({
+        success: false,
+        error: { code: 'SYS_ERROR', message: 'Error getting location suggestions' },
+      });
+    }
+  }
+
   // ========== ADMIN LIST ENDPOINT ==========
 
   /**

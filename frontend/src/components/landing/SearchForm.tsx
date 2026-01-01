@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Combobox } from '@/components/ui/combobox'
+import { LocationAutocomplete } from '@/components/ui/location-autocomplete'
 import { AlertCircle, Calendar, ArrowLeftRight } from 'lucide-react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
@@ -21,19 +21,6 @@ interface SearchFormData {
   date: Date | null
   passengers: number | string
 }
-
-// Fallback cities list
-const fallbackCities = [
-  'Hanoi',
-  'Ho Chi Minh City',
-  'Da Nang',
-  'Hai Phong',
-  'Can Tho',
-  'Hue',
-  'Nha Trang',
-  'Da Lat',
-  'Sapa',
-]
 
 export function SearchForm() {
   const navigate = useNavigate()
@@ -53,63 +40,6 @@ export function SearchForm() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(false)
-  const [cities, setCities] = useState<string[]>(fallbackCities)
-  const [citiesLoading, setCitiesLoading] = useState(true)
-  const [citiesError, setCitiesError] = useState<string | null>(null)
-
-  const fetchCities = async () => {
-    try {
-      setCitiesLoading(true)
-      setCitiesError(null)
-
-      // Fetch cities from JSON file
-      const response = await fetch('/cities.json')
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      const data = (await response.json()) as Array<{ NameEn: string }>
-      // Extract unique city names from the data and map to our database names
-      const cityNames = data
-        .map((province) => {
-          const name = province.NameEn
-          switch (name) {
-            case 'Ha Noi':
-              return 'Hanoi'
-            case 'Ho Chi Minh':
-              return 'Ho Chi Minh City'
-            case 'Da Nang':
-              return 'Da Nang'
-            case 'Hai Phong':
-              return 'Hai Phong'
-            case 'Can Tho':
-              return 'Can Tho'
-            case 'Thua Thien Hue':
-              return 'Hue'
-            case 'Khanh Hoa':
-              return 'Nha Trang'
-            case 'Lam Dong':
-              return 'Da Lat'
-            case 'Lao Cai':
-              return 'Sapa'
-            default:
-              return name
-          }
-        })
-        .sort()
-      setCities(cityNames)
-    } catch (error) {
-      console.error('Failed to load cities:', error)
-      setCitiesError('Failed to load cities. Using default list.')
-      setCities(fallbackCities)
-    } finally {
-      setCitiesLoading(false)
-    }
-  }
-
-  // Fetch cities on component mount
-  useEffect(() => {
-    fetchCities()
-  }, [])
 
   // Validate form
   const validateForm = () => {
@@ -209,19 +139,14 @@ export function SearchForm() {
                     <Label htmlFor="from" className="text-base font-semibold">
                       From
                     </Label>
-                    <Combobox
-                      options={cities}
+                    <LocationAutocomplete
                       value={formData.from}
                       onValueChange={(value) => {
                         setFormData({ ...formData, from: value })
                         setErrors({ ...errors, from: '' })
                       }}
-                      placeholder={
-                        citiesLoading
-                          ? 'Loading cities...'
-                          : 'Select departure city'
-                      }
-                      disabled={citiesLoading}
+                      placeholder="Search departure city (e.g., ha noi, sai gon)"
+                      type="origin"
                     />
                   </div>
 
@@ -254,25 +179,20 @@ export function SearchForm() {
                     <Label htmlFor="to" className="text-base font-semibold">
                       To
                     </Label>
-                    <Combobox
-                      options={cities}
+                    <LocationAutocomplete
                       value={formData.to}
                       onValueChange={(value) => {
                         setFormData({ ...formData, to: value })
                         setErrors({ ...errors, to: '' })
                       }}
-                      placeholder={
-                        citiesLoading
-                          ? 'Loading cities...'
-                          : 'Select destination city'
-                      }
-                      disabled={citiesLoading}
+                      placeholder="Search destination city (e.g., da nang, hue)"
+                      type="destination"
                     />
                   </div>
                 </div>
 
                 {/* Error messages for From/To row */}
-                {(errors.from || errors.to || citiesError) && (
+                {(errors.from || errors.to) && (
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4">
                     <div>
                       {errors.from && (
@@ -288,12 +208,6 @@ export function SearchForm() {
                         <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                           <AlertCircle className="w-4 h-4" />
                           {errors.to}
-                        </div>
-                      )}
-                      {citiesError && !errors.to && (
-                        <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-                          <AlertCircle className="w-4 h-4" />
-                          {citiesError}
                         </div>
                       )}
                     </div>
