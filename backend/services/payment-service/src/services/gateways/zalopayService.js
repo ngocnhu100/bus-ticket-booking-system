@@ -94,6 +94,14 @@ async function createZaloPayPayment({ amount, description, bookingId }) {
       };
     }
     console.log('[ZaloPay] response thành công:', data);
+    
+    // Chuyển đổi URL từ openinapp sang pay/v2 để test qua web
+    let payUrl = data.order_url;
+    if (payUrl && payUrl.includes('/openinapp?')) {
+      payUrl = payUrl.replace('/openinapp?', '/pay/v2?');
+      console.log('[ZaloPay] Đã chuyển URL sang web version:', payUrl);
+    }
+    
     // Sau khi tạo payment thành công, lưu app_trans_id vào DB booking
     try {
       const { Pool } = require('pg');
@@ -114,7 +122,7 @@ async function createZaloPayPayment({ amount, description, bookingId }) {
     }
     return {
       success: true,
-      payUrl: data.order_url,
+      payUrl: payUrl,
       zpTransToken: data.zp_trans_token,
       appTransId: app_trans_id,
       raw: data
