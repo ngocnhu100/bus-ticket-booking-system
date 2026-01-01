@@ -145,7 +145,7 @@ export function SearchForm() {
                         setFormData({ ...formData, from: value })
                         setErrors({ ...errors, from: '' })
                       }}
-                      placeholder="Search departure city (e.g., ha noi, sai gon)"
+                      placeholder="Search departure city (e.g., ha noi, da nang)"
                       type="origin"
                     />
                   </div>

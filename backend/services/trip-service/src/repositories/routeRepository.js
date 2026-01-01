@@ -525,10 +525,10 @@ class RouteRepository {
     await this.update(routeId, { origin, destination });
   }
 
-  // MỚI: Lấy các route phổ biến dựa trên số trip đã đặt
+  // MỚI: Lấy các route phổ biến dựa trên số bookings đã confirmed trong 30 ngày qua
   async getPopularRoutes(limit = 10) {
     const query = `
-    SELECT 
+    SELECT
       r.route_id,
       r.origin,
       r.destination,
@@ -536,14 +536,18 @@ class RouteRepository {
       r.estimated_minutes,
       r.created_at,
       r.updated_at,
-      COUNT(t.trip_id) AS total_trips,
+      COUNT(b.booking_id) AS total_bookings,
+      COUNT(DISTINCT t.trip_id) AS total_trips,
       MIN(t.base_price) AS starting_price
     FROM routes r
-    LEFT JOIN trips t ON t.route_id = r.route_id 
-      AND t.status IN ('scheduled') 
-      AND t.departure_time > NOW()
+    LEFT JOIN trips t ON t.route_id = r.route_id
+      AND t.status IN ('scheduled', 'in_progress', 'completed')
+      AND t.departure_time > NOW() - INTERVAL '30 days'
+    LEFT JOIN bookings b ON b.trip_id = t.trip_id
+      AND b.status IN ('confirmed', 'completed')
+      AND b.created_at > NOW() - INTERVAL '30 days'
     GROUP BY r.route_id
-    ORDER BY total_trips DESC, starting_price ASC NULLS LAST
+    ORDER BY total_bookings DESC, total_trips DESC, starting_price ASC NULLS LAST
     LIMIT $1;
   `;
 
