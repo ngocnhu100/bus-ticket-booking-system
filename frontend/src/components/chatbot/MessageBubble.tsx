@@ -527,6 +527,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       generalError: 'Có lỗi xảy ra',
       tryAgain: 'Vui lòng thử lại',
       paymentDescription: 'Thanh toán đặt vé',
+      amount: 'Số tiền:',
     },
     en: {
       title: '💳 Select Payment Method',
@@ -534,6 +535,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       generalError: 'An error occurred',
       tryAgain: 'Please try again',
       paymentDescription: 'Payment for booking',
+      amount: 'Amount:',
     },
   }
 
@@ -674,7 +676,9 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
         ))}
       </div>
       <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
-        Số tiền: {paymentData.amount?.toLocaleString('vi-VN')}₫
+        {t.amount}{' '}
+        {paymentData.amount?.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}{' '}
+        {lang === 'vi' ? '₫' : 'VND'}
       </div>
     </div>
   )
