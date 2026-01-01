@@ -65,6 +65,15 @@ export default function RevenueAnalytics() {
   const [error, setError] = useState<string | null>(null)
   const [operators, setOperators] = useState<Operator[]>([])
   const [operatorsLoading, setOperatorsLoading] = useState(true)
+  const [dateError, setDateError] = useState<string | null>(null)
+
+  // Auto-clear date error after 5 seconds
+  useEffect(() => {
+    if (dateError) {
+      const timer = setTimeout(() => setDateError(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [dateError])
 
   // Fetch data when filters change
   useEffect(() => {
@@ -503,8 +512,13 @@ export default function RevenueAnalytics() {
                           customDateRange={customDateRange}
                           onDateRangeChange={setDateRange}
                           onCustomDateRangeChange={(range) => {
-                            setCustomDateRange(range)
-                            setHasCustomDatesBeenSet(true)
+                            if (range.from >= range.to) {
+                              setDateError('From date must be before to date')
+                            } else {
+                              setDateError(null)
+                              setCustomDateRange(range)
+                              setHasCustomDatesBeenSet(true)
+                            }
                           }}
                         />
                       )}
@@ -566,6 +580,17 @@ export default function RevenueAnalytics() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Date Error Card */}
+                {dateError && (
+                  <Card className="border-red-200/50 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50">
+                    <CardContent className="pt-6">
+                      <p className="text-red-700 dark:text-red-300 text-sm font-medium">
+                        {dateError}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Summary Cards Grid */}
                 <div className="space-y-4">
@@ -685,8 +710,13 @@ export default function RevenueAnalytics() {
                           customDateRange={customDateRange}
                           onDateRangeChange={setDateRange}
                           onCustomDateRangeChange={(range) => {
-                            setCustomDateRange(range)
-                            setHasCustomDatesBeenSet(true)
+                            if (range.from >= range.to) {
+                              setDateError('From date must be before to date')
+                            } else {
+                              setDateError(null)
+                              setCustomDateRange(range)
+                              setHasCustomDatesBeenSet(true)
+                            }
                           }}
                         />
                       )}
@@ -716,6 +746,17 @@ export default function RevenueAnalytics() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Date Error Card */}
+                {dateError && (
+                  <Card className="border-red-200/50 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50">
+                    <CardContent className="pt-6">
+                      <p className="text-red-700 dark:text-red-300 text-sm font-medium">
+                        {dateError}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Summary Cards Grid */}
                 <div className="space-y-4">
