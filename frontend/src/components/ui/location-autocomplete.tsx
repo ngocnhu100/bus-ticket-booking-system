@@ -26,8 +26,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 interface LocationSuggestion {
   location: string
-  type: 'origin' | 'destination' | 'both'
+  type: 'origin' | 'destination' | 'stop' | 'dropoff_point'
   relevance: number
+  origin?: string
+  destination?: string
 }
 
 interface PopularRoute {
@@ -42,7 +44,7 @@ interface LocationAutocompleteProps {
   onValueChange?: (value: string) => void
   placeholder?: string
   disabled?: boolean
-  type?: 'origin' | 'destination' | 'both'
+  type?: 'origin' | 'destination' | 'both' | 'all'
   className?: string
 }
 
@@ -106,8 +108,12 @@ export function LocationAutocomplete({
       setError(null)
 
       try {
+        // For destination searches, also include stops and dropoff points
+        // since users might search for bus stations, stops, or dropoff locations
+        const searchType = type === 'destination' ? 'all' : type
+
         const response = await fetch(
-          `${API_BASE_URL}/trips/autocomplete/locations?q=${encodeURIComponent(query)}&type=${type}&limit=10`
+          `${API_BASE_URL}/trips/autocomplete/locations?q=${encodeURIComponent(query)}&type=${searchType}&limit=10`
         )
 
         if (!response.ok) {
@@ -145,7 +151,7 @@ export function LocationAutocomplete({
     }
 
     // Set new timer
-    if (searchQuery.trim().length >= 2) {
+    if ((searchQuery || '').trim().length >= 2) {
       debounceTimerRef.current = setTimeout(() => {
         fetchSuggestions(searchQuery)
       }, 300) // 300ms debounce
@@ -160,9 +166,24 @@ export function LocationAutocomplete({
     }
   }, [searchQuery, fetchSuggestions])
 
-  const handleSelect = (location: string) => {
-    onValueChange?.(location)
-    setSearchQuery(location)
+  const handleSelect = (suggestion: LocationSuggestion) => {
+    let valueToSet = suggestion.location
+
+    // For stops and dropoff points, use the route's origin/destination based on the field type
+    if (
+      type === 'origin' &&
+      (suggestion.type === 'stop' || suggestion.type === 'dropoff_point')
+    ) {
+      valueToSet = suggestion.origin || suggestion.location
+    } else if (
+      type === 'destination' &&
+      (suggestion.type === 'stop' || suggestion.type === 'dropoff_point')
+    ) {
+      valueToSet = suggestion.destination || suggestion.location
+    }
+
+    onValueChange?.(valueToSet)
+    setSearchQuery(suggestion.location) // Display the selected location name
     setOpen(false)
   }
 
@@ -200,22 +221,28 @@ export function LocationAutocomplete({
                 if (e.key === 'Enter') {
                   e.preventDefault()
                   // Auto-select first item when Enter is pressed
-                  if (searchQuery.length < 2 && topRoutes.length > 0) {
+                  if ((searchQuery || '').length < 2 && topRoutes.length > 0) {
                     // Select first popular route
-                    const locationToSelect =
-                      type === 'destination'
-                        ? topRoutes[0].destination
-                        : topRoutes[0].origin
+                    const locationToSelect: LocationSuggestion = {
+                      location:
+                        type === 'destination'
+                          ? topRoutes[0].destination
+                          : topRoutes[0].origin,
+                      type: type === 'destination' ? 'destination' : 'origin',
+                      relevance: 1,
+                      origin: topRoutes[0].origin,
+                      destination: topRoutes[0].destination,
+                    }
                     handleSelect(locationToSelect)
-                  } else if (suggestions.length > 0) {
+                  } else if (suggestions && suggestions.length > 0) {
                     // Select first suggestion
-                    handleSelect(suggestions[0].location)
+                    handleSelect(suggestions[0])
                   }
                 }
               }}
               onBlur={() => {
                 // If user blurs and searchQuery is empty, clear the value
-                if (!searchQuery.trim()) {
+                if (!(searchQuery || '').trim()) {
                   onValueChange?.('')
                 }
               }}
@@ -255,7 +282,8 @@ export function LocationAutocomplete({
 
             {!isLoading &&
               !error &&
-              searchQuery.length >= 2 &&
+              (searchQuery || '').length >= 2 &&
+              suggestions &&
               suggestions.length === 0 && (
                 <CommandEmpty>
                   <div className="text-center py-6">
@@ -268,58 +296,69 @@ export function LocationAutocomplete({
                 </CommandEmpty>
               )}
 
-            {!isLoading && searchQuery.length < 2 && topRoutes.length === 0 && (
-              <CommandEmpty>
-                <div className="text-center py-6">
-                  <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Type at least 2 characters to search
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    e.g., "ha noi", "da lat", "da nang"
-                  </p>
-                </div>
-              </CommandEmpty>
-            )}
-
-            {!isLoading && searchQuery.length < 2 && topRoutes.length > 0 && (
-              <CommandGroup heading="Popular Routes">
-                {topRoutes.map((route, index) => (
-                  <div
-                    key={`${route.origin}-${route.destination}-${index}`}
-                    className="flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
-                    onClick={() => {
-                      const locationToSelect =
-                        type === 'destination'
-                          ? route.destination
-                          : route.origin
-                      handleSelect(locationToSelect)
-                    }}
-                  >
-                    <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                    <div className="flex-1">
-                      <span className="font-medium">
-                        {type === 'destination'
-                          ? route.destination
-                          : route.origin}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {route.origin} → {route.destination} (
-                        {route.distance_km}km)
-                      </span>
-                    </div>
+            {!isLoading &&
+              (searchQuery || '').length < 2 &&
+              topRoutes.length === 0 && (
+                <CommandEmpty>
+                  <div className="text-center py-6">
+                    <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Type at least 2 characters to search
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      e.g., "ha noi", "da lat", "da nang"
+                    </p>
                   </div>
-                ))}
-              </CommandGroup>
-            )}
+                </CommandEmpty>
+              )}
 
-            {!isLoading && suggestions.length > 0 && (
+            {!isLoading &&
+              (searchQuery || '').length < 2 &&
+              topRoutes.length > 0 && (
+                <CommandGroup heading="Popular Routes">
+                  {topRoutes.map((route, index) => (
+                    <div
+                      key={`${route.origin}-${route.destination}-${index}`}
+                      className="flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
+                      onClick={() => {
+                        const locationToSelect: LocationSuggestion = {
+                          location:
+                            type === 'destination'
+                              ? route.destination
+                              : route.origin,
+                          type:
+                            type === 'destination' ? 'destination' : 'origin',
+                          relevance: 1,
+                          origin: route.origin,
+                          destination: route.destination,
+                        }
+                        handleSelect(locationToSelect)
+                      }}
+                    >
+                      <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1">
+                        <span className="font-medium">
+                          {type === 'destination'
+                            ? route.destination
+                            : route.origin}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {route.origin} → {route.destination} (
+                          {route.distance_km}km)
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </CommandGroup>
+              )}
+
+            {!isLoading && suggestions && suggestions.length > 0 && (
               <CommandGroup heading="Suggestions">
                 {suggestions.map((suggestion, index) => (
                   <div
                     key={`${suggestion.location}-${index}`}
                     className="flex items-center px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
-                    onClick={() => handleSelect(suggestion.location)}
+                    onClick={() => handleSelect(suggestion)}
                   >
                     <Check
                       className={cn(
@@ -332,23 +371,41 @@ export function LocationAutocomplete({
                     <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
                     <div className="flex-1">
                       <span>{suggestion.location}</span>
-                      {suggestion.relevance > 0 && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (
-                          {Math.min(
-                            Math.round(suggestion.relevance * 100),
-                            100
-                          )}
-                          % match)
-                        </span>
-                      )}
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {suggestion.type === 'origin' && (
+                          <>
+                            <MapPin className="inline w-3 h-3 mr-1" />
+                            Origin
+                          </>
+                        )}
+                        {suggestion.type === 'destination' && (
+                          <>
+                            <MapPin className="inline w-3 h-3 mr-1" />
+                            Destination
+                          </>
+                        )}
+                        {suggestion.type === 'stop' && (
+                          <>
+                            <MapPin className="inline w-3 h-3 mr-1" />
+                            Route Stop
+                          </>
+                        )}
+                        {suggestion.type === 'dropoff_point' && (
+                          <>
+                            <MapPin className="inline w-3 h-3 mr-1" />
+                            Drop-off Point
+                          </>
+                        )}
+                        {suggestion.relevance > 0 &&
+                          ` (${Math.min(Math.round(suggestion.relevance * 100), 100)}% match)`}
+                      </span>
                     </div>
                   </div>
                 ))}
               </CommandGroup>
             )}
 
-            {searchQuery.length >= 2 && (
+            {(searchQuery || '').length >= 2 && (
               <div className="border-t px-3 py-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-3 h-3" />

@@ -99,7 +99,7 @@ export const TripSearchForm = () => {
                     setFormData({ ...formData, from: value })
                     setErrors({ ...errors, from: '' })
                   }}
-                  placeholder="Search departure city (e.g., ha noi)"
+                  placeholder="Search departure city or bus station (e.g., ha noi, central station)"
                   type="origin"
                 />
                 {errors.from && (
@@ -216,7 +216,7 @@ export const TripSearchForm = () => {
                     setFormData({ ...formData, to: value })
                     setErrors({ ...errors, to: '' })
                   }}
-                  placeholder="Search destination city (e.g., da nang, hue)"
+                  placeholder="Search destination city, bus station, or stop (e.g., da nang, hue, hai phong bus station)"
                   type="destination"
                 />
                 {errors.to && (

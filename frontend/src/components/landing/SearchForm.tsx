@@ -145,7 +145,7 @@ export function SearchForm() {
                         setFormData({ ...formData, from: value })
                         setErrors({ ...errors, from: '' })
                       }}
-                      placeholder="Search departure city (e.g., ha noi, da nang)"
+                      placeholder="Search departure city or bus station (e.g., ha noi, da nang, central station)"
                       type="origin"
                     />
                   </div>
@@ -185,7 +185,7 @@ export function SearchForm() {
                         setFormData({ ...formData, to: value })
                         setErrors({ ...errors, to: '' })
                       }}
-                      placeholder="Search destination city (e.g., da nang, hue)"
+                      placeholder="Search destination city, bus station, or stop (e.g., da nang, hue, hai phong bus station)"
                       type="destination"
                     />
                   </div>

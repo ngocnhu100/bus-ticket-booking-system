@@ -210,14 +210,14 @@ class TripController {
   }
 
   /**
-   * Autocomplete locations for search (origin and destination)
+   * Autocomplete locations for search (origin, destination, route stops, dropoff points)
    * Supports unaccented, full-text, and fuzzy search
    * GET /trips/autocomplete/locations?q=ha+noi&type=both&limit=10
    */
   async autocompleteLocations(req, res) {
     try {
       const query = req.query.q || req.query.query;
-      const type = req.query.type || 'both'; // 'origin', 'destination', or 'both'
+      const type = req.query.type || 'both'; // 'origin', 'destination', 'both', 'stop', 'dropoff_point', 'all'
       const limit = parseInt(req.query.limit) || 10;
 
       if (!query || query.trim().length < 2) {
@@ -230,12 +230,13 @@ class TripController {
         });
       }
 
-      if (!['origin', 'destination', 'both'].includes(type)) {
+      if (!['origin', 'destination', 'both', 'stop', 'dropoff_point', 'all'].includes(type)) {
         return res.status(422).json({
           success: false,
           error: {
             code: 'VAL_001',
-            message: 'Invalid type parameter. Must be "origin", "destination", or "both"',
+            message:
+              'Invalid type parameter. Must be "origin", "destination", "both", "stop", "dropoff_point", or "all"',
           },
         });
       }
