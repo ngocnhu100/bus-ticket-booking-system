@@ -1,7 +1,16 @@
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { NavLink } from '@/components/NavLink'
 import { Button } from '@/components/ui/button'
-import { Calendar, History, User, CreditCard, Bell, LogOut } from 'lucide-react'
+import {
+  Calendar,
+  History,
+  User,
+  CreditCard,
+  Bell,
+  LogOut,
+  Bus,
+} from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAuth } from '@/context/AuthContext'
 
@@ -27,14 +36,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <header className="fixed top-0 left-0 right-0 h-(--header-height) bg-card border-b border-border z-50">
         <div className="h-full px-6 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">
-                T
-              </span>
+              <Bus className="text-primary-foreground w-6 h-6" />
             </div>
-            <span className="text-xl font-bold">TravelDash</span>
-          </div>
+            <span className="text-xl font-bold text-white">BusGo</span>
+          </Link>
 
           {/* User + Theme + Logout */}
           <div className="flex items-center gap-4">

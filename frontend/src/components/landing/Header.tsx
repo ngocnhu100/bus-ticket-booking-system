@@ -47,7 +47,9 @@ export function Header() {
               navigate('/')
               // Wait for navigation then scroll
               setTimeout(() => {
-                document.getElementById('popular-routes')?.scrollIntoView({ behavior: 'smooth' })
+                document
+                  .getElementById('popular-routes')
+                  ?.scrollIntoView({ behavior: 'smooth' })
               }, 100)
             }}
             className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium transition"
@@ -68,7 +70,9 @@ export function Header() {
               navigate('/')
               // Wait for navigation then scroll
               setTimeout(() => {
-                document.getElementById('why-us')?.scrollIntoView({ behavior: 'smooth' })
+                document
+                  .getElementById('why-us')
+                  ?.scrollIntoView({ behavior: 'smooth' })
               }, 100)
             }}
             className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium transition"
@@ -79,7 +83,9 @@ export function Header() {
             onClick={() => {
               navigate('/')
               setTimeout(() => {
-                document.getElementById('footer-contact')?.scrollIntoView({ behavior: 'smooth' })
+                document
+                  .getElementById('footer-contact')
+                  ?.scrollIntoView({ behavior: 'smooth' })
               }, 100)
             }}
             className="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium transition"
@@ -159,7 +165,9 @@ export function Header() {
                 navigate('/')
                 setIsMobileMenuOpen(false)
                 setTimeout(() => {
-                  document.getElementById('popular-routes')?.scrollIntoView({ behavior: 'smooth' })
+                  document
+                    .getElementById('popular-routes')
+                    ?.scrollIntoView({ behavior: 'smooth' })
                 }, 100)
               }}
               className="block w-full text-left text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium py-2"
@@ -181,7 +189,9 @@ export function Header() {
                 navigate('/')
                 setIsMobileMenuOpen(false)
                 setTimeout(() => {
-                  document.getElementById('why-us')?.scrollIntoView({ behavior: 'smooth' })
+                  document
+                    .getElementById('why-us')
+                    ?.scrollIntoView({ behavior: 'smooth' })
                 }, 100)
               }}
               className="block w-full text-left text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium py-2"
@@ -193,7 +203,9 @@ export function Header() {
                 navigate('/')
                 setIsMobileMenuOpen(false)
                 setTimeout(() => {
-                  document.getElementById('footer-contact')?.scrollIntoView({ behavior: 'smooth' })
+                  document
+                    .getElementById('footer-contact')
+                    ?.scrollIntoView({ behavior: 'smooth' })
                 }, 100)
               }}
               className="block w-full text-left text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white font-medium py-2"
