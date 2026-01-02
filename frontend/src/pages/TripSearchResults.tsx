@@ -195,7 +195,7 @@ export function TripSearchResults() {
   const [direction, setDirection] = useState<'next' | 'previous'>(
     urlDirection || 'next'
   )
-  const [flexibleSearchPage, setFlexibleSearchPage] = useState(1)
+  //const [flexibleSearchPage, setFlexibleSearchPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
 
@@ -210,7 +210,7 @@ export function TripSearchResults() {
   >({})
   const hasAddedSearchRef = useRef(false)
   const hasFetchedTripsRef = useRef<string | false>(false)
-  const hasFetchedAlternativesRef = useRef<string | false>(false)
+  //const hasFetchedAlternativesRef = useRef<string | false>(false)
 
   useEffect(() => {
     // Prevent multiple API calls for the same search
@@ -380,15 +380,15 @@ export function TripSearchResults() {
     if (!origin || !destination) return
 
     // Prevent multiple API calls for the same search
-    const searchKey = `${origin}-${destination}-${date}-${flexibleDays}-${flexibleSearchPage}`
-    if (hasFetchedAlternativesRef.current === searchKey) {
-      console.log(
-        '[TripSearchResults] Skipping duplicate alternatives fetch for:',
-        searchKey
-      )
-      return
-    }
-    hasFetchedAlternativesRef.current = searchKey
+    //const searchKey = `${origin}-${destination}-${date}-${flexibleDays}-${flexibleSearchPage}`
+    // if (hasFetchedAlternativesRef.current === searchKey) {
+    //   console.log(
+    //     '[TripSearchResults] Skipping duplicate alternatives fetch for:',
+    //     searchKey
+    //   )
+    //   return
+    // }
+    // hasFetchedAlternativesRef.current = searchKey
 
     const fetchAlternatives = async () => {
       if (trips.length > 0) return
@@ -403,7 +403,7 @@ export function TripSearchResults() {
               destination,
               date,
               flexibleDays,
-              page: flexibleSearchPage,
+              //page: flexibleSearchPage,
             },
             null,
             2
@@ -413,8 +413,8 @@ export function TripSearchResults() {
           origin,
           destination,
           date,
-          flexibleDays,
-          flexibleSearchPage
+          flexibleDays
+          //flexibleSearchPage
         )
         console.log(
           '[TripSearchResults] Alternatives data received:',
@@ -436,7 +436,7 @@ export function TripSearchResults() {
     destination,
     date,
     flexibleDays,
-    flexibleSearchPage,
+    //flexibleSearchPage,
   ])
 
   // Update URL when filters, sort, pagination change
@@ -1265,7 +1265,7 @@ export function TripSearchResults() {
                     </Card>
 
                     {/* Flexible search results */}
-                    {alternatives?.flexibleSearch &&
+                    {/* {alternatives?.flexibleSearch &&
                       alternatives.flexibleSearch.trips.length > 0 && (
                         <Card className="p-6">
                           <h3 className="text-lg font-semibold mb-4">
@@ -1282,9 +1282,9 @@ export function TripSearchResults() {
                                 isSelected={selectedTripId === trip.trip_id}
                               />
                             ))}
-                          </div>
-                          {/* Pagination for flexible search */}
-                          {(alternatives.flexibleSearch.totalPages ?? 1) >
+                          </div> */}
+                    {/* Pagination for flexible search */}
+                    {/* {(alternatives.flexibleSearch.totalPages ?? 1) >
                             1 && (
                             <div className="mt-6 flex justify-center">
                               <Pagination
@@ -1301,7 +1301,7 @@ export function TripSearchResults() {
                             </div>
                           )}
                         </Card>
-                      )}
+                      )} */}
                   </>
                 ) : (
                   <Card className="p-8 text-center">

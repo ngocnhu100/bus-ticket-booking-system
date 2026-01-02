@@ -489,8 +489,8 @@ class TripRepository {
       sort = 'default',
       limit = 10,
       page = 1,
-      flexibleDays,
-      direction = 'next',
+      // flexibleDays,
+      // direction = 'next',
     } = filters;
 
     const offset = (page - 1) * limit;
@@ -526,28 +526,32 @@ class TripRepository {
       values.push(destination); // Similarity comparison
       index += 3;
     }
+    // if (date) {
+    //   if (flexibleDays && flexibleDays > 0) {
+    //     // Search within date range based on direction
+    //     const startDate = new Date(date);
+    //     const endDate = new Date(date);
+    //     if (direction === 'previous') {
+    //       startDate.setDate(startDate.getDate() - flexibleDays);
+    //       endDate.setDate(endDate.getDate());
+    //     } else {
+    //       // next or default
+    //       startDate.setDate(startDate.getDate());
+    //       endDate.setDate(endDate.getDate() + flexibleDays);
+    //     }
+    //     where_clauses.push(
+    //       `DATE(t.departure_time) >= $${index++} AND DATE(t.departure_time) <= $${index++}`
+    //     );
+    //     values.push(startDate.toISOString().split('T')[0]);
+    //     values.push(endDate.toISOString().split('T')[0]);
+    //   } else {
+    //     where_clauses.push(`DATE(t.departure_time) = $${index++}`);
+    //     values.push(date);
+    //   }
+    // }
     if (date) {
-      if (flexibleDays && flexibleDays > 0) {
-        // Search within date range based on direction
-        const startDate = new Date(date);
-        const endDate = new Date(date);
-        if (direction === 'previous') {
-          startDate.setDate(startDate.getDate() - flexibleDays);
-          endDate.setDate(endDate.getDate());
-        } else {
-          // next or default
-          startDate.setDate(startDate.getDate());
-          endDate.setDate(endDate.getDate() + flexibleDays);
-        }
-        where_clauses.push(
-          `DATE(t.departure_time) >= $${index++} AND DATE(t.departure_time) <= $${index++}`
-        );
-        values.push(startDate.toISOString().split('T')[0]);
-        values.push(endDate.toISOString().split('T')[0]);
-      } else {
-        where_clauses.push(`DATE(t.departure_time) = $${index++}`);
-        values.push(date);
-      }
+      where_clauses.push(`DATE(t.departure_time) = $${index++}`);
+      values.push(date);
     }
     if (passengers !== undefined && passengers > 0) {
       where_clauses.push(`(b.seat_capacity - COALESCE((

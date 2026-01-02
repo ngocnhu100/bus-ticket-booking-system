@@ -512,6 +512,11 @@ class GroqAIService {
   async generateConversationalResponse(userMessage, conversationHistory = [], context = {}) {
     let systemPrompt = CONVERSATIONAL_RESPONSE_PROMPT;
 
+    // Add language-specific instructions if language is provided
+    if (context.lang) {
+      systemPrompt += `\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST respond in ${context.lang === 'vi' ? 'Vietnamese' : 'English'} only. Do not mix languages or respond in any other language.`;
+    }
+
     // Add context information to system prompt
     if (context.trips) {
       systemPrompt += `\n\nAvailable trips:\n${JSON.stringify(context.trips, null, 2)}`;

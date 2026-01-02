@@ -193,7 +193,7 @@ class ChatbotService {
       await conversationRepository.saveMessage(sessionId, 'user', message);
 
       // Detect language
-      const lang = this.detectLanguage(message) || 'en'; // Default to English
+      const lang = this.detectLanguage(message, conversationContext) || 'en'; // Default to English
 
       console.log('[ChatbotService] Detected language:', lang);
 
@@ -266,7 +266,7 @@ class ChatbotService {
 
         default:
           console.log('[ChatbotService] Handling default/general response');
-          response = await groqAIService.generateResponse(message, conversationContext);
+          response = await groqAIService.generateResponse(message, conversationContext, { lang });
           break;
       }
 
@@ -2867,23 +2867,68 @@ Return ONLY the text response, no JSON, no explanations.`;
 
   /**
    * Detect language from text (Vietnamese or English)
+   * Considers conversation context to avoid switching language due to Vietnamese names
    */
-  detectLanguage(text) {
+  detectLanguage(text, conversationContext = null) {
     if (!text || typeof text !== 'string') {
       return 'en'; // Default to English
+    }
+
+    // Get the language of the last chatbot message for context
+    let lastBotLanguage = null;
+    if (
+      conversationContext &&
+      conversationContext.messages &&
+      conversationContext.messages.length > 0
+    ) {
+      // Find the last message from the assistant
+      for (let i = conversationContext.messages.length - 1; i >= 0; i--) {
+        if (conversationContext.messages[i].role === 'assistant') {
+          const botMsg = conversationContext.messages[i].content;
+          // Simple heuristic: count Vietnamese words in bot message
+          const vietnameseWordsPattern =
+            /(tôi|đi|bạn|có|không|nhà|xe|chuyến|đặt|và|hoặc|là|của|từ|đến|thời|gian|ngày|tháng|năm|hôm|nay|mai|sáng|chiều|tối|giá|vnd|đồng|vé|ghế|trạm|bến)/gi;
+          lastBotLanguage = vietnameseWordsPattern.test(botMsg) ? 'vi' : 'en';
+          break;
+        }
+      }
     }
 
     // Vietnamese characters and common Vietnamese words
     const vietnamesePattern =
       /[àáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵđÀÁẢÃẠĂẮẰẲẴẶÂẤẦẨẪẬÈÉẺẼẸÊẾỀỂỄỆÌÍỈĨỊÒÓỎÕỌÔỐỒỔỖỘƠỚỜỞỠỢÙÚỦŨỤƯỨỪỬỮỰỲÝỶỸỴĐ]/;
     const vietnameseWords =
-      /\b(tôi|đi|bạn|có|không|nhà|xe|chuyến|đặt|và|hoặc|là|của|từ|đến|thời|gian|ngày|tháng|năm|hôm|nay|mai|sáng|chiều|tối|giá|vnd|đồng|vé|ghế|trạm|bến)\b/i;
+      /(tôi|đi|bạn|có|không|nhà|xe|chuyến|đặt|và|hoặc|là|của|từ|đến|thời|gian|ngày|tháng|năm|hôm|nay|mai|sáng|chiều|tối|giá|vnd|đồng|vé|ghế|trạm|bến)/gi;
 
-    // Check for Vietnamese characters or common Vietnamese words
-    if (vietnamesePattern.test(text) || vietnameseWords.test(text)) {
+    // Check for Vietnamese characters
+    const hasVietnameseChars = vietnamesePattern.test(text);
+    const hasVietnameseWords = vietnameseWords.test(text);
+
+    // Count Vietnamese words to detect if it's substantial Vietnamese content
+    const vietnameseWordMatches = text.match(
+      /(tôi|đi|bạn|có|không|nhà|xe|chuyến|đặt|và|hoặc|là|của|từ|đến|thời|gian|ngày|tháng|năm|hôm|nay|mai|sáng|chiều|tối|giá|vnd|đồng|vé|ghế|trạm|bến)/gi
+    );
+    const vietnameseWordCount = vietnameseWordMatches ? vietnameseWordMatches.length : 0;
+
+    // If there are multiple Vietnamese words, it's Vietnamese
+    if (vietnameseWordCount >= 2) {
       return 'vi';
     }
 
+    // If only Vietnamese characters detected but no common words (likely just a name)
+    // and the conversation context is English, keep it English
+    if (hasVietnameseChars && vietnameseWordCount < 2) {
+      // If previous bot message was in English, stay in English
+      if (lastBotLanguage === 'en') {
+        return 'en';
+      }
+      // If we have at least 1 Vietnamese word and bot was speaking Vietnamese, switch
+      if (hasVietnameseWords && lastBotLanguage === 'vi') {
+        return 'vi';
+      }
+    }
+
+    // Default to English if no clear indication
     return 'en';
   }
 }

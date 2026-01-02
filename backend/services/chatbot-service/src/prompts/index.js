@@ -134,6 +134,25 @@ Conversation history:
 → Recognize that bot was asking for seat selection
 → Intent = SELECT_SEATS (confirming seat selection)
 
+LOCATION NAME SELECTION (CRITICAL):
+When user responds with a location name that matches options shown in the last chatbot message:
+- If last message showed pickup point options → intent = BOOK_TRIP (selecting pickup)
+- If last message showed dropoff point options → intent = BOOK_TRIP (selecting dropoff)
+- If last message showed trip search results → intent = BOOK_TRIP (selecting trip)
+
+**Example:**
+Conversation history:
+- Bot: "Select dropoff point (1 available): 1. Hai Phong Bus Station"
+- User: "Hai Phong Bus Station"
+→ Recognize that bot was asking for dropoff selection
+→ Intent = BOOK_TRIP (selecting from shown options) - NOT search_trips!
+
+**Example:**
+Conversation history:
+- Bot: "Select pickup point (3 available): 1. Ho Chi Minh City - District 1 Office 2. Da Nang..."
+- User: "Ho Chi Minh City - District 1 Office"
+→ Intent = BOOK_TRIP (selecting from shown options)
+
 5. If previous message shows numbered options (1., 2., 3.) → user selecting from those options is BOOK_TRIP, NOT search_trips
 
 EXAMPLE CONTEXT SCENARIOS:

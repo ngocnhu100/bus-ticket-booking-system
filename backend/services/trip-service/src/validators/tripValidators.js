@@ -140,8 +140,10 @@ const search_trip_schema = Joi.object({
   minSeats: Joi.number().integer().min(0),
 
   // Flexible search
-  flexibleDays: Joi.number().integer().min(1).max(30).default(7),
-  direction: Joi.string().valid('next', 'previous').default('next'),
+  //flexibleDays: Joi.number().integer().min(1).max(30).default(7),
+  //direction: Joi.string().valid('next', 'previous').default('next'),
+  flexibleDays: Joi.number().integer().min(1).max(30).optional(),
+  direction: Joi.string().valid('next', 'previous').optional(),
 
   // Sort and pagination
   sort: Joi.string().default('default'),
