@@ -28,11 +28,11 @@ async function getBookingIdFromQueryAsync() {
   // Fallback: lấy bookingId trực tiếp từ query nếu có (ưu tiên cao nhất)
   const bookingId = params.get('bookingId')
   if (bookingId) return bookingId
-  
+
   // PayOS: lấy từ parameter 'id' (lưu ý: đây là transaction ID, có thể không phải bookingId)
   const payosId = params.get('id')
   if (payosId) return payosId
-  
+
   // Nếu là ZaloPay, thử lấy từ apptransid (orderId)
   const apptransid = params.get('apptransid')
   if (apptransid) {
@@ -57,6 +57,7 @@ function getPaymentResultFromQuery() {
     resultCode: params.get('resultCode'),
     orderId: params.get('orderId'),
     message: params.get('message'),
+    amount: params.get('amount'),
     // PayOS params
     code: params.get('code'),
     status: params.get('status'),
@@ -181,7 +182,7 @@ const PaymentResult: React.FC = () => {
       const url = user
         ? `${API_BASE_URL}/bookings/${bookingId}`
         : `${API_BASE_URL}/bookings/${bookingId}/guest`
-      
+
       const headers: HeadersInit = {}
       if (user) {
         const token = getAccessToken()
@@ -189,7 +190,7 @@ const PaymentResult: React.FC = () => {
           headers['Authorization'] = `Bearer ${token}`
         }
       }
-      
+
       fetch(url, { headers })
         .then((res) => res.json())
         .then((data) => {
@@ -230,14 +231,18 @@ const PaymentResult: React.FC = () => {
   // If we have MoMo or PayOS result in URL, update booking status
   useEffect(() => {
     // Check if payment was successful
-    const isMoMoSuccess = paymentResult.resultCode && paymentResult.resultCode === '0'
-    const isPayOSSuccess = paymentResult.status === 'PAID' && paymentResult.code === '00' && paymentResult.cancel === 'false'
-    
+    const isMoMoSuccess =
+      paymentResult.resultCode && paymentResult.resultCode === '0'
+    const isPayOSSuccess =
+      paymentResult.status === 'PAID' &&
+      paymentResult.code === '00' &&
+      paymentResult.cancel === 'false'
+
     if (bookingId && (isMoMoSuccess || isPayOSSuccess)) {
       const url = user
         ? `${API_BASE_URL}/bookings/${bookingId}`
         : `${API_BASE_URL}/bookings/${bookingId}/guest`
-      
+
       const headers: HeadersInit = {}
       if (user) {
         const token = getAccessToken()
@@ -245,7 +250,7 @@ const PaymentResult: React.FC = () => {
           headers['Authorization'] = `Bearer ${token}`
         }
       }
-      
+
       // Fetch booking to get the actual amount
       fetch(url, { headers })
         .then((res) => res.json())
@@ -257,8 +262,8 @@ const PaymentResult: React.FC = () => {
 
           // Determine payment method and transaction reference
           const paymentMethod = isPayOSSuccess ? 'payos' : 'momo'
-          const transactionRef = isPayOSSuccess 
-            ? paymentResult.orderCode 
+          const transactionRef = isPayOSSuccess
+            ? paymentResult.orderCode
             : paymentResult.orderId
 
           return fetch(

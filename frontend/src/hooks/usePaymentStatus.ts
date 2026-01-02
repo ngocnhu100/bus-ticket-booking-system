@@ -39,7 +39,7 @@ export function usePaymentStatus(
         const url = user
           ? `${API_BASE_URL}/bookings/${bookingId}`
           : `${API_BASE_URL}/bookings/${bookingId}/guest`
-        
+
         const headers: HeadersInit = {}
         if (user) {
           const token = getAccessToken()
@@ -47,7 +47,7 @@ export function usePaymentStatus(
             headers['Authorization'] = `Bearer ${token}`
           }
         }
-        
+
         const res = await fetch(url, { headers })
         if (!res.ok) throw new Error('Failed to fetch payment status')
         const data = await res.json()

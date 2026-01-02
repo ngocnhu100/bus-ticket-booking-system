@@ -44,18 +44,18 @@ const Dashboard = () => {
       const upcomingBookings = (response.data || []).filter((booking) => {
         // Only show confirmed bookings
         if (booking.status !== 'confirmed') return false
-        
+
         // Check if trip has future departure time
         const departureTime = booking.trip_details?.schedule?.departure_time
         if (departureTime) {
           const departure = new Date(departureTime)
           return departure > now
         }
-        
+
         // If no departure time, include it (fallback)
         return true
       })
-      
+
       setBookings(upcomingBookings)
     } catch (err) {
       console.error('Error fetching bookings:', err)
@@ -82,7 +82,6 @@ const Dashboard = () => {
       toast({
         title: 'E-Ticket Not Available',
         description: 'Booking reference not found.',
-        variant: 'destructive',
       })
       return
     }
@@ -90,7 +89,7 @@ const Dashboard = () => {
     try {
       const token = getAccessToken()
       const headers: HeadersInit = {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       }
 
       // Call ticket endpoint with authentication
@@ -107,7 +106,7 @@ const Dashboard = () => {
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       window.open(url, '_blank')
-      
+
       // Cleanup after a delay to allow the new tab to load
       setTimeout(() => {
         window.URL.revokeObjectURL(url)
@@ -117,7 +116,6 @@ const Dashboard = () => {
       toast({
         title: 'View Failed',
         description: 'Unable to view e-ticket. Please try again.',
-        variant: 'destructive',
       })
     }
   }
