@@ -103,7 +103,8 @@ function StatusIcon({
       </div>
     )
   }
-  if (cancel === 'true' || status === 'CANCELLED') {
+  // Failed/Cancelled: Show red X for failed or cancelled payments
+  if (status === 'FAILED' || status === 'CANCELLED' || cancel === 'true') {
     return (
       <div className="flex justify-center mb-6">
         <div className="p-4 bg-red-100 rounded-full">
@@ -112,6 +113,7 @@ function StatusIcon({
       </div>
     )
   }
+  // Pending: Show blue clock for pending/unpaid status
   if (status === 'PENDING' || status === 'UNPAID') {
     return (
       <div className="flex justify-center mb-6">
@@ -121,6 +123,7 @@ function StatusIcon({
       </div>
     )
   }
+  // Unknown/Default: Show yellow alert circle
   return (
     <div className="flex justify-center mb-6">
       <div className="p-4 bg-yellow-100 rounded-full">
