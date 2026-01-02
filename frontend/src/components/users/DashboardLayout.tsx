@@ -43,7 +43,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <Bus className="text-primary-foreground w-6 h-6" />
             </div>
-            <span className="text-xl font-bold text-white">BusGo</span>
+            <span className="text-xl font-bold text-foreground">BusGo</span>
           </Link>
 
           {/* User + Theme + Logout */}

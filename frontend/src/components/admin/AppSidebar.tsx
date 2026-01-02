@@ -5,7 +5,6 @@ import {
   Briefcase,
   Users,
   BarChart3,
-  FileText,
   MapPin,
   User,
   Calendar,
@@ -40,7 +39,6 @@ const menuItems = [
     url: '/admin/chatbot-feedback',
     icon: MessageSquare,
   },
-  { title: 'Reports', url: '/admin/reports', icon: FileText },
   { title: 'Profile', url: '/admin/profile', icon: User },
 ]
 
