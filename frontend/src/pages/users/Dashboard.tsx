@@ -8,6 +8,8 @@ import { CancelBookingDialog } from '@/components/users/CancelBookingDialog'
 import { ModifyBookingDialog } from '@/components/users/ModifyBookingDialog'
 import { getUserBookings, type Booking } from '@/api/bookings'
 import { Loader2 } from 'lucide-react'
+import { getAccessToken } from '@/api/auth'
+import { API_BASE_URL } from '@/lib/api'
 
 const Dashboard = () => {
   const { toast } = useToast()
@@ -34,12 +36,27 @@ const Dashboard = () => {
         status: 'confirmed',
         sortBy: 'createdAt',
         sortOrder: 'desc',
+        limit: 50, // Limit to prevent timeout
       })
 
-      // Show all confirmed bookings
-      // Note: If trip_details is missing from API response, we can't filter by departure time
-      // So we show all confirmed bookings instead
-      setBookings(response.data || [])
+      // Filter only upcoming trips (future departure time)
+      const now = new Date()
+      const upcomingBookings = (response.data || []).filter((booking) => {
+        // Only show confirmed bookings
+        if (booking.status !== 'confirmed') return false
+        
+        // Check if trip has future departure time
+        const departureTime = booking.trip_details?.schedule?.departure_time
+        if (departureTime) {
+          const departure = new Date(departureTime)
+          return departure > now
+        }
+        
+        // If no departure time, include it (fallback)
+        return true
+      })
+      
+      setBookings(upcomingBookings)
     } catch (err) {
       console.error('Error fetching bookings:', err)
       setError(err instanceof Error ? err.message : 'Failed to load bookings')
@@ -59,14 +76,48 @@ const Dashboard = () => {
     setModifyDialogOpen(true)
   }
 
-  const handleViewTicket = (bookingId: string) => {
+  const handleViewTicket = async (bookingId: string) => {
     const booking = bookings.find((b) => b.booking_id === bookingId)
-    if (booking?.e_ticket?.ticket_url) {
-      window.open(booking.e_ticket.ticket_url, '_blank')
-    } else {
+    if (!booking?.booking_reference) {
       toast({
         title: 'E-Ticket Not Available',
-        description: 'E-ticket is not available for this booking yet.',
+        description: 'Booking reference not found.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      const token = getAccessToken()
+      const headers: HeadersInit = {
+        'Authorization': `Bearer ${token}`,
+      }
+
+      // Call ticket endpoint with authentication
+      const response = await fetch(
+        `${API_BASE_URL}/bookings/${booking.booking_reference}/ticket`,
+        { headers }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to load ticket')
+      }
+
+      // Convert response to blob and open in new tab
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      window.open(url, '_blank')
+      
+      // Cleanup after a delay to allow the new tab to load
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url)
+      }, 100)
+    } catch (error) {
+      console.error('Error viewing ticket:', error)
+      toast({
+        title: 'View Failed',
+        description: 'Unable to view e-ticket. Please try again.',
+        variant: 'destructive',
       })
     }
   }
