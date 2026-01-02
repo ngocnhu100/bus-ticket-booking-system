@@ -49,10 +49,6 @@ app.post('/api/payment/webhook-payouts', (req, res) => {
   }
 });
 
-
-
-
-
 function webhookHandler(req, res) {
   let parsed;
   const rawBody = req.body.toString('utf8');

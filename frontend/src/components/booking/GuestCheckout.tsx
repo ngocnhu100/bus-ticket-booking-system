@@ -1,5 +1,7 @@
 import React from 'react'
 import StripeCardCheckout from '../StripeCardCheckout'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, UserCheck, LogOut } from 'lucide-react'
@@ -35,7 +37,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
 }) => {
   const { user } = useAuth()
   const { logout } = useAuth()
-  // const navigate = useNavigate()
+  const navigate = useNavigate()
   const { selectedTrip, selectedPickupPoint, selectedDropoffPoint } =
     useBookingStore()
 
@@ -521,6 +523,38 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                     <React.Suspense fallback={<div>Loading Stripe...</div>}>
                       <StripeCardCheckout
                         clientSecret={paymentResult.clientSecret}
+                        bookingId={bookingId || ''}
+                        onSuccess={(data: {
+                          success?: boolean
+                          data?: {
+                            booking_id?: string
+                            booking_reference?: string
+                          }
+                        }) => {
+                          console.log(
+                            '[GuestCheckout] Stripe payment confirmed:',
+                            data
+                          )
+                          // Redirect to payment result page with bookingId (same as MoMo/PayOS)
+                          const currentBookingId =
+                            bookingId || data?.data?.booking_id
+                          if (currentBookingId) {
+                            // Store booking info for PaymentResult page
+                            if (data?.data) {
+                              sessionStorage.setItem(
+                                'pendingBooking',
+                                JSON.stringify(data.data)
+                              )
+                            }
+                            navigate(
+                              `/payment-result?bookingId=${currentBookingId}&status=success&method=card`
+                            )
+                          } else {
+                            toast.success(
+                              'Payment successful! Check your email for booking details.'
+                            )
+                          }
+                        }}
                       />
                     </React.Suspense>
                   </div>

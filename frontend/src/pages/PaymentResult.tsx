@@ -22,6 +22,7 @@ interface BookingInfo {
 // Lấy bookingId từ query hoặc fallback từ apptransid (ZaloPay)
 async function getBookingIdFromQueryAsync() {
   const params = new URLSearchParams(window.location.search)
+
   // Ưu tiên lấy từ extraData (base64)
   const extraData = params.get('extraData')
   if (extraData) {
@@ -71,6 +72,8 @@ function getPaymentResultFromQuery() {
     status: params.get('status'),
     orderCode: params.get('orderCode'),
     cancel: params.get('cancel'),
+    // Stripe/Card params
+    method: params.get('method'),
   }
 }
 
@@ -206,7 +209,7 @@ const PaymentResult: React.FC = () => {
     }
   }, [status, manualStatus, bookingInfo, handleViewTicket])
 
-  // If we have MoMo or PayOS result in URL, update booking status
+  // If we have MoMo, PayOS, or Card result in URL, update booking status
   useEffect(() => {
     // Check if payment was successful
     const isMoMoSuccess =
@@ -215,8 +218,10 @@ const PaymentResult: React.FC = () => {
       paymentResult.status === 'PAID' &&
       paymentResult.code === '00' &&
       paymentResult.cancel === 'false'
+    const isCardSuccess =
+      paymentResult.status === 'success' && paymentResult.method === 'card'
 
-    if (bookingId && (isMoMoSuccess || isPayOSSuccess)) {
+    if (bookingId && (isMoMoSuccess || isPayOSSuccess || isCardSuccess)) {
       const url = user
         ? `${API_BASE_URL}/bookings/${bookingId}`
         : `${API_BASE_URL}/bookings/${bookingId}/guest`
@@ -229,7 +234,28 @@ const PaymentResult: React.FC = () => {
         }
       }
 
-      // Fetch booking to get the actual amount
+      // For card payment, status is already confirmed by frontend, just fetch booking info
+      if (isCardSuccess) {
+        fetch(url, { headers })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && data.data) {
+              setManualStatus('PAID')
+              setBookingInfo({
+                bookingReference:
+                  data.data.bookingReference || data.data.booking_reference,
+                contactEmail: data.data.contactEmail || data.data.contact_email,
+                contactPhone: data.data.contactPhone || data.data.contact_phone,
+              })
+            }
+          })
+          .catch((err) => {
+            console.error('[PaymentResult] Failed to fetch booking info:', err)
+          })
+        return
+      }
+
+      // Fetch booking to get the actual amount for MoMo/PayOS
       fetch(url, { headers })
         .then((res) => res.json())
         .then((bookingData) => {
@@ -277,6 +303,7 @@ const PaymentResult: React.FC = () => {
     paymentResult.orderCode,
     paymentResult.cancel,
     paymentResult.amount,
+    paymentResult.method,
     user,
   ])
 
