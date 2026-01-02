@@ -31,7 +31,7 @@ export function PopularRoutes() {
 
         // Fetch từ API backend /popular-routes (default 10, hoặc ?limit=8 để 8 results)
         const response = await fetch(
-          'http://localhost:3000/trips/popular-routes'
+          'http://localhost:3000/trips/popular-routes?limit=8'
         )
         if (!response.ok) {
           throw new Error('Failed to fetch')

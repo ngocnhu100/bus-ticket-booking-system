@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent, ChangeEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Bus } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -104,7 +105,7 @@ export default function ResetPassword() {
 
       <section
         className="flex min-h-screen items-center justify-center px-4 py-12 
-      bg-gradient-to-br from-background via-background to-primary/10 
+      bg-linear-to-br from-background via-background to-primary/10 
       dark:to-primary/20"
       >
         <Card className="w-full max-w-lg border-none shadow-2xl shadow-indigo-100">

@@ -108,7 +108,13 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
   const handleSubmit = async (event?: React.FormEvent) => {
     if (event) event.preventDefault()
     setError(null)
-    setIsSubmitting(true)
+
+    // For PayOS, don't show loading state - redirect immediately
+    const shouldShowLoading = selectedPaymentMethod !== 'payos'
+    if (shouldShowLoading) {
+      setIsSubmitting(true)
+    }
+
     try {
       if (!selectedPaymentMethod) {
         setError('Please select a payment method.')
@@ -197,7 +203,9 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
           : 'Failed to create booking. Please try again.'
       setError(errorMessage)
     } finally {
-      setIsSubmitting(false)
+      if (shouldShowLoading) {
+        setIsSubmitting(false)
+      }
     }
   }
 

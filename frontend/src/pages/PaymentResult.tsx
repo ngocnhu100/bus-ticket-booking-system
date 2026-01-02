@@ -4,6 +4,14 @@ import { usePaymentStatus } from '@/hooks/usePaymentStatus'
 import { API_BASE_URL } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { getAccessToken } from '@/api/auth'
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  Home,
+  Ticket,
+} from 'lucide-react'
 
 interface BookingInfo {
   bookingReference: string
@@ -67,84 +75,54 @@ function getPaymentResultFromQuery() {
 }
 
 const statusMap: Record<string, string> = {
-  PAID: 'Thanh toán thành công',
-  PENDING: 'Chờ thanh toán',
-  PROCESSING: 'Đang xử lý',
-  CANCELLED: 'Đã hủy thanh toán',
-  FAILED: 'Thanh toán thất bại',
-  UNPAID: 'Chưa thanh toán',
+  PAID: 'Payment Successful',
+  PENDING: 'Payment Pending',
+  PROCESSING: 'Processing Payment',
+  CANCELLED: 'Payment Cancelled',
+  FAILED: 'Payment Failed',
+  UNPAID: 'Payment Unpaid',
 }
 
-function StatusIcon({ status, cancel }: { status?: string; cancel?: string }) {
+function StatusIcon({
+  status,
+  cancel,
+}: {
+  status?: string
+  cancel?: string | null
+}) {
   if (status === 'PAID' && cancel === 'false') {
     return (
-      <svg
-        className="mx-auto mb-4"
-        width="80"
-        height="80"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#22c55e"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" fill="#dcfce7" />
-        <path d="M8 12l2.5 2.5L16 9" />
-      </svg>
+      <div className="flex justify-center mb-6">
+        <div className="p-4 bg-green-100 rounded-full">
+          <CheckCircle className="w-16 h-16 text-green-600" />
+        </div>
+      </div>
     )
   }
   if (cancel === 'true' || status === 'CANCELLED') {
     return (
-      <svg
-        className="mx-auto mb-4"
-        width="80"
-        height="80"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#ef4444"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" fill="#fee2e2" />
-        <path d="M15 9l-6 6M9 9l6 6" />
-      </svg>
+      <div className="flex justify-center mb-6">
+        <div className="p-4 bg-red-100 rounded-full">
+          <XCircle className="w-16 h-16 text-red-600" />
+        </div>
+      </div>
     )
   }
   if (status === 'PENDING' || status === 'UNPAID') {
     return (
-      <svg
-        className="mx-auto mb-4 animate-spin"
-        width="80"
-        height="80"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#3b82f6"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" fill="#dbeafe" />
-        <path d="M12 6v6l4 2" />
-      </svg>
+      <div className="flex justify-center mb-6">
+        <div className="p-4 bg-blue-100 rounded-full">
+          <Clock className="w-16 h-16 text-blue-600 animate-pulse" />
+        </div>
+      </div>
     )
   }
   return (
-    <svg
-      className="mx-auto mb-4"
-      width="80"
-      height="80"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#f59e42"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" fill="#fef9c3" />
-      <path d="M12 8v4m0 4h.01" />
-    </svg>
+    <div className="flex justify-center mb-6">
+      <div className="p-4 bg-yellow-100 rounded-full">
+        <AlertCircle className="w-16 h-16 text-yellow-600" />
+      </div>
+    </div>
   )
 }
 
@@ -298,21 +276,32 @@ const PaymentResult: React.FC = () => {
     paymentResult.status,
     paymentResult.orderCode,
     paymentResult.cancel,
+    paymentResult.amount,
     user,
   ])
 
   if (!bookingId) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="bg-white p-8 rounded shadow-md w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold mb-4 text-black">
-            Không tìm thấy bookingId
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-gray-100 rounded-full">
+              <AlertCircle className="w-12 h-12 text-gray-600" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Booking ID Not Found
           </h1>
+          <p className="text-gray-600 mb-6">
+            We couldn't find your booking information. Please try again or
+            contact support.
+          </p>
           <button
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2"
             onClick={() => navigate('/')}
           >
-            Quay về trang chủ
+            <Home className="w-5 h-5" />
+            Return to Home
           </button>
         </div>
       </div>
@@ -321,11 +310,19 @@ const PaymentResult: React.FC = () => {
 
   if (loading && !status) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="bg-white p-8 rounded shadow-md w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold mb-4 text-black">
-            Đang kiểm tra trạng thái thanh toán...
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-blue-100 rounded-full">
+              <Clock className="w-12 h-12 text-blue-600 animate-spin" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+            Checking Payment Status
           </h1>
+          <p className="text-gray-600">
+            Please wait while we verify your payment...
+          </p>
         </div>
       </div>
     )
@@ -333,14 +330,26 @@ const PaymentResult: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <div className="bg-white p-8 rounded shadow-md w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold mb-4 text-red-600">Lỗi: {error}</h1>
+      <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-red-100 rounded-full">
+              <XCircle className="w-12 h-12 text-red-600" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-red-600 mb-4">
+            Error: {error}
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Something went wrong while processing your payment. Please try
+            again.
+          </p>
           <button
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2"
             onClick={() => navigate('/')}
           >
-            Quay về trang chủ
+            <Home className="w-5 h-5" />
+            Return to Home
           </button>
         </div>
       </div>
@@ -349,58 +358,141 @@ const PaymentResult: React.FC = () => {
 
   let message = ''
   const currentStatus = manualStatus || status
-  if (currentStatus === 'PAID') message = 'Thanh toán thành công!'
-  else if (currentStatus === 'CANCELLED') message = 'Bạn đã hủy thanh toán.'
-  else if (currentStatus === 'FAILED') message = 'Thanh toán thất bại.'
-  else if (currentStatus === 'PENDING') message = 'Thanh toán đang chờ xử lý.'
+  if (currentStatus === 'PAID')
+    message = 'Your payment has been processed successfully!'
+  else if (currentStatus === 'CANCELLED')
+    message = 'Payment has been cancelled.'
+  else if (currentStatus === 'FAILED')
+    message = 'Payment failed. Please try again.'
+  else if (currentStatus === 'PENDING') message = 'Payment is being processed.'
   else if (currentStatus === 'UNPAID')
-    message = 'Chưa thanh toán. Đang chờ xác nhận từ cổng thanh toán...'
-  else message = 'Không xác định trạng thái thanh toán.'
+    message =
+      'Payment not completed. Waiting for confirmation from payment gateway...'
+  else message = 'Payment status unknown.'
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-md text-center">
-        <StatusIcon status={currentStatus || undefined} />
-        <h1 className="text-2xl font-bold mb-4 text-black">
-          Kết quả thanh toán
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <div className="max-w-lg w-full bg-white rounded-2xl shadow-2xl p-8 text-center border border-gray-100">
+        <StatusIcon
+          status={currentStatus || undefined}
+          cancel={paymentResult.cancel}
+        />
+
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Payment Result
         </h1>
-        <div className="mb-2">
-          <span className="font-semibold text-black">Trạng thái: </span>
-          <span className="font-bold text-lg text-black">
+
+        <div className="mb-6">
+          <div className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gray-100 text-gray-800">
             {statusMap[currentStatus || ''] ||
               currentStatus ||
-              'Không xác định'}
-          </span>
+              'Unknown Status'}
+          </div>
         </div>
-        <div className="mb-2">
-          <span className="font-semibold text-black">Mã booking: </span>
-          <span className="text-black">{bookingId}</span>
+
+        <div className="bg-gray-50 rounded-xl p-4 mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-medium text-gray-600">
+              Booking ID:
+            </span>
+            <span className="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded border">
+              {bookingId}
+            </span>
+          </div>
+
+          {paymentResult.orderCode && (
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-medium text-gray-600">
+                Order Code:
+              </span>
+              <span className="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded border">
+                {paymentResult.orderCode}
+              </span>
+            </div>
+          )}
+
+          {paymentResult.amount && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-600">Amount:</span>
+              <span className="text-sm font-semibold text-green-600">
+                {parseInt(paymentResult.amount).toLocaleString()} VND
+              </span>
+            </div>
+          )}
         </div>
-        <div className="mb-4 text-lg font-medium text-blue-600">{message}</div>
+
+        <div
+          className={`mb-6 p-4 rounded-xl text-center ${
+            currentStatus === 'PAID'
+              ? 'bg-green-50 border border-green-200'
+              : currentStatus === 'CANCELLED'
+                ? 'bg-red-50 border border-red-200'
+                : currentStatus === 'FAILED'
+                  ? 'bg-red-50 border border-red-200'
+                  : 'bg-blue-50 border border-blue-200'
+          }`}
+        >
+          <p
+            className={`text-lg font-medium ${
+              currentStatus === 'PAID'
+                ? 'text-green-800'
+                : currentStatus === 'CANCELLED' || currentStatus === 'FAILED'
+                  ? 'text-red-800'
+                  : 'text-blue-800'
+            }`}
+          >
+            {message}
+          </p>
+        </div>
 
         {/* View Ticket Button for successful payments */}
         {currentStatus === 'PAID' && bookingInfo && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded">
-            <p className="text-sm text-green-800 mb-3">
-              Tự động chuyển đến trang xem vé trong{' '}
-              <span className="font-bold text-lg">{redirectCountdown}</span>{' '}
-              giây...
-            </p>
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <Ticket className="w-5 h-5 text-green-600" />
+              <p className="text-sm font-medium text-green-800">
+                Redirecting to your ticket in{' '}
+                <span className="font-bold text-lg text-green-600">
+                  {redirectCountdown}
+                </span>{' '}
+                seconds...
+              </p>
+            </div>
             <button
-              className="w-full px-4 py-3 bg-green-600 text-white font-semibold rounded hover:bg-green-700 transition"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               onClick={handleViewTicket}
             >
-              Xem vé của tôi ngay
+              <Ticket className="w-5 h-5" />
+              View My Ticket Now
             </button>
           </div>
         )}
 
-        <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          onClick={() => navigate('/')}
-        >
-          Quay về trang chủ
-        </button>
+        <div className="space-y-3">
+          <button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+            onClick={() => navigate('/')}
+          >
+            <Home className="w-5 h-5" />
+            Return to Home
+          </button>
+
+          {currentStatus !== 'PAID' && (
+            <button
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition duration-200 text-sm"
+              onClick={() => navigate('/booking-lookup')}
+            >
+              Check Booking Status
+            </button>
+          )}
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            Need help? Contact our support team for assistance with your
+            booking.
+          </p>
+        </div>
       </div>
     </div>
   )
