@@ -502,11 +502,6 @@ interface PaymentMethodData {
     icon: string
     available: boolean
   }>
-  booking?: {
-    pricing?: {
-      total?: number
-    }
-  }
 }
 
 interface PaymentMethodSelectorProps {

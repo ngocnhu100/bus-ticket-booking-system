@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
@@ -13,6 +13,7 @@ import {
 import { chatbotApi } from '../../api/chatbot'
 import { getAccessToken } from '../../api/auth'
 import type { ChatMessage } from '../../types/chatbot.types'
+import { useAuth } from '../../context/AuthContext'
 
 interface PassengerField {
   name: string
@@ -53,6 +54,7 @@ export const PassengerInfoForm: React.FC<PassengerInfoFormProps> = ({
   const { seats = [], required_fields = [] } = data || {}
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
 
   // Translations
   const translations = {
@@ -72,6 +74,8 @@ export const PassengerInfoForm: React.FC<PassengerInfoFormProps> = ({
       noPassengerData: 'Không có thông tin hành khách để gửi.',
       submitError: 'Không thể gửi thông tin. Vui lòng thử lại.',
       generalError: 'Có lỗi xảy ra. Vui lòng thử lại.',
+      preFilledInfo:
+        'Thông tin của bạn đã được điền sẵn. Vui lòng kiểm tra và xác nhận.',
     },
     en: {
       title: 'Passenger Information',
@@ -89,6 +93,8 @@ export const PassengerInfoForm: React.FC<PassengerInfoFormProps> = ({
       noPassengerData: 'No passenger information to submit.',
       submitError: 'Unable to submit information. Please try again.',
       generalError: 'An error occurred. Please try again.',
+      preFilledInfo:
+        'Your information has been pre-filled. Please review and confirm.',
     },
   }
 
@@ -106,14 +112,26 @@ export const PassengerInfoForm: React.FC<PassengerInfoFormProps> = ({
 
   // Initialize form data for each passenger
   const [passengers, setPassengers] = useState<PassengerData[]>(
-    seats.map((seat) => ({
+    seats.map((seat, index) => ({
       seat_code: getSeatCode(seat),
-      full_name: '',
-      phone: '',
-      email: '',
+      // Auto-fill first passenger with user info if logged in
+      full_name: index === 0 && user ? user.fullName : '',
+      phone: index === 0 && user ? user.phone || '' : '',
+      email: index === 0 && user ? user.email : '',
       id_number: '',
     }))
   )
+  const [isPreFilled, setIsPreFilled] = useState(false)
+
+  // Show notification when user info is pre-filled
+  useEffect(() => {
+    if (user && passengers.length > 0 && passengers[0].full_name) {
+      setIsPreFilled(true)
+      // Auto-clear notification after 5 seconds
+      const timer = setTimeout(() => setIsPreFilled(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [user])
 
   // If no seats or fields, show error
   if (seats.length === 0 || required_fields.length === 0) {
@@ -286,6 +304,12 @@ export const PassengerInfoForm: React.FC<PassengerInfoFormProps> = ({
         <ClipboardList className="h-5 w-5" />
         {t.title}
       </h3>
+
+      {isPreFilled && (
+        <div className="bg-primary/10 text-primary text-sm p-3 rounded border border-primary/20 mb-4">
+          ✓ {t.preFilledInfo}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {passengers.map((passenger, index) => (

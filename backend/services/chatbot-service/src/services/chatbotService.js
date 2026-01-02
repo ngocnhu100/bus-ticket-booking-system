@@ -2722,12 +2722,21 @@ Return ONLY the text response, no JSON, no explanations.`;
   async processPassengerInfo(sessionId, passengers, userId, authToken) {
     console.log('[ChatbotService] Processing passenger info for session:', sessionId);
     console.log('[ChatbotService] Number of passengers:', passengers.length);
+    console.log('[ChatbotService] User ID:', userId);
+    console.log('[ChatbotService] Has Auth Token:', !!authToken);
 
     try {
       // Get current booking context
       const bookingContext = await conversationRepository.getBookingContext(sessionId);
       if (!bookingContext || !bookingContext.selectedTrip || !bookingContext.selectedSeats) {
         throw new Error('No booking context found. Please start from trip search.');
+      }
+
+      // If userId and authToken are provided, store for later use in booking creation
+      if (userId && authToken) {
+        bookingContext.userId = userId;
+        bookingContext.authToken = authToken;
+        console.log('[ChatbotService] Stored userId and authToken in booking context');
       }
 
       // Detect language (check first passenger's name for Vietnamese characters)
