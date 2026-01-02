@@ -93,7 +93,8 @@ function StatusIcon({
   status?: string
   cancel?: string | null
 }) {
-  if (status === 'PAID' && cancel === 'false') {
+  // Check for successful payment (PAID or success for card)
+  if ((status === 'PAID' || status === 'success') && cancel !== 'true') {
     return (
       <div className="flex justify-center mb-6">
         <div className="p-4 bg-green-100 rounded-full">
@@ -136,9 +137,47 @@ const PaymentResult: React.FC = () => {
   const paymentResult = getPaymentResultFromQuery()
   const { status, loading, error } = usePaymentStatus(bookingId)
   const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null)
-  const [redirectCountdown, setRedirectCountdown] = useState<number>(5)
   const [manualStatus, setManualStatus] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState<boolean>(false)
+
+  // Helper: Fetch with retry and timeout
+  const fetchWithRetry = useCallback(
+    async (url: string, options: RequestInit = {}, retries = 3) => {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+          })
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
+
+          return await response.json()
+        } catch (err) {
+          console.error(
+            `[PaymentResult] Attempt ${attempt}/${retries} failed:`,
+            err
+          )
+
+          if (attempt === retries) {
+            throw err
+          }
+
+          // Exponential backoff: 1s, 2s, 4s
+          await new Promise((resolve) =>
+            setTimeout(resolve, Math.pow(2, attempt - 1) * 1000)
+          )
+        }
+      }
+    },
+    []
+  )
 
   // Calculate payment status from URL parameters (derived state)
   const paymentStatusFromUrl = React.useMemo(() => {
@@ -146,11 +185,20 @@ const PaymentResult: React.FC = () => {
       paymentResult.resultCode && paymentResult.resultCode !== '0'
     const isPayOSCancelled =
       paymentResult.cancel === 'true' || paymentResult.code === '01'
+    const isCardSuccess =
+      paymentResult.status === 'success' && paymentResult.method === 'card'
 
     if (isMoMoFailed) return 'FAILED'
     if (isPayOSCancelled) return 'CANCELLED'
+    if (isCardSuccess) return 'PAID' // Card payment success
     return null
-  }, [paymentResult.resultCode, paymentResult.cancel, paymentResult.code])
+  }, [
+    paymentResult.resultCode,
+    paymentResult.cancel,
+    paymentResult.code,
+    paymentResult.status,
+    paymentResult.method,
+  ])
 
   // Handler to navigate to booking lookup page
   const handleViewTicket = useCallback(() => {
@@ -170,88 +218,14 @@ const PaymentResult: React.FC = () => {
     getBookingIdFromQueryAsync().then(setBookingId)
   }, [])
 
+  // MERGED EFFECT: Handle both payment confirmation AND booking info fetch
+  // This prevents race condition from 2 separate useEffects
   useEffect(() => {
+    if (!bookingId || isProcessing) return
+
     const currentStatus = paymentStatusFromUrl || manualStatus || status
-    if (
-      bookingId &&
-      currentStatus === 'PAID' &&
-      !isProcessing &&
-      !bookingInfo
-    ) {
-      const fetchBookingInfo = async () => {
-        setIsProcessing(true)
-        const url = user
-          ? `${API_BASE_URL}/bookings/${bookingId}`
-          : `${API_BASE_URL}/bookings/${bookingId}/guest`
 
-        const headers: HeadersInit = {}
-        if (user) {
-          const token = getAccessToken()
-          if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-          }
-        }
-
-        fetch(url, { headers })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.data) {
-              setBookingInfo({
-                bookingReference:
-                  data.data.bookingReference || data.data.booking_reference,
-                contactEmail: data.data.contactEmail || data.data.contact_email,
-                contactPhone: data.data.contactPhone || data.data.contact_phone,
-              })
-            }
-          })
-          .catch((err) => {
-            console.error('[PaymentResult] Failed to fetch booking info:', err)
-          })
-          .finally(() => {
-            setIsProcessing(false)
-          })
-      }
-
-      fetchBookingInfo()
-    }
-  }, [
-    bookingId,
-    status,
-    manualStatus,
-    paymentStatusFromUrl,
-    user,
-    isProcessing,
-    bookingInfo,
-  ])
-
-  // Auto redirect countdown when payment successful
-  useEffect(() => {
-    const currentStatus = paymentStatusFromUrl || manualStatus || status
-    if (currentStatus === 'PAID' && bookingInfo) {
-      const timer = setInterval(() => {
-        setRedirectCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer)
-            handleViewTicket()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-
-      return () => clearInterval(timer)
-    }
-  }, [
-    status,
-    manualStatus,
-    paymentStatusFromUrl,
-    bookingInfo,
-    handleViewTicket,
-  ])
-
-  // If we have MoMo, PayOS, or Card result in URL, update booking status
-  useEffect(() => {
-    // Check if payment was successful
+    // Check if we need to confirm payment
     const isMoMoSuccess =
       paymentResult.resultCode && paymentResult.resultCode === '0'
     const isMoMoFailed =
@@ -265,76 +239,46 @@ const PaymentResult: React.FC = () => {
     const isCardSuccess =
       paymentResult.status === 'success' && paymentResult.method === 'card'
 
-    // No need to set state for failed/cancelled - using derived state instead
-    if (bookingId && (isMoMoFailed || isPayOSCancelled)) {
+    // Exit early for failed/cancelled payments
+    if (isMoMoFailed || isPayOSCancelled) {
       console.log('[PaymentResult] Payment failed or cancelled')
       return
     }
 
-    if (
-      bookingId &&
-      (isMoMoSuccess || isPayOSSuccess || isCardSuccess) &&
-      !isProcessing
-    ) {
+    // Scenario 1: Need to confirm payment from gateway
+    if (isMoMoSuccess || isPayOSSuccess || isCardSuccess) {
       const confirmPayment = async () => {
         setIsProcessing(true)
-        const url = user
-          ? `${API_BASE_URL}/bookings/${bookingId}`
-          : `${API_BASE_URL}/bookings/${bookingId}/guest`
 
-        const headers: HeadersInit = {}
-        if (user) {
-          const token = getAccessToken()
-          if (token) {
-            headers['Authorization'] = `Bearer ${token}`
+        try {
+          const url = user
+            ? `${API_BASE_URL}/bookings/${bookingId}`
+            : `${API_BASE_URL}/bookings/${bookingId}/guest`
+
+          const headers: HeadersInit = {}
+          if (user) {
+            const token = getAccessToken()
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`
+            }
           }
-        }
 
-        // For card payment, status is already confirmed by frontend, just fetch booking info
-        if (isCardSuccess) {
-          fetch(url, { headers })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success && data.data) {
-                setManualStatus('PAID')
-                setBookingInfo({
-                  bookingReference:
-                    data.data.bookingReference || data.data.booking_reference,
-                  contactEmail:
-                    data.data.contactEmail || data.data.contact_email,
-                  contactPhone:
-                    data.data.contactPhone || data.data.contact_phone,
-                })
-              }
-            })
-            .catch((err) => {
-              console.error(
-                '[PaymentResult] Failed to fetch booking info:',
-                err
-              )
-            })
-            .finally(() => {
-              setIsProcessing(false)
-            })
-          return
-        }
+          // Fetch booking data with retry
+          const bookingData = await fetchWithRetry(url, { headers })
 
-        // Fetch booking to get the actual amount for MoMo/PayOS
-        fetch(url, { headers })
-          .then((res) => res.json())
-          .then((bookingData) => {
+          // For non-card payments, confirm via internal API
+          if (!isCardSuccess) {
             const amount =
               bookingData.data?.pricing?.total ||
               bookingData.data?.total_price ||
               parseInt(paymentResult.amount || '0')
 
-            // Determine payment method and transaction reference
             const paymentMethod = isPayOSSuccess ? 'payos' : 'momo'
             const transactionRef = isPayOSSuccess
               ? paymentResult.orderCode
               : paymentResult.orderId
 
-            return fetch(
+            await fetchWithRetry(
               `${API_BASE_URL}/bookings/internal/${bookingId}/confirm-payment`,
               {
                 method: 'POST',
@@ -342,39 +286,87 @@ const PaymentResult: React.FC = () => {
                 body: JSON.stringify({
                   paymentMethod,
                   transactionRef,
-                  amount: amount,
+                  amount,
                   paymentStatus: 'paid',
                 }),
               }
             )
+          }
+
+          // Set booking info
+          setManualStatus('PAID')
+          setBookingInfo({
+            bookingReference:
+              bookingData.data.bookingReference ||
+              bookingData.data.booking_reference,
+            contactEmail:
+              bookingData.data.contactEmail || bookingData.data.contact_email,
+            contactPhone:
+              bookingData.data.contactPhone || bookingData.data.contact_phone,
           })
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success) {
-              setManualStatus('PAID')
-            }
-          })
-          .catch((err) => {
-            console.error('[PaymentResult] Error confirming payment:', err)
-          })
-          .finally(() => {
-            setIsProcessing(false)
-          })
+        } catch (err) {
+          console.error('[PaymentResult] Payment confirmation failed:', err)
+        } finally {
+          setIsProcessing(false)
+        }
       }
 
       confirmPayment()
     }
+    // Scenario 2: Already PAID, just fetch booking info
+    else if (currentStatus === 'PAID' && !bookingInfo) {
+      const fetchInfo = async () => {
+        setIsProcessing(true)
+
+        try {
+          const url = user
+            ? `${API_BASE_URL}/bookings/${bookingId}`
+            : `${API_BASE_URL}/bookings/${bookingId}/guest`
+
+          const headers: HeadersInit = {}
+          if (user) {
+            const token = getAccessToken()
+            if (token) {
+              headers['Authorization'] = `Bearer ${token}`
+            }
+          }
+
+          const data = await fetchWithRetry(url, { headers })
+
+          if (data.success && data.data) {
+            setBookingInfo({
+              bookingReference:
+                data.data.bookingReference || data.data.booking_reference,
+              contactEmail: data.data.contactEmail || data.data.contact_email,
+              contactPhone: data.data.contactPhone || data.data.contact_phone,
+            })
+          }
+        } catch (err) {
+          console.error('[PaymentResult] Failed to fetch booking info:', err)
+        } finally {
+          setIsProcessing(false)
+        }
+      }
+
+      fetchInfo()
+    }
   }, [
     bookingId,
+    status,
+    manualStatus,
+    paymentStatusFromUrl,
+    user,
+    isProcessing,
+    bookingInfo,
     paymentResult.resultCode,
     paymentResult.orderId,
     paymentResult.code,
     paymentResult.status,
     paymentResult.orderCode,
     paymentResult.cancel,
+    paymentResult.amount,
     paymentResult.method,
-    user,
-    isProcessing,
+    fetchWithRetry,
   ])
 
   if (!bookingId) {
@@ -544,17 +536,7 @@ const PaymentResult: React.FC = () => {
 
         {/* View Ticket Button for successful payments */}
         {currentStatus === 'PAID' && bookingInfo && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <Ticket className="w-5 h-5 text-green-600" />
-              <p className="text-sm font-medium text-green-800">
-                Redirecting to your ticket in{' '}
-                <span className="font-bold text-lg text-green-600">
-                  {redirectCountdown}
-                </span>{' '}
-                seconds...
-              </p>
-            </div>
+          <div className="mb-6">
             <button
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               onClick={handleViewTicket}

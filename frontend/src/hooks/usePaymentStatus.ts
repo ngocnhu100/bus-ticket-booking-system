@@ -13,7 +13,7 @@ interface UsePaymentStatusResult {
 
 export function usePaymentStatus(
   bookingId?: string,
-  pollInterval = 2000,
+  pollInterval = 3000, // Increased from 2s to 3s to reduce load
   maxWait = 30000
 ): UsePaymentStatusResult {
   const [status, setStatus] = useState<PaymentStatus | null>(null)
@@ -22,6 +22,7 @@ export function usePaymentStatus(
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const fetchedRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const { user } = useAuth()
 
   useEffect(() => {
@@ -34,6 +35,18 @@ export function usePaymentStatus(
     fetchedRef.current = false
 
     const fetchStatus = async () => {
+      // Cancel previous request if exists
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+
+      // Create new AbortController for this request
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
+      // Timeout for this specific request (8s < pollInterval)
+      const requestTimeout = setTimeout(() => controller.abort(), 8000)
+
       try {
         // Nếu không có user (guest), gọi endpoint guest
         const url = user
@@ -48,7 +61,13 @@ export function usePaymentStatus(
           }
         }
 
-        const res = await fetch(url, { headers })
+        const res = await fetch(url, {
+          headers,
+          signal: controller.signal,
+        })
+
+        clearTimeout(requestTimeout)
+
         if (!res.ok) throw new Error('Failed to fetch payment status')
         const data = await res.json()
         const paymentStatus = data?.data?.paymentStatus
@@ -67,6 +86,13 @@ export function usePaymentStatus(
           }
         }
       } catch (err: unknown) {
+        clearTimeout(requestTimeout)
+
+        // Ignore abort errors (normal when cancelling)
+        if (err instanceof Error && err.name === 'AbortError') {
+          return
+        }
+
         if (!stopped) {
           let message = 'Failed to fetch payment status'
           if (err instanceof Error) message = err.message
@@ -89,6 +115,10 @@ export function usePaymentStatus(
 
     return () => {
       stopped = true
+      // Cancel any pending request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
       if (pollingRef.current) clearInterval(pollingRef.current)
       if (timeoutRef.current) clearTimeout(timeoutRef.current)
     }
