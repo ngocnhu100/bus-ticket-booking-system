@@ -13,7 +13,7 @@ import {
 import { SeatMap } from '@/components/users/SeatMap'
 import { PickupDropoffSelector } from '@/components/users/PickupDropoffSelector'
 import GuestCheckout from '@/components/booking/GuestCheckout'
-import { ChevronLeft, ArrowRight, Lock, Clock, LogOut } from 'lucide-react'
+import { ChevronLeft, ArrowRight, Lock, Clock, LogOut, Bus } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useSeatLocks } from '@/hooks/useSeatLocks'
 import { useAuth } from '@/context/AuthContext'
@@ -734,7 +734,7 @@ export function SeatSelection() {
               onClick={() => navigate('/')}
             >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">🚌</span>
+                <Bus className="text-primary-foreground w-5 h-5" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:inline">
                 BusGo

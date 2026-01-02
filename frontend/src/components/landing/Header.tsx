@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Menu, X, LogOut } from 'lucide-react'
+import { Menu, X, LogOut, Bus } from 'lucide-react'
 import { useState } from 'react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
@@ -27,7 +27,7 @@ export function Header() {
           }}
         >
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-lg">🚌</span>
+            <Bus className="text-primary-foreground w-5 h-5" />
           </div>
           <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:inline">
             BusGo

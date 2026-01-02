@@ -11,6 +11,7 @@ import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector'
 import { confirmPayment } from '@/api/bookings'
 import { useBookingStore } from '@/store/bookingStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { Bus } from 'lucide-react'
 
 interface GuestCheckoutProps {
   selectedSeats?: { seat_id: string; seat_code: string }[]
@@ -220,7 +221,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
               onClick={() => (window.location.href = '/')}
             >
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">🚌</span>
+                <Bus className="text-primary-foreground w-5 h-5" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:inline">
                 BusGo

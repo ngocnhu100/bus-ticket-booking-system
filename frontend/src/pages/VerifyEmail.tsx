@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Bus } from 'lucide-react'
+
 import {
   Card,
   CardContent,
@@ -94,7 +96,7 @@ export default function VerifyEmail() {
               onClick={() => navigate('/')}
             >
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">🚌</span>
+                <Bus className="text-primary-foreground w-6 h-6" />
               </div>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">
                 BusGo

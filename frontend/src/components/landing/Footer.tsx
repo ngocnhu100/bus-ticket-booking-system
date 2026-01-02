@@ -1,5 +1,5 @@
 import { Separator } from '@/components/ui/separator'
-
+import { Bus } from 'lucide-react'
 export function Footer() {
   return (
     <footer id="footer-contact" className="bg-muted/50 border-t border-border">
@@ -8,7 +8,7 @@ export function Footer() {
           {/* About Section */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">🚌</span>
+              <Bus className="w-6 h-6 text-foreground" />
               <h3 className="text-lg font-bold text-foreground">BusGo</h3>
             </div>
             <p className="text-muted-foreground text-sm">
