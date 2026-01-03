@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  # PostgreSQL Database
+  # Database
   postgres:
     image: postgres:15-alpine
     container_name: bus-ticket-postgres
@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d
+      - ./backend/sql:/docker-entrypoint-initdb.d
     networks:
       - bus-ticket-network
     healthcheck:
@@ -36,10 +36,69 @@ services:
       timeout: 3s
       retries: 5
 
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+        - VITE_GOOGLE_CLIENT_SECRET=${VITE_GOOGLE_CLIENT_SECRET}
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_GOOGLE_REDIRECT_URI=${VITE_GOOGLE_REDIRECT_URI}
+    container_name: bus-ticket-frontend
+    ports:
+      - "5173:80"
+    networks:
+      - bus-ticket-network
+    depends_on:
+      - api-gateway
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_GOOGLE_REDIRECT_URI=${VITE_GOOGLE_REDIRECT_URI}
+      - VITE_CLOUDINARY_CLOUD_NAME=${VITE_CLOUDINARY_CLOUD_NAME}
+      - VITE_CLOUDINARY_UPLOAD_PRESET=${VITE_CLOUDINARY_UPLOAD_PRESET}
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: bus-ticket-api-gateway
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - USER_SERVICE_URL=http://user-service:3008
+      - TRIP_SERVICE_URL=http://trip-service:3002
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - BOOKING_SERVICE_URL=http://booking-service:3004
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3006
+      - CHATBOT_SERVICE_URL=http://chatbot-service:3007
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+    ports:
+      - "3000:3000"
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./backend/api-gateway:/app
+      - /app/node_modules
+    depends_on:
+      - auth-service
+      - user-service
+      - trip-service
+      - notification-service
+      - booking-service
+      - payment-service
+      - analytics-service
+      - chatbot-service
+
   # Auth Service
   auth-service:
     build:
-      context: ./services/auth-service
+      context: ./backend/services/auth-service
       dockerfile: Dockerfile
     container_name: bus-ticket-auth-service
     environment:
@@ -47,31 +106,29 @@ services:
       - PORT=3001
       - DB_HOST=postgres
       - DB_PORT=5432
-      # DB_NAME=bus_ticket_dev (dòng cũ, kiểm tra tên DB thực tế, cần khớp với DB đã tạo)
       - DB_NAME=bus_ticket_dev
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET:-default-jwt-secret}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-default-refresh-secret}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-default-google-client-id}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your-refresh-secret-key}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
-      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-internal-service-secret-key-change-in-prod}
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./backend/services/auth-service:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bus-ticket-network
-    volumes:
-      - ./services/auth-service:/app
-      - /app/node_modules
 
   # Trip Service
   trip-service:
     build:
-      context: ./services/trip-service
+      context: ./backend/services/trip-service
       dockerfile: Dockerfile
     container_name: bus-ticket-trip-service
     environment:
@@ -82,31 +139,25 @@ services:
       - DB_NAME=bus_ticket_dev
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - API_GATEWAY_URL=http://api-gateway:3000
-      - JWT_SECRET=${JWT_SECRET}
-      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
-      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
-      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
     ports:
       - "3002:3002"
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./backend/services/trip-service:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bus-ticket-network
-    volumes:
-      - ./services/trip-service:/app
-      - /app/node_modules
 
   # Notification Service
   notification-service:
     build:
-      context: ./services/notification-service
+      context: ./backend/services/notification-service
       dockerfile: Dockerfile
     container_name: bus-ticket-notification-service
     environment:
@@ -121,18 +172,21 @@ services:
       - EMAIL_FROM=${EMAIL_FROM:-noreply@quad-n.me}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
       - API_URL=http://api-gateway:3000
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
     networks:
       - bus-ticket-network
     volumes:
-      - ./services/notification-service:/app
+      - ./backend/services/notification-service:/app
       - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # Booking Service
   booking-service:
     build:
-      context: ./services/booking-service
+      context: ./backend/services/booking-service
       dockerfile: Dockerfile
     container_name: bus-ticket-booking-service
     environment:
@@ -144,45 +198,41 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
       - AUTH_SERVICE_URL=http://auth-service:3001
       - TRIP_SERVICE_URL=http://trip-service:3002
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
       - BOOKING_LOCK_DURATION_MINUTES=10
-      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-internal-service-secret-key-change-in-prod}
       - SERVICE_FEE_PERCENTAGE=3
       - SERVICE_FEE_FIXED=10000
       - API_URL=http://api-gateway:3000
       - TICKET_BASE_URL=http://api-gateway:3000
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./backend/services/booking-service:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bus-ticket-network
-    volumes:
-      - ./services/booking-service:/app
-      - /app/node_modules
-    ports:
-      - "3004:3004"
 
-      # Payment Service
+  # Payment Service
   payment-service:
     build:
-      context: ./services/payment-service
+      context: ./backend/services/payment-service
       dockerfile: Dockerfile
     container_name: bus-ticket-payment-service
     environment:
       - NODE_ENV=development
       - PORT=3005
-      # ... các biến môi trường khác
     env_file:
-      - ./services/payment-service/.env
+      - ./backend/services/payment-service/.env
     networks:
       - bus-ticket-network
     volumes:
-      - ./services/payment-service:/app
+      - ./backend/services/payment-service:/app
       - /app/node_modules
     ports:
       - "3005:3005"
@@ -190,7 +240,7 @@ services:
   # Analytics Service
   analytics-service:
     build:
-      context: ./services/analytics-service
+      context: ./backend/services/analytics-service
       dockerfile: Dockerfile
     container_name: bus-ticket-analytics-service
     environment:
@@ -201,19 +251,19 @@ services:
       - DB_NAME=bus_ticket_dev
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-    depends_on:
-      postgres:
-        condition: service_healthy
     networks:
       - bus-ticket-network
     volumes:
-      - ./services/analytics-service:/app
+      - ./backend/services/analytics-service:/app
       - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # Chatbot Service
   chatbot-service:
     build:
-      context: ./services/chatbot-service
+      context: ./backend/services/chatbot-service
       dockerfile: Dockerfile
     container_name: bus-ticket-chatbot-service
     environment:
@@ -225,7 +275,7 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
       - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
       - GOOGLE_AI_MODEL=${GOOGLE_AI_MODEL:-gemini-2.5-flash}
       - GOOGLE_AI_TEMPERATURE=${GOOGLE_AI_TEMPERATURE:-0.7}
@@ -237,25 +287,25 @@ services:
       - MAX_CONVERSATION_HISTORY=20
     ports:
       - "3007:3007"
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./backend/services/chatbot-service:/app
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bus-ticket-network
-    volumes:
-      - ./services/chatbot-service:/app
-      - /app/node_modules
 
   # User Service
   user-service:
     build:
-      context: ./services/user-service
+      context: ./backend/services/user-service
       dockerfile: Dockerfile
     container_name: bus-ticket-user-service
     env_file:
-      - ./services/user-service/.env
+      - ./backend/services/user-service/.env
     environment:
       - NODE_ENV=development
       - PORT=3008
@@ -265,49 +315,21 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=${JWT_SECRET}
-    #      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-your_cloud_name}
-    #      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-your_api_key}
-    #      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-your_api_secret}
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+    networks:
+      - bus-ticket-network
+    volumes:
+      - ./backend/services/user-service:/app
+      - /app/node_modules
+    ports:
+      - "3008:3008"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - bus-ticket-network
-    volumes:
-      - ./services/user-service:/app
-      - /app/node_modules
-    ports:
-      - "3008:3008"
 
-  # API Gateway
-  api-gateway:
-    build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
-    container_name: bus-ticket-api-gateway
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - USER_SERVICE_URL=http://user-service:3008
-      - TRIP_SERVICE_URL=http://trip-service:3002
-      - NOTIFICATION_SERVICE_URL=http://notification-service:3003
-      - BOOKING_SERVICE_URL=http://booking-service:3004
-      - PAYMENT_SERVICE_URL=http://payment-service:3005
-      - ANALYTICS_SERVICE_URL=http://analytics-service:3006
-      - CHATBOT_SERVICE_URL=http://chatbot-service:3007
-      - JWT_SECRET=${JWT_SECRET}
-    ports:
-      - "3000:3000"
-    networks:
-      - bus-ticket-network
-    volumes:
-      - ./api-gateway:/app
-      - /app/node_modules
-
+  # pgAdmin
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: bus-ticket-pgadmin
