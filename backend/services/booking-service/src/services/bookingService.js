@@ -329,11 +329,11 @@ class BookingService {
     // Limit concurrent requests to avoid timeout
     const MAX_CONCURRENT = 10;
     const enrichedBookings = [];
-    
+
     // Process bookings in batches
     for (let i = 0; i < result.bookings.length; i += MAX_CONCURRENT) {
       const batch = result.bookings.slice(i, i + MAX_CONCURRENT);
-      
+
       const enrichedBatch = await Promise.all(
         batch.map(async (booking) => {
           const passengers = await passengerRepository.findByBookingId(booking.booking_id);
@@ -354,7 +354,10 @@ class BookingService {
             hasRating = ratingResponse.data?.hasRating || false;
           } catch (error) {
             // If rating check fails, assume no rating (don't break booking loading)
-            console.warn(`Failed to check rating for booking ${booking.booking_id}:`, error.message);
+            console.warn(
+              `Failed to check rating for booking ${booking.booking_id}:`,
+              error.message
+            );
             hasRating = false;
           }
 
@@ -393,7 +396,7 @@ class BookingService {
           };
         })
       );
-      
+
       enrichedBookings.push(...enrichedBatch);
     }
 
@@ -1106,6 +1109,9 @@ class BookingService {
    * @param {object} paymentData - Payment data
    */
   async sendBookingConfirmationEmail(booking, paymentData) {
+    console.log(
+      `[sendBookingConfirmationEmail] Called for booking ${booking?.booking_reference || booking?.booking_id}`
+    );
     try {
       // 1. Get full booking details including trip info
       const tripDetails = await this.getTripById(booking.trip_id);
@@ -1264,8 +1270,13 @@ class BookingService {
         console.warn('Could not attach local e-ticket file to booking data:', err.message || err);
       }
 
+      const recipientEmail = booking.contact_email;
+      console.log(
+        `[sendBookingConfirmationEmail] Using email: ${recipientEmail} for booking ${booking.booking_reference}`
+      );
+
       const response = await axios.post(`${notificationServiceUrl}/send-booking-confirmation`, {
-        email: booking.contact_email,
+        email: recipientEmail,
         bookingData: bookingConfirmationData,
       });
 
@@ -1281,23 +1292,40 @@ class BookingService {
       try {
         if (booking && booking.user_id) {
           const authServiceUrl = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
-          // Call auth service; supply userId as a query param for internal service lookup.
-          const profileRes = await axios.get(`${authServiceUrl}/auth/me`, {
-            params: { userId: booking.user_id },
-            timeout: 3000,
-          });
-
-          if (profileRes && profileRes.data && profileRes.data.data) {
-            const userProfile = profileRes.data.data;
-            if (
-              userProfile.preferences &&
-              (userProfile.preferences.send_sms === true ||
-                userProfile.nces?.receive_sms_notifications === true)
-            ) {
-              smsEnabled = true;
-            } else if (userProfile.preferences && userProfile.preferences.send_sms === false) {
-              smsEnabled = false;
+          const internalServiceKey =
+            process.env.INTERNAL_SERVICE_KEY || 'internal-service-secret-key-change-in-prod';
+          // Call auth service internal endpoint with shared secret key
+          const profileRes = await axios.get(
+            `${authServiceUrl}/internal/profile/${booking.user_id}`,
+            {
+              headers: {
+                'X-Internal-Key': internalServiceKey,
+              },
+              timeout: 3000,
             }
+          );
+
+          const userData = profileRes?.data?.data;
+          const preferences = userData?.preferences || {};
+
+          // Check nested preference structure: notifications.bookingConfirmations.sms
+          const smsPreference = preferences?.notifications?.bookingConfirmations?.sms;
+
+          console.log(
+            `[BookingService] User SMS preferences:`,
+            JSON.stringify({
+              smsPreference,
+              fullPreferences: preferences,
+            })
+          );
+
+          if (smsPreference === true) {
+            smsEnabled = true;
+            console.log(`✅ [BookingService] SMS enabled for booking ${booking.booking_reference}`);
+          } else {
+            console.log(
+              `ℹ️ [BookingService] SMS disabled for booking ${booking.booking_reference}`
+            );
           }
         }
       } catch (err) {
@@ -2378,12 +2406,38 @@ class BookingService {
           await ticketService.processTicketGeneration(bookingId);
           // Fetch updated booking with ticket_url
           const updatedBooking = await bookingRepository.findById(bookingId);
+          // Send booking confirmation email (non-blocking)
+          console.log(
+            '[confirmBookingWithPayment] About to send confirmation email, booking.contact_email:',
+            updatedBooking.contact_email,
+            'booking.user_email:',
+            updatedBooking.user_email
+          );
+          this.sendBookingConfirmationEmail(updatedBooking, paymentData).catch((err) => {
+            console.error('❌ Error sending booking confirmation email:', err.message || err);
+          });
+
+          console.log(
+            '[confirmBookingWithPayment] Returning updatedBooking from ticket generation block'
+          );
           return updatedBooking;
         } catch (err) {
           console.error('[BookingService] E-ticket generation failed:', err.message);
           // Don't fail the confirmation if ticket generation fails
         }
       }
+
+      // Send booking confirmation email (non-blocking)
+      console.log(
+        '[confirmBookingWithPayment] About to send confirmation email, booking.contact_email:',
+        booking.contact_email,
+        'booking.user_email:',
+        booking.user_email
+      );
+      this.sendBookingConfirmationEmail(booking, paymentData).catch((err) => {
+        console.error('❌ Error sending booking confirmation email:', err.message || err);
+      });
+
       return booking;
     } catch (error) {
       console.error('[BookingService] confirmBookingWithPayment error:', error);

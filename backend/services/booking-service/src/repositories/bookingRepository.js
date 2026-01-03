@@ -134,7 +134,12 @@ class BookingRepository {
    * @returns {Promise<object|null>} Booking or null
    */
   async findById(bookingId) {
-    const query = 'SELECT * FROM bookings WHERE booking_id = $1';
+    const query = `
+      SELECT b.*, u.email as user_email 
+      FROM bookings b 
+      LEFT JOIN users u ON b.user_id = u.user_id 
+      WHERE b.booking_id = $1
+    `;
     const result = await db.query(query, [bookingId]);
 
     if (result.rows.length === 0) {

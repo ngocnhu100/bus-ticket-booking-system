@@ -8,6 +8,7 @@ const authService = require('./authService');
 const authController = require('./authController');
 const adminController = require('./controllers/adminController');
 const { authenticate, authorize } = require('./authMiddleware');
+const userRepository = require('./userRepository');
 
 const app = express();
 const PORT = process.env.PORT || (process.env.NODE_ENV === 'test' ? 3002 : 3001);
@@ -100,6 +101,68 @@ app.post('/auth/blacklist-check', async (req, res) => {
 
   const isBlacklisted = await authService.isTokenBlacklisted(token);
   res.json({ isBlacklisted });
+});
+
+// Middleware to validate internal service key
+const validateInternalServiceKey = (req, res, next) => {
+  const providedKey = req.headers['x-internal-key'];
+  const expectedKey =
+    process.env.INTERNAL_SERVICE_KEY || 'internal-service-secret-key-change-in-prod';
+
+  if (!providedKey || providedKey !== expectedKey) {
+    return res.status(403).json({
+      success: false,
+      error: { code: 'FORBIDDEN', message: 'Invalid or missing internal service key' },
+      timestamp: new Date().toISOString(),
+    });
+  }
+  next();
+};
+
+// GET /internal/profile/:userId - Internal endpoint (secured with shared key)
+// Used by other services (e.g., booking-service for SMS preferences)
+app.get('/internal/profile/:userId', validateInternalServiceKey, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'VAL_001', message: 'User ID is required' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Query user from database
+    const user = await userRepository.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'User not found' },
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user_id: user.user_id,
+        email: user.email,
+        full_name: user.full_name,
+        phone: user.phone,
+        preferences: user.preferences || {},
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[Internal Profile] Error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: { code: 'SYS_001', message: 'Internal server error' },
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 // Admin Management Routes (Protected - Admin only)

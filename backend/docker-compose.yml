@@ -56,6 +56,7 @@ services:
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-default-refresh-secret}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-default-google-client-id}
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-internal-service-secret-key-change-in-prod}
     depends_on:
       postgres:
         condition: service_healthy
@@ -148,9 +149,11 @@ services:
       - TRIP_SERVICE_URL=http://trip-service:3002
       - NOTIFICATION_SERVICE_URL=http://notification-service:3003
       - BOOKING_LOCK_DURATION_MINUTES=10
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY:-internal-service-secret-key-change-in-prod}
       - SERVICE_FEE_PERCENTAGE=3
       - SERVICE_FEE_FIXED=10000
       - API_URL=http://api-gateway:3000
+      - TICKET_BASE_URL=http://api-gateway:3000
     depends_on:
       postgres:
         condition: service_healthy
@@ -304,6 +307,19 @@ services:
     volumes:
       - ./api-gateway:/app
       - /app/node_modules
+
+  # Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: bus-ticket-frontend
+    ports:
+      - "5173:80"
+    networks:
+      - bus-ticket-network
+    environment:
+      - NODE_ENV=production
 
   # pgAdmin
   pgadmin:

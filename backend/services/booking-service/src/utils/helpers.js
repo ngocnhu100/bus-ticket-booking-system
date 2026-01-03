@@ -106,6 +106,7 @@ function mapToBooking(row) {
     booking_reference: row.booking_reference,
     trip_id: row.trip_id,
     user_id: row.user_id,
+    user_email: row.user_email,
     contact_email: row.contact_email,
     contact_phone: row.contact_phone,
     status: row.status,

@@ -23,22 +23,16 @@ class TicketService {
       const pdfBuffer = await pdfGenerator.generateTicketPDF(booking, qrCodeDataUrl);
 
       // 3. Save PDF to file system (or upload to cloud storage)
-      const filepath = await pdfGenerator.savePDFToFile(
-        pdfBuffer,
-        booking.booking_reference
-      );
+      const filepath = await pdfGenerator.savePDFToFile(pdfBuffer, booking.booking_reference);
 
       // 4. Get public URL
-      const ticketUrl = pdfGenerator.getPublicTicketUrl(
-        filepath,
-        booking.booking_reference
-      );
+      const ticketUrl = pdfGenerator.getPublicTicketUrl(filepath, booking.booking_reference);
 
       console.log(`✅ Ticket generated successfully: ${ticketUrl}`);
 
       return {
         ticketUrl,
-        qrCode: qrCodeDataUrl
+        qrCode: qrCodeDataUrl,
       };
     } catch (error) {
       console.error(`❌ Error generating ticket for ${booking.booking_reference}:`, error);
@@ -55,7 +49,8 @@ class TicketService {
    */
   async sendTicketEmail(email, booking, ticket) {
     try {
-      const notificationServiceUrl = process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3003';
+      const notificationServiceUrl =
+        process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3003';
 
       const emailPayload = {
         type: 'booking-ticket',
@@ -69,22 +64,18 @@ class TicketService {
           currency: booking.currency || 'VND',
           passengers: booking.passengers,
           contactEmail: booking.contact_email,
-          contactPhone: booking.contact_phone
+          contactPhone: booking.contact_phone,
         },
         ticketUrl: ticket.ticketUrl,
-        qrCode: ticket.qrCode
+        qrCode: ticket.qrCode,
       };
 
       console.log(`📧 Sending ticket email to: ${email}`);
 
-      const response = await axios.post(
-        `${notificationServiceUrl}/send-email`,
-        emailPayload,
-        {
-          timeout: 10000,
-          headers: { 'Content-Type': 'application/json' }
-        }
-      );
+      const response = await axios.post(`${notificationServiceUrl}/send-email`, emailPayload, {
+        timeout: 10000,
+        headers: { 'Content-Type': 'application/json' },
+      });
 
       if (response.data.success) {
         console.log(`✅ Ticket email sent successfully to: ${email}`);
@@ -113,12 +104,18 @@ class TicketService {
 
       // 1. Get complete booking data WITH trip details for PDF
       const booking = await bookingRepository.findById(bookingId);
-      
+
       if (!booking) {
         throw new Error(`Booking not found: ${bookingId}`);
       }
 
-      // Get booking with full trip details for PDF generation
+      console.log(`[processTicketGeneration] Booking retrieved:`, {
+        booking_id: booking.booking_id,
+        contact_email: booking.contact_email,
+        user_email: booking.user_email,
+      });
+
+      // 2. Get booking with full trip details for PDF generation
       const bookingWithTrip = await bookingRepository.findByReferenceWithTripDetails(
         booking.booking_reference
       );
@@ -133,23 +130,26 @@ class TicketService {
       // 3. Update booking with ticket URLs
       await bookingRepository.updateTicketInfo(bookingId, {
         ticketUrl: ticket.ticketUrl,
-        qrCode: ticket.qrCode
+        qrCode: ticket.qrCode,
       });
 
-      // 4. Send email (non-blocking - failure won't affect booking)
-      const recipientEmail = booking.user_id ? booking.user_email : booking.contact_email;
-      
+      // 4. Send email (fire and forget, but log result)
+      //const recipientEmail = booking.user_id ? booking.user_email : booking.contact_email;
+      const recipientEmail = booking.contact_email || booking.user_email;
+
       if (recipientEmail) {
         // Fire and forget - don't await
         this.sendTicketEmail(recipientEmail, bookingWithTrip, ticket)
-          .then(success => {
+          .then((success) => {
             if (success) {
               console.log(`✅ Ticket email delivery confirmed for: ${booking.booking_reference}`);
             } else {
-              console.warn(`⚠️ Ticket email may not have been delivered for: ${booking.booking_reference}`);
+              console.warn(
+                `⚠️ Ticket email response not successful for: ${booking.booking_reference}`
+              );
             }
           })
-          .catch(err => {
+          .catch((err) => {
             console.error(`❌ Ticket email error for ${booking.booking_reference}:`, err.message);
           });
       } else {
@@ -161,7 +161,7 @@ class TicketService {
       return {
         ...booking,
         ticket_url: ticket.ticketUrl,
-        qr_code: ticket.qrCode
+        qr_code: ticket.qrCode,
       };
     } catch (error) {
       console.error(`❌ Error processing ticket generation:`, error);
