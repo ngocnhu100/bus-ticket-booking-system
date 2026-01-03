@@ -308,18 +308,18 @@ services:
       - ./api-gateway:/app
       - /app/node_modules
 
-  # Frontend
-  frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: bus-ticket-frontend
-    ports:
-      - "5173:80"
-    networks:
-      - bus-ticket-network
-    environment:
-      - NODE_ENV=production
+  # # Frontend
+  # frontend:
+  #   build:
+  #     context: ../frontend
+  #     dockerfile: Dockerfile
+  #   container_name: bus-ticket-frontend
+  #   ports:
+  #     - "5173:80"
+  #   networks:
+  #     - bus-ticket-network
+  #   environment:
+  #     - NODE_ENV=production
 
   # pgAdmin
   pgadmin:

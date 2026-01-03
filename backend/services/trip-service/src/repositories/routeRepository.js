@@ -541,7 +541,7 @@ class RouteRepository {
       MIN(t.base_price) AS starting_price
     FROM routes r
     LEFT JOIN trips t ON t.route_id = r.route_id
-      AND t.status IN ('scheduled', 'in_progress', 'completed')
+      AND t.status IN ('active', 'scheduled', 'in_progress', 'completed')
       AND t.departure_time > NOW() - INTERVAL '30 days'
     LEFT JOIN bookings b ON b.trip_id = t.trip_id
       AND b.status IN ('confirmed', 'completed')
