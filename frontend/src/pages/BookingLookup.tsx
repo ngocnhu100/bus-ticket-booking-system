@@ -623,13 +623,6 @@ export function BookingLookup() {
               {/* Actions */}
               <div className="pt-4 border-t flex gap-3">
                 <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => window.print()}
-                >
-                  Print Ticket
-                </Button>
-                <Button
                   className="flex-1"
                   onClick={() => {
                     setBooking(null)
@@ -644,9 +637,8 @@ export function BookingLookup() {
             </div>
           </Card>
         )}
-
         {/* Demo Instructions */}
-        {!booking && (
+        {/* {!booking && (
           <Card className="p-6 bg-gray-50 dark:bg-gray-800 mt-6">
             <h3 className="font-semibold mb-3">💡 Test Instructions</h3>
             <div className="space-y-2 text-sm text-muted-foreground">
@@ -698,7 +690,7 @@ export function BookingLookup() {
               </div>
             </div>
           </Card>
-        )}
+        )} */}
       </div>
     </div>
   )
