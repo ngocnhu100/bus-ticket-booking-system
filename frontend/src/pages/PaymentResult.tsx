@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePaymentStatus } from '@/hooks/usePaymentStatus'
+import { useSessionCaching } from '@/hooks/useSessionCaching'
 import { API_BASE_URL } from '@/lib/api'
 import { useAuth } from '@/context/AuthContext'
 import { getAccessToken } from '@/api/auth'
@@ -136,6 +137,7 @@ function StatusIcon({
 const PaymentResult: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { clearSessionCache } = useSessionCaching()
   const [bookingId, setBookingId] = useState<string>('')
   const paymentResult = getPaymentResultFromQuery()
   const { status, loading, error } = usePaymentStatus(bookingId)
@@ -235,6 +237,14 @@ const PaymentResult: React.FC = () => {
   useEffect(() => {
     getBookingIdFromQueryAsync().then(setBookingId)
   }, [])
+
+  // Clear session cache when payment is successful
+  useEffect(() => {
+    if (status === 'PAID') {
+      console.log('🎉 Payment successful - clearing session cache')
+      clearSessionCache()
+    }
+  }, [status, clearSessionCache])
 
   // MERGED EFFECT: Handle both payment confirmation AND booking info fetch
   // This prevents race condition from 2 separate useEffects

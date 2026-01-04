@@ -10,6 +10,7 @@ interface PassengerFormProps {
   onSubmit?: (passengers: PassengerInfo[]) => void // Optional - for backward compatibility
   onBack?: () => void
   isLoading?: boolean
+  initialPassengers?: PassengerInfo[] // New prop for pre-filled data
 }
 
 interface PassengerFormData extends PassengerInfo {
@@ -30,21 +31,37 @@ export function PassengerInformationForm({
   onSubmit: propOnSubmit,
   onBack,
   isLoading = false,
+  initialPassengers = [],
 }: PassengerFormProps) {
   const { setPassengers } = useBookingStore()
 
-  const [passengers, setPassengersState] = useState<PassengerFormData[]>(
-    seatInfos.map((info) => ({
+  const [passengers, setPassengersState] = useState<PassengerFormData[]>(() => {
+    // Initialize with initialPassengers if provided, otherwise empty
+    if (initialPassengers && initialPassengers.length > 0) {
+      return initialPassengers.map((p) => ({
+        ...p,
+        errors: {},
+      }))
+    }
+    return seatInfos.map((info) => ({
       fullName: '',
       phone: '',
       documentId: '',
       seatCode: info.seat_code,
       errors: {},
     }))
-  )
+  })
 
-  // Sync passengers state when seatInfos changes
+  // Sync passengers state when seatInfos changes - but preserve initialPassengers
   useEffect(() => {
+    // If we have initialPassengers with data, don't reset them
+    if (initialPassengers && initialPassengers.length > 0) {
+      console.log('📌 Preserving initialPassengers, not resetting')
+      return
+    }
+
+    // Only reset if no initialPassengers - when seat count changes
+    console.log('🔄 Resetting passengers for new seat selection')
     setPassengersState(
       seatInfos.map((info) => ({
         fullName: '',
@@ -55,7 +72,23 @@ export function PassengerInformationForm({
       }))
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seatInfos.length])
+  }, [seatInfos.length, initialPassengers?.length])
+
+  // Update state when initialPassengers changes (e.g., after restore from cache)
+  useEffect(() => {
+    if (initialPassengers && initialPassengers.length > 0) {
+      console.log(
+        '🔄 Updating passengers from initialPassengers:',
+        initialPassengers
+      )
+      setPassengersState(
+        initialPassengers.map((p) => ({
+          ...p,
+          errors: {},
+        }))
+      )
+    }
+  }, [initialPassengers])
 
   const handleInputChange = (
     index: number,

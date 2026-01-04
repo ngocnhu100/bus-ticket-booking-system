@@ -14,6 +14,8 @@ import { confirmPayment } from '@/api/bookings'
 import { useBookingStore } from '@/store/bookingStore'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Bus } from 'lucide-react'
+import { useBookingCache } from '@/hooks/useBookingCache'
+import { useSessionCaching } from '@/hooks/useSessionCaching'
 
 interface GuestCheckoutProps {
   selectedSeats?: { seat_id: string; seat_code: string }[]
@@ -40,14 +42,19 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
   const navigate = useNavigate()
   const { selectedTrip, selectedPickupPoint, selectedDropoffPoint } =
     useBookingStore()
+  const { saveSeatsTocache, saveBookingDraftToCache } = useBookingCache()
+  const {
+    getSessionId,
+    getCachedSeatSelection,
+    getCachedBookingDraft,
+    cachePendingPayment,
+    getCachedPendingPayment,
+  } = useSessionCaching()
 
-  const selectedSeats = propSeats ?? []
-
-  // Helper function to calculate service fee (3% + 10,000 VND - matches backend)
-  const calculateServiceFee = (subtotal: number): number => {
-    return subtotal * 0.03 + 10000
-  }
-
+  // State for restored data must be declared BEFORE useMemo
+  const [restoredSeats, setRestoredSeats] = React.useState<
+    { seat_id: string; seat_code: string }[]
+  >([])
   const [contactEmail, setContactEmail] = React.useState(user?.email || '')
   const [contactPhone, setContactPhone] = React.useState(user?.phone || '')
   const [contactErrors, setContactErrors] = React.useState<{
@@ -80,6 +87,155 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
   const [bookingId, setBookingId] = React.useState<string | null>(null)
   const [bookingCreated, setBookingCreated] = React.useState(false)
 
+  // Wrap selectedSeats in useMemo to prevent dependency issues
+  const memoizedSelectedSeats = React.useMemo(
+    () => (propSeats && propSeats.length > 0 ? propSeats : restoredSeats),
+    [propSeats, restoredSeats]
+  )
+
+  // Helper function to calculate service fee (3% + 10,000 VND - matches backend)
+  const calculateServiceFee = (subtotal: number): number => {
+    return subtotal * 0.03 + 10000
+  }
+
+  // Restore session data on component mount
+  React.useEffect(() => {
+    const restoreSession = async () => {
+      const sessionId = getSessionId()
+      console.log('🔄 Restoring session:', sessionId)
+
+      // Restore seat selection
+      const cachedSeats = await getCachedSeatSelection(selectedTrip?.trip_id)
+      if (cachedSeats?.selectedSeats) {
+        const seatObjects = cachedSeats.selectedSeats.map((code) => ({
+          seat_id: code,
+          seat_code: code,
+        }))
+        setRestoredSeats(seatObjects)
+        console.log('✅ Restored seats:', seatObjects)
+      }
+
+      // Restore booking draft
+      const cachedDraft = await getCachedBookingDraft()
+      if (cachedDraft) {
+        setContactEmail(cachedDraft.contactEmail || '')
+        setContactPhone(cachedDraft.contactPhone || '')
+        setPassengers(cachedDraft.passengers || [])
+        console.log('✅ Restored booking draft:', cachedDraft)
+      }
+
+      // Restore pending payment if it exists
+      const pendingPayment = await getCachedPendingPayment()
+      if (pendingPayment) {
+        setPaymentResult(pendingPayment)
+        setBookingId(pendingPayment.bookingId)
+        setBookingCreated(true)
+        console.log('✅ Restored pending payment:', pendingPayment)
+      }
+    }
+
+    restoreSession()
+  }, [
+    getSessionId,
+    selectedTrip?.trip_id,
+    getCachedSeatSelection,
+    getCachedBookingDraft,
+    getCachedPendingPayment,
+  ])
+
+  // Save seat selection whenever it changes
+  React.useEffect(() => {
+    if (
+      !memoizedSelectedSeats ||
+      memoizedSelectedSeats.length === 0 ||
+      !selectedTrip?.trip_id
+    ) {
+      return
+    }
+
+    const savingSeats = async () => {
+      const seatCodes = memoizedSelectedSeats.map((s) => s.seat_code)
+      await saveSeatsTocache(seatCodes)
+    }
+
+    // Debounce to avoid too many API calls
+    const timeout = setTimeout(savingSeats, 500)
+    return () => clearTimeout(timeout)
+  }, [memoizedSelectedSeats, selectedTrip?.trip_id, saveSeatsTocache])
+
+  // Auto-save booking draft with debounce when user fills in contact info or passengers
+  React.useEffect(() => {
+    if (!selectedTrip?.trip_id) {
+      console.log('❌ Auto-save skipped: no trip selected')
+      return
+    }
+
+    // Allow save if user has filled in email OR phone OR has added passengers
+    if (
+      !contactEmail.trim() &&
+      !contactPhone.trim() &&
+      passengers.length === 0
+    ) {
+      console.log(
+        '❌ Auto-save skipped: no email, phone, or passengers entered'
+      )
+      return
+    }
+
+    console.log('📝 Auto-save triggered for draft booking')
+
+    const savingDraft = async () => {
+      const draftData = {
+        tripId: selectedTrip.trip_id,
+        seats: memoizedSelectedSeats.map((s) => s.seat_code),
+        passengers,
+        contactEmail,
+        contactPhone,
+      }
+
+      console.log('📤 Saving draft:', draftData)
+      await saveBookingDraftToCache(draftData)
+      console.log('✅ Draft saved to cache')
+    }
+
+    // Debounce to avoid too many API calls
+    const timeout = setTimeout(savingDraft, 500)
+    console.log('⏱️ Debounce timer started (500ms)')
+    return () => {
+      clearTimeout(timeout)
+      console.log('⏱️ Debounce timer cleared')
+    }
+  }, [
+    selectedTrip?.trip_id,
+    passengers,
+    memoizedSelectedSeats,
+    contactEmail,
+    contactPhone,
+    saveBookingDraftToCache,
+  ])
+
+  // Save booking draft when user fills in info
+  const saveBookingDraft = React.useCallback(async () => {
+    if (!selectedTrip?.trip_id || passengers.length === 0) return
+
+    const draftData = {
+      tripId: selectedTrip.trip_id,
+      seats: memoizedSelectedSeats.map((s) => s.seat_code),
+      passengers,
+      contactEmail,
+      contactPhone,
+    }
+
+    await saveBookingDraftToCache(draftData)
+  }, [
+    selectedTrip?.trip_id,
+    passengers,
+    memoizedSelectedSeats,
+    contactEmail,
+    contactPhone,
+    saveBookingDraftToCache,
+  ])
+
   const validateContactInfo = () => {
     const errors: { email?: string; phone?: string } = {}
     let isValid = true
@@ -111,6 +267,9 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
     if (event) event.preventDefault()
     setError(null)
 
+    // Save draft before proceeding
+    await saveBookingDraft()
+
     // For PayOS, don't show loading state - redirect immediately
     const shouldShowLoading = selectedPaymentMethod !== 'payos'
     if (shouldShowLoading) {
@@ -139,7 +298,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
         // Only create booking if not already created
         const bookingData = {
           tripId: selectedTrip.trip_id,
-          seats: selectedSeats.map((s) => s.seat_code),
+          seats: memoizedSelectedSeats.map((s) => s.seat_code),
           passengers: passengers,
           contactEmail: contactEmail.trim(),
           contactPhone: contactPhone.trim(),
@@ -171,7 +330,7 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
 
       // Calculate service fee and total based on all selected seats
       const basePrice = selectedTrip.pricing?.base_price || 0
-      const subtotal = basePrice * selectedSeats.length // Multiply by number of seats
+      const subtotal = basePrice * memoizedSelectedSeats.length // Multiply by number of seats
       const serviceFee = calculateServiceFee(subtotal)
       const totalAmount = subtotal + serviceFee
 
@@ -185,16 +344,94 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const paymentRes: any = await confirmPayment(idToPay, paymentPayload)
       console.log('[GuestCheckout] confirmPayment response:', paymentRes)
-      setPaymentResult({
+      console.log('[GuestCheckout] Response details:', {
+        hasPaymentUrl: !!paymentRes?.paymentUrl,
+        hasQrCode: !!paymentRes?.qrCode,
+        hasProvider: !!paymentRes?.provider,
+        paymentUrlValue: paymentRes?.paymentUrl
+          ? paymentRes.paymentUrl.substring(0, 50) + '...'
+          : 'MISSING',
+      })
+      const paymentResultData = {
         paymentUrl: paymentRes.paymentUrl,
         qrCode: paymentRes.qrCode,
         provider: paymentRes.provider,
         clientSecret: paymentRes.clientSecret,
+        bookingId: idToPay,
         ...paymentRes.data,
-      })
-      if (paymentRes.paymentUrl) {
-        window.location.href = paymentRes.paymentUrl
       }
+      setPaymentResult(paymentResultData)
+
+      // Save pending payment to Redis for recovery after refresh
+      // Use sendBeacon to ensure request is sent even if page redirects
+      const pendingPaymentPayload = {
+        sessionId: sessionStorage.getItem('sessionId') || 'unknown',
+        bookingId: idToPay,
+        paymentData: {
+          paymentUrl: paymentRes.paymentUrl,
+          qrCode: paymentRes.qrCode,
+          provider: paymentRes.provider,
+          clientSecret: paymentRes.clientSecret,
+        },
+      }
+
+      // Try sendBeacon first (more reliable during unload)
+      // Use full API URL so it reaches the backend
+      const sendBeaconUrl = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/bookings/pending-payment`
+      const beaconData = new Blob([JSON.stringify(pendingPaymentPayload)], {
+        type: 'application/json',
+      })
+      const beaconSent = navigator.sendBeacon(sendBeaconUrl, beaconData)
+      console.log(
+        '[GuestCheckout] sendBeacon for pending payment:',
+        beaconSent ? '✅ queued' : '❌ failed',
+        'URL:',
+        sendBeaconUrl
+      )
+
+      // Also try cachePendingPayment with timeout (for visibility)
+      setTimeout(async () => {
+        try {
+          console.log(
+            '[GuestCheckout] Caching pending payment to Redis...',
+            idToPay
+          )
+          await cachePendingPayment(idToPay, {
+            paymentUrl: paymentRes.paymentUrl,
+            qrCode: paymentRes.qrCode,
+            provider: paymentRes.provider,
+            clientSecret: paymentRes.clientSecret,
+          })
+          console.log('[GuestCheckout] ✅ Pending payment cached to Redis')
+        } catch (cacheError) {
+          console.error(
+            '[GuestCheckout] ❌ Failed to cache pending payment:',
+            cacheError
+          )
+        }
+      }, 0)
+
+      // Also save to sessionStorage as backup
+      sessionStorage.setItem(
+        'pendingPayment',
+        JSON.stringify(paymentResultData)
+      )
+      console.log(
+        '[GuestCheckout] Saved pending payment to Redis & sessionStorage:',
+        paymentResultData
+      )
+
+      if (paymentRes.paymentUrl) {
+        console.log(
+          '[GuestCheckout] Redirecting to payment provider:',
+          paymentRes.paymentUrl
+        )
+        // Small delay to allow sendBeacon to queue
+        setTimeout(() => {
+          window.location.href = paymentRes.paymentUrl
+        }, 100)
+      }
+      // Note: Session will be cleared in PaymentResult page after payment succeeds
       if (onSubmit) {
         onSubmit({ contactEmail, contactPhone, passengers })
       }
@@ -391,7 +628,8 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                 </div>
                 {/* Passenger Information Form */}
                 <PassengerInformationForm
-                  seatInfos={selectedSeats}
+                  seatInfos={memoizedSelectedSeats}
+                  initialPassengers={passengers}
                   onSubmit={(data) => setPassengers(data)}
                 />
               </CardContent>
@@ -421,30 +659,37 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                     </div>
                     <div>Operator: {selectedTrip.operator.name}</div>
                     <div>
-                      Seats: {selectedSeats.map((s) => s.seat_code).join(', ')}
+                      Seats:{' '}
+                      {memoizedSelectedSeats
+                        .map((s: { seat_code: string }) => s.seat_code)
+                        .join(', ')}
                     </div>
-                    <div>Passengers: {selectedSeats.length}</div>
+                    <div>Passengers: {memoizedSelectedSeats.length}</div>
                     <div className="border-t my-2"></div>
                     <div>
                       Fare:{' '}
                       {(
-                        selectedTrip.pricing.base_price * selectedSeats.length
+                        selectedTrip.pricing.base_price *
+                        memoizedSelectedSeats.length
                       ).toLocaleString('vi-VN')}{' '}
                       VND
                     </div>
                     <div>
                       Service fee:{' '}
                       {calculateServiceFee(
-                        selectedTrip.pricing.base_price * selectedSeats.length
+                        selectedTrip.pricing.base_price *
+                          memoizedSelectedSeats.length
                       ).toLocaleString('vi-VN')}{' '}
                       VND
                     </div>
                     <div className="font-bold text-lg">
                       Total:{' '}
                       {(
-                        selectedTrip.pricing.base_price * selectedSeats.length +
+                        selectedTrip.pricing.base_price *
+                          memoizedSelectedSeats.length +
                         calculateServiceFee(
-                          selectedTrip.pricing.base_price * selectedSeats.length
+                          selectedTrip.pricing.base_price *
+                            memoizedSelectedSeats.length
                         )
                       ).toLocaleString('vi-VN')}{' '}
                       VND
@@ -464,12 +709,12 @@ const GuestCheckout: React.FC<GuestCheckoutProps> = ({
                 <CardContent className="pt-2 pb-4 px-2 md:px-4">
                   <PaymentMethodSelector
                     amount={
-                      selectedTrip && selectedSeats.length > 0
+                      selectedTrip && memoizedSelectedSeats.length > 0
                         ? selectedTrip.pricing.base_price *
-                            selectedSeats.length +
+                            memoizedSelectedSeats.length +
                           calculateServiceFee(
                             selectedTrip.pricing.base_price *
-                              selectedSeats.length
+                              memoizedSelectedSeats.length
                           )
                         : 0
                     }

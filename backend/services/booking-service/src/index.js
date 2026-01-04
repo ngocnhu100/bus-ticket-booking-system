@@ -5,9 +5,11 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const bookingController = require('./controllers/bookingController');
+const bookingCacheController = require('./controllers/bookingCacheController');
 const { authenticate, authorize, optionalAuthenticate } = require('./middleware/authMiddleware');
 const bookingExpirationJob = require('./jobs/bookingExpirationJob');
 const tripReminderJob = require('./jobs/tripReminderJob');
+const redisClient = require('./redis');
 
 const app = express();
 const PORT = process.env.PORT || 3004;
@@ -17,6 +19,7 @@ app.use(helmet());
 app.use(cors());
 app.use(morgan('combined'));
 app.use(express.json());
+app.use(express.text({ type: 'text/plain' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Initialize Passport
@@ -25,6 +28,65 @@ app.use(passport.initialize());
 
 // Health check
 app.get('/health', bookingController.healthCheck);
+
+// Redis health check
+app.get('/redis/health', async (req, res) => {
+  try {
+    const pong = await redisClient.ping();
+    res.json({
+      success: true,
+      redis: {
+        status: 'connected',
+        ping: pong,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      redis: {
+        status: 'disconnected',
+        error: error.message,
+      },
+    });
+  }
+});
+
+// --- Seat Selection Session Management ---
+app.post('/seats/select', optionalAuthenticate, bookingCacheController.saveSeatSelection);
+app.get(
+  '/seats/selection/:sessionId',
+  optionalAuthenticate,
+  bookingCacheController.getSeatSelection
+);
+
+// --- Booking Draft Session Management ---
+app.post('/draft', optionalAuthenticate, bookingCacheController.createBookingDraft);
+app.get('/draft/:sessionId', optionalAuthenticate, bookingCacheController.getBookingDraft);
+app.delete('/draft/:sessionId', optionalAuthenticate, bookingCacheController.clearBookingDraft);
+
+// --- Pending Payment Management ---
+app.post('/pending-payment', optionalAuthenticate, bookingCacheController.savePendingPayment);
+app.get(
+  '/pending-payment/:sessionId',
+  optionalAuthenticate,
+  bookingCacheController.getPendingPayment
+);
+app.delete(
+  '/pending-payment/:sessionId',
+  optionalAuthenticate,
+  bookingCacheController.clearPendingPayment
+);
+
+// --- Session Management Endpoints ---
+app.get(
+  '/session/stats',
+  authenticate,
+  authorize(['admin']),
+  bookingCacheController.getSessionStats
+);
+app.get('/sessions', authenticate, authorize(['admin']), bookingCacheController.listSessions);
+app.delete('/session/clear', optionalAuthenticate, bookingCacheController.clearSession);
 
 // Admin routes (require admin role) - MUST come BEFORE /:id routes
 app.get('/admin', authenticate, authorize(['admin']), bookingController.getAllBookings);
