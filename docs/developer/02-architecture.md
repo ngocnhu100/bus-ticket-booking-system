@@ -49,13 +49,13 @@ The Bus Ticket Booking System is built using a **microservices architecture** wi
 │  └─────────────┘  └─────────────┘  └──────────────┘                │
 │                                                                      │
 │  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐                │
-│  │Notification │  │  Payment    │  │ Analytics    │                │
+│  │ Notification│  │  Payment    │  │  Analytics   │                │
 │  │  Service    │  │  Service    │  │  Service     │                │
 │  │  Port: 3003 │  │  Port: 3005 │  │  Port: 3006  │                │
 │  └─────────────┘  └─────────────┘  └──────────────┘                │
 │                                                                      │
 │  ┌─────────────┐  ┌─────────────┐                                  │
-│  │    User     │  │  Chatbot    │                                  │
+│  │  Chatbot    │  │    User     │                                  │
 │  │  Service    │  │  Service    │                                  │
 │  │  Port: 3007 │  │  Port: 3008 │                                  │
 │  └─────────────┘  └─────────────┘                                  │

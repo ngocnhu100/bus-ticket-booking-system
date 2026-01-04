@@ -93,27 +93,51 @@ JWT_SECRET=your-jwt-secret
 
 **Key Endpoints:**
 
-- GET `/search` - Search trips
-- GET `/:id` - Get trip details
-- GET `/:id/seats` - Get seat availability
-- POST `/:id/seats/lock` - Lock seats
-- POST `/:id/seats/release` - Release seats
-- POST `/` - Create trip (admin)
+- GET `/trips/search` - Search trips
+- GET `/trips/:id` - Get trip details
+- GET `/trips/:id/seats` - Get seat availability
+- POST `/trips/:id/seats/lock` - Lock seats
+- POST `/trips/:id/seats/release` - Release seats
 
 ---
 
-### 4. Booking Service (Port 3004)
+### 4. Notification Service (Port 3003)
 
-**Purpose:** Booking management, ticket generation
+**Purpose:** Email notifications, SMS, weather alerts
 
 **Key Features:**
 
-- Create bookings (guest and authenticated)
-- Unique booking reference generation (Redis counter)
-- E-ticket PDF generation with QR code
-- Booking expiration (10-minute lock)
-- Booking lookup and verification
-- Automated email delivery
+- SendGrid email integration
+- E-ticket delivery
+- Booking confirmations
+- Weather alerts for trip day
+- Notification templates
+
+**Technology:** Express.js, SendGrid, PostgreSQL
+
+**Database Tables:** `notifications`
+
+**Key Endpoints:**
+
+- POST `/notifications/send-email` - Send email
+- GET `/notifications/user/:userId` - Get user notifications
+- POST `/notifications/weather/:tripId` - Send weather alert
+
+---
+
+### 5. Booking Service (Port 3004)
+
+**Purpose:** Booking management, e-ticket generation
+
+**Key Features:**
+
+- Guest checkout support
+- Booking creation & management
+- E-ticket PDF generation with QR codes
+- Booking reference generation (Redis counter)
+- Seat locking (10-minute hold)
+- Booking lookup with contact verification
+- Auto-expiration job for unpaid bookings
 
 **Technology:** Express.js, PostgreSQL, Redis, PDFKit, QRCode
 
@@ -121,87 +145,43 @@ JWT_SECRET=your-jwt-secret
 
 **Redis Keys:**
 
-- `booking_ref_counter` - Atomic counter for booking references
-- `booking_lock:{bookingId}` - Booking expiration tracking
-
-**Background Jobs:**
-
-- `bookingExpirationJob.js` - Cancel expired bookings (runs every minute)
+- `booking_ref_counter` - Atomic counter for unique references
+- `seat_lock:{tripId}:{seatCode}` - Seat reservations
+- `booking_expiry:{bookingId}` - Expiration tracking
 
 **Key Endpoints:**
 
-- POST `/bookings` - Create booking
-- GET `/bookings/:id` - Get booking
-- GET `/bookings` - List user bookings
-- POST `/bookings/lookup` - Guest booking lookup
-- PATCH `/bookings/:id/cancel` - Cancel booking
+- POST `/bookings` - Create booking (guest/authenticated)
+- GET `/bookings/:reference` - Get by reference
+- POST `/bookings/lookup` - Lookup (reference + email)
+- GET `/bookings/user/:userId` - User's bookings
+- PUT `/bookings/:id/cancel` - Cancel booking
+- GET `/tickets/:filename` - Download e-ticket PDF
 
 ---
 
-### 5. Payment Service (Port 3005)
+### 6. Payment Service (Port 3005)
 
-**Purpose:** Payment processing, webhook handling
+**Purpose:** Payment processing, webhooks
 
 **Key Features:**
 
-- Multiple payment gateways (PayOS, Momo, ZaloPay, Stripe)
-- Payment initiation
-- Webhook handling and verification
-- Payment status updates
+- Multi-gateway support (PayOS, Momo, ZaloPay, Stripe)
+- Webhook handling
+- Payment verification
 - Refund processing
 
-**Technology:** Express.js, PayOS SDK, Momo SDK, ZaloPay SDK, Stripe SDK
+**Technology:** Express.js, PostgreSQL, Payment SDKs
 
-**Payment Gateways:**
-
-1. **PayOS** - Credit/debit cards, e-wallets
-2. **Momo** - Mobile wallet
-3. **ZaloPay** - Digital wallet
-4. **Stripe** - International cards
+**Database Tables:** `payments`, `refunds`
 
 **Key Endpoints:**
 
-- POST `/api/payment` - Create payment
+- POST `/payment/create` - Initiate payment
 - POST `/webhooks/payos` - PayOS webhook
 - POST `/webhooks/momo` - Momo webhook
 - POST `/webhooks/zalopay` - ZaloPay webhook
-- POST `/webhooks/stripe` - Stripe webhook
-
----
-
-### 6. Notification Service (Port 3003)
-
-**Purpose:** Email and SMS notifications
-
-**Key Features:**
-
-- E-ticket email delivery
-- Booking confirmation emails
-- Trip reminder emails (24h, 2h before)
-- Password reset emails
-- Email verification
-- Weather updates in reminders
-
-**Technology:** Express.js, SendGrid, OpenWeather API
-
-**Database Tables:** `notifications`
-
-**Background Jobs:**
-
-- `tripReminderJob.js` - Send trip reminders (runs hourly)
-
-**Email Templates:**
-
-- Booking confirmation
-- E-ticket delivery
-- Trip reminder
-- Password reset
-- Email verification
-
-**Key Endpoints:**
-
-- POST `/internal/send-email` - Send email (internal)
-- POST `/internal/send-sms` - Send SMS (internal)
+- POST `/webhooks/card` - Stripe webhook
 
 ---
 
@@ -211,66 +191,87 @@ JWT_SECRET=your-jwt-secret
 
 **Key Features:**
 
-- Dashboard metrics
+- Booking statistics
 - Revenue analytics
-- Booking analytics
-- Popular routes
-- Occupancy rates
-- Trend analysis
+- Top routes and operators
+- Cancellation rate analysis
+- Admin dashboard data
 
 **Technology:** Express.js, PostgreSQL
 
 **Key Endpoints:**
 
-- GET `/dashboard` - Dashboard summary
-- GET `/bookings` - Booking analytics
-- GET `/revenue` - Revenue analytics
+- GET `/analytics/bookings` - Booking analytics (date range, groupBy)
+- GET `/analytics/revenue` - Revenue analysis
+- GET `/analytics/top-routes` - Popular routes
+- GET `/analytics/cancellations` - Cancellation stats
+
+**Access:** Admin only (authenticated + role check via API Gateway)
 
 ---
 
-### 8. User Service (Port 3007)
+### 8. Chatbot Service (Port 3007)
+
+**Purpose:** AI-powered conversational assistant
+
+**Key Features:**
+
+- **Google Gemini AI** integration (gemini-2.5-flash model)
+- Natural language trip search
+- Conversational booking assistance
+- FAQ handling
+- Session management (30-minute expiry)
+- Support for guest and authenticated users
+
+**Technology:** Express.js, Google AI (Gemini), PostgreSQL, Redis
+
+**Database Tables:** `chatbot_sessions`, `chatbot_messages`
+
+**Redis Keys:**
+
+- `chatbot_session:{sessionId}` - Active sessions
+
+**Environment Variables:**
+
+- `GOOGLE_AI_API_KEY` - Gemini API key
+- `GOOGLE_AI_MODEL` - Model name (default: gemini-2.5-flash)
+- `GOOGLE_AI_TEMPERATURE` - Response temperature (default: 0.7)
+- `GOOGLE_AI_MAX_TOKENS` - Max response tokens (default: 1000)
+
+**Key Endpoints:**
+
+- POST `/chatbot/query` - Send message to chatbot
+- GET `/chatbot/sessions/:sessionId/history` - Get conversation history
+- POST `/chatbot/sessions/:sessionId/reset` - Reset session
+- POST `/chatbot/book` - Process booking via chatbot
+
+---
+
+### 9. User Service (Port 3008)
 
 **Purpose:** User profile management
 
 **Key Features:**
 
-- Profile management
-- Notification preferences
-- Booking history
-- User settings
+- Profile updates (name, phone, avatar)
+- Password change
+- Cloudinary avatar upload
+- User preferences
 
-**Technology:** Express.js, PostgreSQL
+**Technology:** Express.js, PostgreSQL, Redis, Cloudinary
 
-**Key Endpoints:**
-
-- GET `/profile` - Get profile
-- PUT `/profile` - Update profile
-- GET `/bookings` - Get user bookings
-- PUT `/preferences` - Update preferences
-
----
-
-### 9. Chatbot Service (Port 3008)
-
-**Purpose:** AI-powered booking assistance
-
-**Key Features:**
-
-- Natural language processing
-- Conversational booking
-- FAQ handling
-- Session management
-- Feedback collection
-
-**Technology:** Express.js, PostgreSQL
-
-**Database Tables:** `chatbot_sessions`, `chatbot_messages`, `chatbot_feedback`
+**Database Tables:** `users` (shared with auth-service)
 
 **Key Endpoints:**
 
-- POST `/chatbot/query` - Send message
-- GET `/chatbot/session` - Get session
-- POST `/chatbot/feedback` - Submit feedback
+- GET `/users/profile` - Get user profile
+- PUT `/users/profile` - Update profile (with avatar upload)
+- POST `/users/change-password` - Change password
+
+**Access via API Gateway:**
+
+- `/users/profile` → user-service:3008
+- `/users/change-password` → user-service:3008
 
 ---
 
