@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import TripSearchResults from '../pages/TripSearchResults'
+import { createMockResponse } from './setup'
 
 // Mock fetch API
 global.fetch = vi.fn() as typeof global.fetch
@@ -207,17 +208,17 @@ describe('TripSearchResults Component', () => {
     vi.clearAllMocks()
     vi.mocked(global.fetch).mockReset()
     // Default successful mock
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        success: true,
-        data: {
-          trips: [],
-          pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
-        },
-      }),
-    })
+    vi.mocked(global.fetch).mockResolvedValue(
+      createMockResponse({
+        json: async () => ({
+          success: true,
+          data: {
+            trips: [],
+            pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
+          },
+        }),
+      })
+    )
   })
 
   describe('Loading State', () => {
@@ -241,22 +242,22 @@ describe('TripSearchResults Component', () => {
 
   describe('Success State', () => {
     it('should display search results when trips are found', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: {
-              total: 2,
-              page: 1,
-              limit: 10,
-              totalPages: 1,
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: {
+                total: 2,
+                page: 1,
+                limit: 10,
+                totalPages: 1,
+              },
             },
-          },
-        }),
-      })
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -279,21 +280,22 @@ describe('TripSearchResults Component', () => {
     })
 
     it('should display correct number of results found', async () => {
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: {
-              total: 2,
-              page: 1,
-              limit: 10,
-              totalPages: 1,
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: {
+                total: 2,
+                page: 1,
+                limit: 10,
+                totalPages: 1,
+              },
             },
-          },
-        }),
-      })
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -314,21 +316,22 @@ describe('TripSearchResults Component', () => {
 
   describe('Empty State', () => {
     it('should show no results message when no trips found', async () => {
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: [],
-            pagination: {
-              total: 0,
-              page: 1,
-              limit: 10,
-              totalPages: 0,
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: [],
+              pagination: {
+                total: 0,
+                page: 1,
+                limit: 10,
+                totalPages: 0,
+              },
             },
-          },
-        }),
-      })
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -367,12 +370,14 @@ describe('TripSearchResults Component', () => {
     })
 
     it('should show error when API returns non-OK status', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        text: async () => 'Internal Server Error',
-      })
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          text: async () => 'Internal Server Error',
+        })
+      )
 
       render(
         <MemoryRouter
@@ -391,17 +396,17 @@ describe('TripSearchResults Component', () => {
 
   describe('Filtering', () => {
     it('should render filter panel', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
-          },
-        }),
-      })
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
+            },
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -421,16 +426,17 @@ describe('TripSearchResults Component', () => {
 
   describe('Sorting', () => {
     it('should render sort dropdown', async () => {
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
-          },
-        }),
-      })
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
+            },
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -450,21 +456,22 @@ describe('TripSearchResults Component', () => {
 
   describe('Pagination', () => {
     it('should render pagination when multiple pages exist', async () => {
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: {
-              total: 20,
-              page: 1,
-              limit: 5,
-              totalPages: 4,
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: {
+                total: 20,
+                page: 1,
+                limit: 5,
+                totalPages: 4,
+              },
             },
-          },
-        }),
-      })
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -486,17 +493,17 @@ describe('TripSearchResults Component', () => {
 
   describe('Header Component', () => {
     it('should render header component', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
-          },
-        }),
-      })
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
+            },
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -514,17 +521,17 @@ describe('TripSearchResults Component', () => {
 
   describe('Search History', () => {
     it('should render search history panel', async () => {
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: mockTrips,
-            pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
-          },
-        }),
-      })
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: mockTrips,
+              pagination: { total: 2, page: 1, limit: 10, totalPages: 1 },
+            },
+          }),
+        })
+      )
 
       render(
         <MemoryRouter
@@ -547,17 +554,17 @@ describe('TripSearchResults Component', () => {
   describe('URL Parameters', () => {
     it('should read search params from URL', async () => {
       const fetchSpy = vi.spyOn(global, 'fetch')
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          success: true,
-          data: {
-            trips: [],
-            pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
-          },
-        }),
-      })
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          json: async () => ({
+            success: true,
+            data: {
+              trips: [],
+              pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
+            },
+          }),
+        })
+      )
 
       render(
         <MemoryRouter

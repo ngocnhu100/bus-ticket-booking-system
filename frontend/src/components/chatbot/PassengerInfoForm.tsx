@@ -131,6 +131,7 @@ export const PassengerInfoForm: React.FC<PassengerInfoFormProps> = ({
       const timer = setTimeout(() => setIsPreFilled(false), 5000)
       return () => clearTimeout(timer)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   // If no seats or fields, show error

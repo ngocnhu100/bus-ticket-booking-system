@@ -78,15 +78,28 @@ describe('GuestCheckout', () => {
       data: {
         booking_id: 'bk123',
         booking_reference: 'BK20251210001',
+        trip_id: 'trip123',
         contact_email: 'test@example.com',
+        contact_phone: '+84901234567',
+        status: 'pending' as const,
+        user_id: undefined,
+        locked_until: null,
+        created_at: '2025-12-11T00:00:00Z',
+        updated_at: '2025-12-11T00:00:00Z',
+        passengers: [],
+        pricing: {
+          subtotal: 350000,
+          service_fee: 50000,
+          total: 400000,
+          currency: 'VND',
+        },
+        payment: {
+          method: undefined,
+          status: 'pending',
+          paidAt: undefined,
+        },
       },
-    } as {
-      success: boolean
-      data: {
-        booking_id: string
-        booking_reference: string
-        contact_email: string
-      }
+      message: '',
     })
 
     render(

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { Route, Routes, MemoryRouter } from 'react-router-dom'
 import { BookingConfirmation } from '../pages/BookingConfirmation'
 import * as bookingApi from '../api/booking.api'
+import type { Booking } from '../types/booking.types'
 
 // Mock booking API
 vi.mock('../api/booking.api', () => ({
@@ -14,7 +15,7 @@ vi.mock('@/components/landing/Header', () => ({
   Header: () => <div data-testid="header">Header</div>,
 }))
 
-const mockBooking = {
+const mockBooking: Booking = {
   booking_id: 'bk123',
   booking_reference: 'BK20251210001',
   trip_id: 'trip123',
@@ -27,9 +28,7 @@ const mockBooking = {
   updated_at: '2025-12-11T00:00:00Z',
   passengers: [
     {
-      passenger_id: 'p1',
-      booking_id: 'bk123',
-      seat_id: 's1',
+      seat_code: 'A1',
       fullName: 'Nguyen Van A',
       phone: '+84901234567',
       seatNumber: 'A1',
@@ -37,10 +36,48 @@ const mockBooking = {
   ],
   trip: {
     trip_id: 'trip123',
-    route_name: 'Hanoi - Da Lat',
-    departure_time: '2025-12-20T08:00:00Z',
-    arrival_time: '2025-12-20T20:00:00Z',
-    price: 350000,
+    route: {
+      route_id: 'r1',
+      origin: 'Hanoi',
+      destination: 'Da Lat',
+      distance_km: 300,
+      estimated_minutes: 720,
+    },
+    operator: {
+      operator_id: 'op1',
+      name: 'Bus Operator',
+      rating: 4.5,
+    },
+    bus: {
+      bus_id: 'b1',
+      model: 'Mercedes',
+      plate_number: 'ABC123',
+      seat_capacity: 40,
+      bus_type: 'standard',
+      amenities: ['wifi', 'ac'],
+    },
+    schedule: {
+      departure_time: '2025-12-20T08:00:00Z',
+      arrival_time: '2025-12-20T20:00:00Z',
+      duration: 720,
+    },
+    pricing: {
+      base_price: 350000,
+      currency: 'VND',
+    },
+    availability: {
+      total_seats: 40,
+      available_seats: 10,
+    },
+    policies: {
+      cancellation_policy: 'Free cancellation up to 24 hours before departure',
+      modification_policy:
+        'Modifications allowed up to 24 hours before departure',
+      refund_policy: '100% refund for cancellations within 24 hours',
+    },
+    pickup_points: [],
+    dropoff_points: [],
+    status: 'scheduled',
   },
 }
 
@@ -124,6 +161,7 @@ describe('BookingConfirmation Component', () => {
       vi.mocked(bookingApi.getBookingByReference).mockResolvedValue({
         success: true,
         data: mockBooking,
+        message: 'Success',
       })
 
       render(
@@ -152,6 +190,7 @@ describe('BookingConfirmation Component', () => {
       vi.mocked(bookingApi.getBookingByReference).mockResolvedValue({
         success: true,
         data: mockBooking,
+        message: 'Success',
       })
 
       render(
@@ -204,6 +243,7 @@ describe('BookingConfirmation Component', () => {
       vi.mocked(bookingApi.getBookingByReference).mockResolvedValue({
         success: true,
         data: mockBooking,
+        message: 'Success',
       })
 
       render(
@@ -231,6 +271,7 @@ describe('BookingConfirmation Component', () => {
       vi.mocked(bookingApi.getBookingByReference).mockResolvedValue({
         success: true,
         data: mockBooking,
+        message: 'Success',
       })
 
       render(
@@ -259,6 +300,7 @@ describe('BookingConfirmation Component', () => {
       vi.mocked(bookingApi.getBookingByReference).mockResolvedValue({
         success: true,
         data: mockBooking,
+        message: 'Success',
       })
 
       render(
@@ -291,18 +333,16 @@ describe('BookingConfirmation Component', () => {
     })
 
     it('should handle multiple passengers', async () => {
-      const bookingWithMultiplePassengers = {
+      const bookingWithMultiplePassengers: Booking = {
         ...mockBooking,
         passengers: [
           {
-            ...mockBooking.passengers[0],
+            seat_code: 'A1',
             fullName: 'Passenger 1',
             seatNumber: 'A1',
           },
           {
-            passenger_id: 'p2',
-            booking_id: 'bk123',
-            seat_id: 's2',
+            seat_code: 'A2',
             fullName: 'Passenger 2',
             phone: '+84902345678',
             seatNumber: 'A2',
@@ -313,6 +353,7 @@ describe('BookingConfirmation Component', () => {
       vi.mocked(bookingApi.getBookingByReference).mockResolvedValue({
         success: true,
         data: bookingWithMultiplePassengers,
+        message: 'Success',
       })
 
       render(

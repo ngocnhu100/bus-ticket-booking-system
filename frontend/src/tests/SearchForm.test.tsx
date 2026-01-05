@@ -52,7 +52,7 @@ vi.mock('react-datepicker', () => ({
       value={selected ? selected.toLocaleDateString('en-CA') : ''}
       onChange={(e) => {
         const date = e.target.value ? new Date(e.target.value) : null
-        onChange(date)
+        if (date) onChange(date)
       }}
       placeholder={placeholderText}
     />
