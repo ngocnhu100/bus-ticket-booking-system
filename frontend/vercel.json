@@ -15,7 +15,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "connect-src *; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src * data:; font-src *;"
+          "value": "connect-src * wss:; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://js.stripe.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src * data:; font-src *; frame-src https://js.stripe.com https://accounts.google.com;"
         }
       ]
     }
