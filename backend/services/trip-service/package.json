@@ -8,7 +8,10 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --coverage",
+    "test:unit": "jest seat-availability.unit.test.js --coverage",
+    "test:integration": "jest seat-lock.integration.test.js --coverage",
+    "test:watch": "jest --watch",
     "lint": "eslint src/**/*.js",
     "lint:fix": "eslint src/**/*.js --fix"
   },
@@ -32,5 +35,8 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
     "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }

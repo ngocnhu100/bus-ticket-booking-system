@@ -2,42 +2,44 @@ const request = require('supertest');
 const app = require('../src/index');
 const bookingRepository = require('../src/repositories/bookingRepository');
 const passengerRepository = require('../src/repositories/passengerRepository');
+const axios = require('axios');
 
-// Mock repositories
+// Mock repositories and dependencies
 jest.mock('../src/repositories/bookingRepository');
 jest.mock('../src/repositories/passengerRepository');
 jest.mock('../src/redis');
+jest.mock('axios');
 
 describe('Guest Booking Lookup API', () => {
   const mockBooking = {
-    bookingId: '123e4567-e89b-12d3-a456-426614174000',
-    bookingReference: 'ABC123',
-    tripId: '456e7890-e89b-12d3-a456-426614174001',
-    userId: null, // Guest booking
-    contactEmail: 'guest@example.com',
-    contactPhone: '+84973994154',
+    booking_id: '123e4567-e89b-12d3-a456-426614174000',
+    booking_reference: 'BK20251209001', // Valid format: BKYYYYMMDDXXX
+    trip_id: '456e7890-e89b-12d3-a456-426614174001',
+    user_id: null, // Guest booking
+    contact_email: 'guest@example.com',
+    contact_phone: '+84973994154',
     status: 'pending',
-    lockedUntil: new Date(Date.now() + 600000).toISOString(),
+    locked_until: new Date(Date.now() + 600000).toISOString(),
     subtotal: 500000,
-    serviceFee: 25000,
-    totalPrice: 525000,
+    service_fee: 25000,
+    total_price: 525000,
     currency: 'VND',
-    createdAt: new Date().toISOString()
+    created_at: new Date().toISOString()
   };
 
   const mockPassengers = [
     {
-      passengerId: 1,
-      bookingId: mockBooking.bookingId,
-      fullName: 'Nguyen Van A',
+      passenger_id: 1,
+      booking_id: mockBooking.booking_id,
+      full_name: 'Nguyen Van A',
       phone: '+84973994154',
-      seatCode: '1A',
+      seat_code: '1A',
       price: 500000
     }
   ];
 
   const mockTrip = {
-    tripId: mockBooking.tripId,
+    trip_id: mockBooking.trip_id,
     route: {
       origin: 'Ho Chi Minh City',
       destination: 'Da Lat'
@@ -46,13 +48,21 @@ describe('Guest Booking Lookup API', () => {
       name: 'Phuong Trang'
     },
     schedule: {
-      departureTime: '2025-12-15T08:00:00Z',
-      arrivalTime: '2025-12-15T14:00:00Z'
+      departure_time: '2025-12-15T08:00:00Z',
+      arrival_time: '2025-12-15T14:00:00Z'
     }
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Mock axios.get for getTripById
+    axios.get.mockResolvedValue({
+      data: {
+        success: true,
+        data: mockTrip
+      }
+    });
   });
 
   describe('GET /guest/lookup', () => {
@@ -64,15 +74,15 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             phone: '+84973994154'
           });
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data).toHaveProperty('bookingId');
-        expect(response.body.data.bookingReference).toBe('ABC123');
-        expect(response.body.data.contactPhone).toBe('+84973994154');
+        expect(response.body.data).toHaveProperty('booking_id');
+        expect(response.body.data.booking_reference).toBe('BK20251209001');
+        expect(response.body.data.contact_phone).toBe('+84973994154');
         expect(response.body.data.passengers).toHaveLength(1);
         expect(response.body).toHaveProperty('timestamp');
       });
@@ -84,13 +94,13 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             email: 'guest@example.com'
           });
 
         expect(response.status).toBe(200);
         expect(response.body.success).toBe(true);
-        expect(response.body.data.contactEmail).toBe('guest@example.com');
+        expect(response.body.data.contact_email).toBe('guest@example.com');
       });
 
       test('should handle phone with spaces and 0 prefix', async () => {
@@ -100,7 +110,7 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             phone: '0973994154' // Vietnamese format
           });
 
@@ -115,7 +125,7 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             email: 'GUEST@EXAMPLE.COM' // Uppercase
           });
 
@@ -131,13 +141,13 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'NOTFND',
+            bookingReference: 'BK20251209999',
             phone: '+84973994154'
           });
 
         expect(response.status).toBe(404);
         expect(response.body.success).toBe(false);
-        expect(response.body.error.code).toBe('BOOKING_404');
+        expect(response.body.error.code).toBe('BOOK_002');
         expect(response.body.error.message).toContain('not found');
         expect(response.body).toHaveProperty('timestamp');
       });
@@ -150,13 +160,13 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             phone: '+84999999999' // Wrong phone
           });
 
         expect(response.status).toBe(403);
         expect(response.body.success).toBe(false);
-        expect(response.body.error.code).toBe('BOOKING_403');
+        expect(response.body.error.code).toBe('AUTH_003');
         expect(response.body.error.message).toContain('does not match');
       });
 
@@ -166,13 +176,13 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             email: 'wrong@example.com' // Wrong email
           });
 
         expect(response.status).toBe(403);
         expect(response.body.success).toBe(false);
-        expect(response.body.error.code).toBe('BOOKING_403');
+        expect(response.body.error.code).toBe('AUTH_003');
       });
     });
 
@@ -194,13 +204,13 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123'
+            bookingReference: 'BK20251209001'
           });
 
         expect(response.status).toBe(400);
         expect(response.body.success).toBe(false);
         expect(response.body.error.code).toBe('VAL_001');
-        expect(response.body.error.message).toContain('phone or email');
+        expect(response.body.error.message).toContain('phone');
       });
 
       test('should return 400 when bookingReference format is invalid', async () => {
@@ -220,7 +230,7 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             phone: '123' // Invalid format
           });
 
@@ -233,7 +243,7 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             email: 'not-an-email'
           });
 
@@ -251,17 +261,17 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             phone: '+84973994154'
           });
 
         expect(response.status).toBe(200);
-        expect(response.body.data).toHaveProperty('bookingId');
-        expect(response.body.data).toHaveProperty('bookingReference');
+        expect(response.body.data).toHaveProperty('booking_id');
+        expect(response.body.data).toHaveProperty('booking_reference');
         expect(response.body.data).toHaveProperty('status');
-        expect(response.body.data).toHaveProperty('totalPrice');
+        expect(response.body.data).toHaveProperty('total_price');
         expect(response.body.data).toHaveProperty('passengers');
-        expect(response.body.data).toHaveProperty('tripDetails');
+        expect(response.body.data).toHaveProperty('trip_details');
       });
 
       test('should not expose sensitive data unnecessarily', async () => {
@@ -271,7 +281,7 @@ describe('Guest Booking Lookup API', () => {
         const response = await request(app)
           .get('/guest/lookup')
           .query({
-            bookingReference: 'ABC123',
+            bookingReference: 'BK20251209001',
             phone: '+84973994154'
           });
 

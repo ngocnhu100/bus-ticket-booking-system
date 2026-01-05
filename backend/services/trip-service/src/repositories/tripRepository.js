@@ -399,13 +399,15 @@ class TripRepository {
       }
 
       if (departure_date_from) {
-        whereConditions.push(`t.departure_time >= $${index}`);
+        // Convert date to start of day in Vietnam timezone (UTC+7)
+        whereConditions.push(`t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}' >= $${index}::date`);
         values.push(departure_date_from);
         index++;
       }
 
       if (departure_date_to) {
-        whereConditions.push(`t.departure_time <= $${index}`);
+        // Convert date to end of day in Vietnam timezone (UTC+7)
+        whereConditions.push(`t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}' < ($${index}::date + interval '1 day')`);
         values.push(departure_date_to);
         index++;
       }
@@ -550,7 +552,8 @@ class TripRepository {
     //   }
     // }
     if (date) {
-      where_clauses.push(`DATE(t.departure_time) = $${index++}`);
+      // Use timezone-aware date comparison to ensure correct filtering
+      where_clauses.push(`DATE(t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') = $${index++}`);
       values.push(date);
     }
     if (passengers !== undefined && passengers > 0) {
@@ -794,8 +797,8 @@ class TripRepository {
       WHERE t.route_id = $1
         AND t.status IN ('scheduled', 'in_progress')
         AND t.trip_id != $2
-        AND DATE(t.departure_time) >= DATE($3)
-        AND DATE(t.departure_time) <= DATE($3) + INTERVAL '7 days'
+        AND DATE(t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') >= DATE($3)
+        AND DATE(t.departure_time AT TIME ZONE '${TIMEZONE_CONFIG.DEFAULT_TIMEZONE}') <= DATE($3) + INTERVAL '7 days'
       ORDER BY t.departure_time ASC
       LIMIT 5
     `;

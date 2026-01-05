@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "jest --coverage",
+    "test:unit": "jest userService.unit.test.js --coverage",
+    "test:integration": "jest user-profile.integration.test.js --coverage",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "streamifier": "^0.1.1",
@@ -14,5 +18,9 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "pg": "^8.11.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
   }
 }

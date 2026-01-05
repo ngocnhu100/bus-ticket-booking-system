@@ -49,7 +49,7 @@ describe('Register Component', () => {
 
       // Check page title
       expect(screen.getByText(/register/i)).toBeInTheDocument()
-      expect(screen.getByText('Bus Ticket Booking System')).toBeInTheDocument()
+      expect(screen.getByText('BusGo')).toBeInTheDocument()
 
       // Check form inputs
       expect(screen.getByLabelText(/full name/i)).toBeInTheDocument()

@@ -7,8 +7,16 @@ jest.mock('axios');
 const mockedAxios = axios;
 
 describe('Booking Service - Lock Release for Cancelled Bookings', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset environment to use localhost for tests
+    process.env = { ...originalEnv, TRIP_SERVICE_URL: 'http://localhost:3002' };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe('releaseLocksForCancelledBooking', () => {

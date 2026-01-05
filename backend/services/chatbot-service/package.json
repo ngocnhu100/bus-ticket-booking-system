@@ -7,6 +7,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "test": "jest --coverage",
+    "test:unit": "jest faqService.unit.test.js chatbotHelpers.unit.test.js --coverage",
+    "test:integration": "jest chatbot.integration.test.js --coverage",
     "test:watch": "jest --watch"
   },
   "keywords": [

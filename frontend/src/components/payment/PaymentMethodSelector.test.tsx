@@ -1,8 +1,9 @@
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import PaymentMethodSelector from './PaymentMethodSelector'
 
 describe('PaymentMethodSelector', () => {
-  const mockOnSelect = jest.fn()
+  const mockOnSelect = vi.fn()
 
   it('renders all payment methods', () => {
     render(<PaymentMethodSelector amount={100000} onSelect={mockOnSelect} />)
